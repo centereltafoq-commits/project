@@ -44,8 +44,11 @@ export class DashboardService {
         totalReceivables: 0,
         totalTeacherDues: 0,
         totalAssistantDues: 0,
+        totalTeacherPaidOut: 0,
+        totalAssistantPaidOut: 0,
         totalExpenses: 0,
         netCenterResult: 0,
+        netCashFlow: 0,
       };
     }
 

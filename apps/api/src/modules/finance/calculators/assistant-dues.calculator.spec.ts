@@ -102,4 +102,60 @@ describe('calculateAssistantDues', () => {
     expect(result.isLocked).toBe(true);
     expect(result.amount).toBe(320);
   });
+
+  it('calculates HOURLY assistant dues accurately with explicit hours or session fallback', () => {
+    const explicitHours = calculateAssistantDues({
+      assistant: {
+        calculationMethod: AssistantCalculationMethod.HOURLY,
+        rateValue: 60, // 60 EGP / hour
+      },
+      metrics: {
+        ...baseMetrics,
+        executedHoursCount: 15.5,
+      },
+    });
+    // 60 * 15.5 = 930 EGP
+    expect(explicitHours.amount).toBe(930);
+    expect(explicitHours.calculationBreakdown).toContain('15.5 ساعة');
+
+    const fallbackHours = calculateAssistantDues({
+      assistant: {
+        calculationMethod: AssistantCalculationMethod.HOURLY,
+        rateValue: 50,
+      },
+      metrics: {
+        ...baseMetrics,
+        executedSessionsCount: 6,
+        executedHoursCount: undefined,
+      },
+    });
+    // Fallback: 6 sessions * 2 hours = 12 hours * 50 = 600 EGP
+    expect(fallbackHours.amount).toBe(600);
+  });
+
+  it('clamps commission percentage safely and prevents negative dues', () => {
+    const clampedHigh = calculateAssistantDues({
+      assistant: {
+        calculationMethod: AssistantCalculationMethod.SESSION_COMMISSION_PERCENT,
+        rateValue: 150, // > 100%
+      },
+      metrics: {
+        ...baseMetrics,
+        executedSessionsRevenue: 1000,
+      },
+    });
+    expect(clampedHigh.amount).toBe(1000); // Clamped to 100% of 1000
+
+    const clampedNegative = calculateAssistantDues({
+      assistant: {
+        calculationMethod: AssistantCalculationMethod.SESSION_COMMISSION_PERCENT,
+        rateValue: -20,
+      },
+      metrics: {
+        ...baseMetrics,
+        executedSessionsRevenue: 1000,
+      },
+    });
+    expect(clampedNegative.amount).toBe(0);
+  });
 });

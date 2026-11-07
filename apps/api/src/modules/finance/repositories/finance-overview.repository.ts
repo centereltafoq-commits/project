@@ -11,7 +11,7 @@ import {
   teacherMonthlyRecords,
   teachers,
 } from '../../../database/schemas';
-import { parseMoney } from '../utils/money.util';
+import { parseMoney, roundMoney } from '../utils/money.util';
 
 @Injectable()
 export class FinanceOverviewRepository {
@@ -117,27 +117,44 @@ export class FinanceOverviewRepository {
     const openTotal =
       Number(studentAgg?.openCount ?? 0) + Number(teacherAgg?.openCount ?? 0);
 
+    const studentTotalDue = parseMoney(studentAgg?.totalDue);
+    const studentTotalPaid = parseMoney(studentAgg?.totalPaid);
+    const teacherTotalDues = parseMoney(teacherAgg?.totalDues);
+    const teacherTotalPaidOut = parseMoney(teacherAgg?.totalPaidOut);
+    const assistantTotalDues = parseMoney(assistantAgg?.totalDues);
+    const assistantTotalPaidOut = parseMoney(assistantAgg?.totalPaidOut);
+    const totalExpenses = parseMoney(expenseAgg?.totalExpenses);
+
+    const netCenterProfit = roundMoney(
+      studentTotalDue - teacherTotalDues - assistantTotalDues - totalExpenses,
+    );
+    const netCashFlow = roundMoney(
+      studentTotalPaid - teacherTotalPaidOut - assistantTotalPaidOut - totalExpenses,
+    );
+
     return {
       yearMonth,
       isMonthClosed: closedTotal > 0 && openTotal === 0,
       students: {
-        totalDue: parseMoney(studentAgg?.totalDue),
-        totalPaid: parseMoney(studentAgg?.totalPaid),
+        totalDue: studentTotalDue,
+        totalPaid: studentTotalPaid,
         remainingBalance: parseMoney(studentAgg?.remaining),
       },
       teachers: {
-        totalDues: parseMoney(teacherAgg?.totalDues),
-        totalPaidOut: parseMoney(teacherAgg?.totalPaidOut),
+        totalDues: teacherTotalDues,
+        totalPaidOut: teacherTotalPaidOut,
         remainingBalance: parseMoney(teacherAgg?.remaining),
       },
       assistants: {
-        totalDues: parseMoney(assistantAgg?.totalDues),
-        totalPaidOut: parseMoney(assistantAgg?.totalPaidOut),
+        totalDues: assistantTotalDues,
+        totalPaidOut: assistantTotalPaidOut,
         remainingBalance: parseMoney(assistantAgg?.remaining),
       },
       expenses: {
-        totalAmount: parseMoney(expenseAgg?.totalExpenses),
+        totalAmount: totalExpenses,
       },
+      netCenterProfit,
+      netCashFlow,
     };
   }
 }

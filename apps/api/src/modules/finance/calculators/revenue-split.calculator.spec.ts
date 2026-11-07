@@ -87,4 +87,111 @@ describe('calculateGroupRevenueSplit', () => {
     expect(result.centerAmount).toBe(960);
     expect(result.grossGroupRevenue).toBe(2160);
   });
+
+  it('returns 0 dues across all methods when executedSessionsCount is 0', () => {
+    const fixedStudent = calculateGroupRevenueSplit({
+      policy: {
+        revenueSplitMethod: GroupRevenueSplitMethod.FIXED_PER_STUDENT,
+        monthlyPrice: 200,
+        teacherSharePerStudent: 120,
+        centerSharePerStudent: 80,
+        teacherPercentage: 0,
+      },
+      grossGroupRevenue: 2400,
+      billedStudentsCount: 12,
+      executedSessionsCount: 0,
+    });
+    expect(fixedStudent.teacherAmount).toBe(0);
+    expect(fixedStudent.centerAmount).toBe(0);
+
+    const ratio = calculateGroupRevenueSplit({
+      policy: {
+        revenueSplitMethod: GroupRevenueSplitMethod.ACTUAL_ATTENDANCE_RATIO,
+        monthlyPrice: 200,
+        teacherSharePerStudent: 120,
+        centerSharePerStudent: 80,
+        teacherPercentage: 0,
+      },
+      grossGroupRevenue: 1000,
+      billedStudentsCount: 5,
+      executedSessionsCount: 0,
+    });
+    expect(ratio.teacherAmount).toBe(0);
+    expect(ratio.centerAmount).toBe(0);
+  });
+
+  it('calculates FIXED_PER_SESSION and leaves remainder of revenue to the center', () => {
+    const result = calculateGroupRevenueSplit({
+      policy: {
+        revenueSplitMethod: GroupRevenueSplitMethod.FIXED_PER_SESSION,
+        monthlyPrice: 200,
+        teacherSharePerStudent: 250, // 250 EGP per session
+        centerSharePerStudent: 0,
+        teacherPercentage: 0,
+      },
+      grossGroupRevenue: 1500,
+      billedStudentsCount: 10,
+      executedSessionsCount: 4,
+    });
+
+    // 4 sessions * 250 EGP = 1000 EGP to teacher; 1500 - 1000 = 500 EGP to center
+    expect(result.teacherAmount).toBe(1000);
+    expect(result.centerAmount).toBe(500);
+    expect(result.teacherAmount + result.centerAmount).toBe(1500);
+  });
+
+  it('safely handles zero denominator and negative gross inputs without throwing or NaN', () => {
+    const result = calculateGroupRevenueSplit({
+      policy: {
+        revenueSplitMethod: GroupRevenueSplitMethod.ACTUAL_ATTENDANCE_RATIO,
+        monthlyPrice: 0,
+        teacherSharePerStudent: 0,
+        centerSharePerStudent: 0,
+        teacherPercentage: 0,
+      },
+      grossGroupRevenue: -100,
+      billedStudentsCount: 0,
+      executedSessionsCount: 0,
+    });
+
+    expect(result.teacherAmount).toBe(0);
+    expect(result.centerAmount).toBe(0);
+    expect(result.grossGroupRevenue).toBe(0);
+  });
+
+  it('allocates remainder cleanly to the center when centerShare is omitted in FIXED_PER_STUDENT or ACTUAL_ATTENDANCE_RATIO', () => {
+    const fixedStudentOmittedCenter = calculateGroupRevenueSplit({
+      policy: {
+        revenueSplitMethod: GroupRevenueSplitMethod.FIXED_PER_STUDENT,
+        monthlyPrice: 200,
+        teacherSharePerStudent: 120,
+        centerSharePerStudent: 0, // Admin omitted explicit center share
+        teacherPercentage: 0,
+      },
+      grossGroupRevenue: 2000,
+      billedStudentsCount: 10,
+      executedSessionsCount: 4,
+    });
+    // Teacher gets 10 * 120 = 1200 EGP; Center gets remainder 2000 - 1200 = 800 EGP
+    expect(fixedStudentOmittedCenter.teacherAmount).toBe(1200);
+    expect(fixedStudentOmittedCenter.centerAmount).toBe(800);
+    expect(fixedStudentOmittedCenter.teacherAmount + fixedStudentOmittedCenter.centerAmount).toBe(2000);
+
+    const ratioOmittedCenter = calculateGroupRevenueSplit({
+      policy: {
+        revenueSplitMethod: GroupRevenueSplitMethod.ACTUAL_ATTENDANCE_RATIO,
+        monthlyPrice: 500,
+        teacherSharePerStudent: 350,
+        centerSharePerStudent: 0,
+        teacherPercentage: 0,
+      },
+      grossGroupRevenue: 1000,
+      billedStudentsCount: 2,
+      executedSessionsCount: 4,
+    });
+    // Teacher gets (1000 * 350) / 500 = 700 EGP; Center gets remainder 1000 - 700 = 300 EGP
+    expect(ratioOmittedCenter.teacherAmount).toBe(700);
+    expect(ratioOmittedCenter.centerAmount).toBe(300);
+    expect(ratioOmittedCenter.teacherAmount + ratioOmittedCenter.centerAmount).toBe(1000);
+  });
 });

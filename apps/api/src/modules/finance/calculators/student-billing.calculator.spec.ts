@@ -200,4 +200,97 @@ describe('calculateStudentMonthlyBilling', () => {
     expect(result.totalPaid).toBe(100);
     expect(result.remainingBalance).toBe(26);
   });
+
+  it('prevents penny rounding drift on full subscription packages with recurring fractions (e.g. 500 / 3)', () => {
+    // 500 / 3 = 166.6666... In floating math 3 * 166.67 = 500.01
+    // Our fix guarantees exact agreed monthly price 500.00!
+    const threeSessions = [
+      { id: 's-1', sessionDate: '2026-10-05', status: SessionStatus.COMPLETED },
+      { id: 's-2', sessionDate: '2026-10-12', status: SessionStatus.COMPLETED },
+      { id: 's-3', sessionDate: '2026-10-19', status: SessionStatus.COMPLETED },
+    ];
+
+    const result = calculateStudentMonthlyBilling({
+      enrollment: {
+        startDate: '2026-10-01',
+        agreedMonthlyPrice: 500,
+        agreedSessionsCount: 3,
+      },
+      policy: {
+        fullMonthAbsencePolicy: FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+        fullAbsenceFixedFee: 0,
+        chargeExcusedAbsence: false,
+      },
+      sessions: threeSessions,
+      attendances: [
+        { sessionId: 's-1', status: AttendanceStatus.PRESENT },
+        { sessionId: 's-2', status: AttendanceStatus.PRESENT },
+        { sessionId: 's-3', status: AttendanceStatus.PRESENT },
+      ],
+    });
+
+    expect(result.billableSessionsCount).toBe(3);
+    expect(result.sessionPriceSnapshot).toBe(166.67);
+    expect(result.totalDue).toBe(500); // Exactly 500, NOT 500.01!
+  });
+
+  it('counts completed makeups from makeups list even if attendance record is absent', () => {
+    const result = calculateStudentMonthlyBilling({
+      enrollment: {
+        startDate: '2026-10-01',
+        agreedMonthlyPrice: 200,
+        agreedSessionsCount: 4,
+        agreedSessionPrice: 50,
+      },
+      policy: {
+        fullMonthAbsencePolicy: FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+        fullAbsenceFixedFee: 0,
+        chargeExcusedAbsence: false,
+      },
+      sessions: [
+        { id: 's-1', sessionDate: '2026-10-05', status: SessionStatus.COMPLETED },
+        { id: 's-2', sessionDate: '2026-10-12', status: SessionStatus.COMPLETED },
+      ],
+      attendances: [
+        { sessionId: 's-1', status: AttendanceStatus.PRESENT },
+        { sessionId: 's-2', status: AttendanceStatus.ABSENT },
+      ],
+      makeups: [
+        { isFree: true, extraFee: 0, status: MakeupStatus.COMPLETED },
+      ],
+    });
+
+    // 1 present + 1 completed makeup = 2 attended
+    expect(result.presentCount).toBe(1);
+    expect(result.makeupAttendedCount).toBe(1);
+    expect(result.attendedCount).toBe(2);
+    expect(result.totalDue).toBe(100);
+  });
+
+  it('handles overpayments by flooring remainingBalance at 0 without negative balances', () => {
+    const result = calculateStudentMonthlyBilling({
+      enrollment: {
+        startDate: '2026-10-01',
+        agreedMonthlyPrice: 100,
+        agreedSessionsCount: 2,
+        agreedSessionPrice: 50,
+      },
+      policy: {
+        fullMonthAbsencePolicy: FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+        fullAbsenceFixedFee: 0,
+        chargeExcusedAbsence: false,
+      },
+      sessions: [
+        { id: 's-1', sessionDate: '2026-10-05', status: SessionStatus.COMPLETED },
+      ],
+      attendances: [
+        { sessionId: 's-1', status: AttendanceStatus.PRESENT },
+      ],
+      currentTotalPaid: 150, // 50 EGP overpaid
+    });
+
+    expect(result.totalDue).toBe(50);
+    expect(result.totalPaid).toBe(150);
+    expect(result.remainingBalance).toBe(0);
+  });
 });

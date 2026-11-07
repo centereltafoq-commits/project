@@ -118,6 +118,7 @@ export class FinancialSummaryRepository {
       { key: 'coll', label: 'التحصيل الفعلي', value: totalCollected, format: 'currency', tone: 'success' },
       { key: 'ctrShare', label: 'نصيب السنتر من المجموعات', value: centerShare, format: 'currency', tone: 'purple' },
       { key: 'net', label: 'صافي نتيجة السنتر', value: netCenterResult, format: 'currency', tone: netCenterResult >= 0 ? 'success' : 'danger' },
+      { key: 'cashFlow', label: 'صافي التدفق النقدي', value: netCashFlow, format: 'currency', tone: netCashFlow >= 0 ? 'success' : 'danger' },
     ];
 
     return {

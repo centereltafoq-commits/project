@@ -241,4 +241,106 @@ describe('computeStudentMonthlyBreakdown', () => {
     expect(item.remaining).toBe(0);
     expect(result.monthTotals.remaining).toBe(0);
   });
+
+  it('prevents penny rounding drift on full subscription packages with recurring fractions (e.g. 500 / 3)', () => {
+    const bundle: any = {
+      monthlyRecords: [],
+      monthAllocations: [],
+      studentEnrollments: [
+        {
+          id: 'enr-1',
+          groupId: 'grp-1',
+          groupName: 'Group Recurring',
+          startDate: '2026-11-01',
+          endDate: null,
+          agreedMonthlyPrice: '500.00',
+          agreedSessionsCount: 3,
+          agreedSessionPrice: '0.00',
+          fullMonthAbsencePolicy: FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+          fullAbsenceFixedFee: '0.00',
+          chargeExcusedAbsence: false,
+        },
+      ],
+      groupSessionsInMonth: [
+        { id: 's-1', groupId: 'grp-1', sessionDate: '2026-11-05', status: 'COMPLETED' },
+        { id: 's-2', groupId: 'grp-1', sessionDate: '2026-11-12', status: 'COMPLETED' },
+        { id: 's-3', groupId: 'grp-1', sessionDate: '2026-11-19', status: 'COMPLETED' },
+      ],
+      monthAttendance: [
+        { groupId: 'grp-1', sessionId: 's-1', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-2', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-3', status: AttendanceStatus.PRESENT },
+      ],
+      studentPayments: [],
+      studentMakeups: [],
+    };
+
+    const result = computeStudentMonthlyBreakdown('2026-11', bundle);
+    const item = result.breakdown[0];
+    expect(item.presentCount).toBe(3);
+    // Exactly 500.00, not 500.01
+    expect(item.totalDue).toBe(500);
+    expect(result.monthTotals.totalDue).toBe(500);
+  });
+
+  it('correctly credits unallocated remainder of partially-allocated payments to monthTotals.totalPaid', () => {
+    const bundle: any = {
+      monthlyRecords: [],
+      monthAllocations: [
+        {
+          paymentId: 'pay-part',
+          groupId: 'grp-1',
+          allocatedAmount: '600.00',
+        },
+      ],
+      studentEnrollments: [
+        {
+          id: 'enr-1',
+          groupId: 'grp-1',
+          groupName: 'Group Allocated',
+          startDate: '2026-11-01',
+          endDate: null,
+          agreedMonthlyPrice: '800.00',
+          agreedSessionsCount: 4,
+          agreedSessionPrice: '200.00',
+          fullMonthAbsencePolicy: FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+          fullAbsenceFixedFee: '0.00',
+          chargeExcusedAbsence: false,
+        },
+      ],
+      groupSessionsInMonth: [
+        { id: 's-1', groupId: 'grp-1', sessionDate: '2026-11-05', status: 'COMPLETED' },
+        { id: 's-2', groupId: 'grp-1', sessionDate: '2026-11-12', status: 'COMPLETED' },
+        { id: 's-3', groupId: 'grp-1', sessionDate: '2026-11-19', status: 'COMPLETED' },
+        { id: 's-4', groupId: 'grp-1', sessionDate: '2026-11-26', status: 'COMPLETED' },
+      ],
+      monthAttendance: [
+        { groupId: 'grp-1', sessionId: 's-1', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-2', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-3', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-4', status: AttendanceStatus.PRESENT },
+      ],
+      studentPayments: [
+        {
+          id: 'pay-part',
+          yearMonth: '2026-11',
+          amount: '1000.00', // 1000 paid: 600 to grp-1, 400 unallocated credit
+        },
+      ],
+      studentMakeups: [],
+    };
+
+    const result = computeStudentMonthlyBreakdown('2026-11', bundle);
+    const item = result.breakdown[0];
+    // grp-1 totalDue is 800, allocated paid is 600, remaining is 200
+    expect(item.totalDue).toBe(800);
+    expect(item.totalPaid).toBe(600);
+    expect(item.remaining).toBe(200);
+
+    // monthTotals must count the full 1000 paid (600 allocated + 400 unallocated)
+    expect(result.monthTotals.totalDue).toBe(800);
+    expect(result.monthTotals.totalPaid).toBe(1000);
+    // Student overall has 0 remaining debt because they paid 1000 against 800
+    expect(result.monthTotals.remaining).toBe(0);
+  });
 });

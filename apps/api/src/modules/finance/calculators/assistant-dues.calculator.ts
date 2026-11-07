@@ -17,6 +17,7 @@ export interface AssistantDuesMetricsInput {
   executedSessionsCount: number;
   enrolledStudentsCount: number;
   totalAttendancesCount: number;
+  executedHoursCount?: number;
 }
 
 export interface ExistingAssistantDueSnapshot {
@@ -93,14 +94,27 @@ export function calculateAssistantDues(
 
   switch (calculationMethod) {
     case AssistantCalculationMethod.SESSION_COMMISSION_PERCENT: {
-      amount = roundMoney((cleanRevenue * rateValue) / 100);
-      calculationBreakdown = `عمولة ${rateValue}% من إيراد الحصص المنفذة (${cleanRevenue} ج.م)`;
+      const clampedRate = Math.min(100, Math.max(0, rateValue));
+      amount = roundMoney((cleanRevenue * clampedRate) / 100);
+      calculationBreakdown = `عمولة ${clampedRate}% من إيراد الحصص المنفذة (${cleanRevenue} ج.م)`;
       break;
     }
 
     case AssistantCalculationMethod.FIXED_PER_SESSION: {
       amount = roundMoney(rateValue * sessionsCount);
       calculationBreakdown = `${rateValue} ج.م × ${sessionsCount} حصة منفذة`;
+      break;
+    }
+
+    case AssistantCalculationMethod.HOURLY: {
+      const hoursCount = Math.max(
+        0,
+        metrics.executedHoursCount !== undefined && metrics.executedHoursCount !== null
+          ? roundMoney(metrics.executedHoursCount)
+          : sessionsCount * 2,
+      );
+      amount = roundMoney(rateValue * hoursCount);
+      calculationBreakdown = `${rateValue} ج.م/ساعة × ${hoursCount} ساعة تدريسية`;
       break;
     }
 

@@ -4,6 +4,7 @@ import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   assistantDues,
   assistantMonthlyRecords,
+  assistantPayouts,
   assistants,
   attendance,
   bookingRequests,
@@ -16,6 +17,7 @@ import {
   students,
   teacherDues,
   teacherMonthlyRecords,
+  teacherPayouts,
   teachers,
 } from '../../database/schemas';
 import { queryClassroomsLiveSnapshot } from './dashboard-classrooms.helper';
@@ -43,6 +45,8 @@ export class DashboardRepository {
       [paymentsRow],
       [teacherFinRow],
       [assistantFinRow],
+      [teacherPaidRow],
+      [assistantPaidRow],
       [expensesRow],
       [pendingBookingsRow],
       upcomingRows,
@@ -162,6 +166,18 @@ export class DashboardRepository {
       `).then((r) => r.rows),
       this.db
         .select({
+          totalPaidOut: sql<string>`COALESCE(SUM(${teacherPayouts.amount}), 0)::text`,
+        })
+        .from(teacherPayouts)
+        .where(eq(teacherPayouts.yearMonth, yearMonth)),
+      this.db
+        .select({
+          totalPaidOut: sql<string>`COALESCE(SUM(${assistantPayouts.amount}), 0)::text`,
+        })
+        .from(assistantPayouts)
+        .where(eq(assistantPayouts.yearMonth, yearMonth)),
+      this.db
+        .select({
           totalExpenses: sql<string>`COALESCE(SUM(${expenses.amount}), 0)::text`,
         })
         .from(expenses)
@@ -206,9 +222,14 @@ export class DashboardRepository {
     const totalReceivables = Number(studentFinRow?.totalReceivables ?? 0);
     const totalTeacherDues = Number(teacherFinRow?.total_dues ?? 0);
     const totalAssistantDues = Number(assistantFinRow?.total_dues ?? 0);
+    const totalTeacherPaidOut = Number(teacherPaidRow?.totalPaidOut ?? 0);
+    const totalAssistantPaidOut = Number(assistantPaidRow?.totalPaidOut ?? 0);
     const totalExpenses = Number(expensesRow?.totalExpenses ?? 0);
     const netCenterResult = Number(
       (totalRevenue - totalTeacherDues - totalAssistantDues - totalExpenses).toFixed(2),
+    );
+    const netCashFlow = Number(
+      (totalCollectedPayments - totalTeacherPaidOut - totalAssistantPaidOut - totalExpenses).toFixed(2),
     );
 
     const totalBillableSessions = Number(studentSessionsRow?.totalBillableSessions ?? 0);
@@ -249,8 +270,11 @@ export class DashboardRepository {
       totalReceivables,
       totalTeacherDues,
       totalAssistantDues,
+      totalTeacherPaidOut,
+      totalAssistantPaidOut,
       totalExpenses,
       netCenterResult,
+      netCashFlow,
       pendingBookingsCount: Number(pendingBookingsRow?.pendingCount ?? 0),
       upcomingAppointments: upcomingRows,
       classroomsSummary: roomsSnapshot.classroomsSummary,

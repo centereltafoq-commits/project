@@ -14,6 +14,27 @@ import {
 } from '../repositories/monthly-settlement-write.repository';
 import { parseMoney, roundMoney, toMoneyString } from '../utils/money.util';
 
+export function computeSessionsHours(
+  sessionsList: MonthlySettlementSnapshot['monthSessions'],
+): number {
+  let totalMinutes = 0;
+  for (const s of sessionsList) {
+    if (s.startTime && s.endTime) {
+      const [sh, sm] = s.startTime.split(':').map(Number);
+      const [eh, em] = s.endTime.split(':').map(Number);
+      if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+        const diff = eh * 60 + em - (sh * 60 + sm);
+        if (diff > 0) {
+          totalMinutes += diff;
+          continue;
+        }
+      }
+    }
+    totalMinutes += 120; // Default 2 hours if invalid/missing
+  }
+  return roundMoney(totalMinutes / 60);
+}
+
 export function buildStaffSettlementBatch(
   yearMonth: string,
   snap: MonthlySettlementSnapshot,
@@ -180,6 +201,7 @@ export function buildStaffSettlementBatch(
     }
 
     for (const link of isBaseMonthlyFlat ? overriddenLinks : links) {
+      const groupSessions = studentBatch.executedSessionsByGroup.get(link.groupId) ?? [];
       const calc = calculateAssistantDues({
         assistant: {
           calculationMethod: asst.calculationMethod,
@@ -193,9 +215,8 @@ export function buildStaffSettlementBatch(
         },
         metrics: {
           executedSessionsRevenue: studentBatch.groupRevenueMap.get(link.groupId) ?? 0,
-          executedSessionsCount: (
-            studentBatch.executedSessionsByGroup.get(link.groupId) ?? []
-          ).length,
+          executedSessionsCount: groupSessions.length,
+          executedHoursCount: computeSessionsHours(groupSessions),
           enrolledStudentsCount:
             studentBatch.groupEnrolledStudentsMap.get(link.groupId) ?? 0,
           totalAttendancesCount:

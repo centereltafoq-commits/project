@@ -63,6 +63,7 @@ export const ASSISTANT_CALC_METHOD_LABELS: Record<AssistantCalculationMethod, st
   [AssistantCalculationMethod.FIXED_PER_STUDENT]: 'مبلغ ثابت عن كل طالب مشترك',
   [AssistantCalculationMethod.PER_ATTENDING_STUDENT]: 'مبلغ عن كل طالب حاضر بالحصة',
   [AssistantCalculationMethod.FIXED_PER_SESSION]: 'مبلغ ثابت عن كل حصة منفذة',
+  [AssistantCalculationMethod.HOURLY]: 'أجر بالساعة التدريسية',
   [AssistantCalculationMethod.FIXED_MONTHLY]: 'راتب / مبلغ شهري ثابت',
   [AssistantCalculationMethod.SESSION_COMMISSION_PERCENT]: 'نسبة مئوية من إيراد الحصص (%)',
   [AssistantCalculationMethod.CUSTOM_AGREEMENT]: 'اتفاق مخصص (صيغة خاصة)',

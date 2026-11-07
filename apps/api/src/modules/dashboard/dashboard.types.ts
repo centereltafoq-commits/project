@@ -77,6 +77,9 @@ export interface DashboardSummaryResponse {
   totalAssistantDues: number;
   totalExpenses: number;
   netCenterResult: number;
+  netCashFlow?: number;
+  totalTeacherPaidOut?: number;
+  totalAssistantPaidOut?: number;
   pendingBookingsCount: number;
   upcomingAppointments: DashboardUpcomingAppointment[];
   classroomsSummary: DashboardClassroomsSummary;

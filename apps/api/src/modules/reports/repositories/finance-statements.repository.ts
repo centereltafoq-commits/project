@@ -123,7 +123,11 @@ export class FinanceStatementsRepository {
         .innerJoin(teachers, eq(groups.primaryTeacherId, teachers.id))
         .leftJoin(
           teacherDues,
-          and(eq(teacherDues.groupId, groups.id), eq(teacherDues.yearMonth, yearMonth)),
+          and(
+            eq(teacherDues.groupId, groups.id),
+            eq(teacherDues.teacherId, groups.primaryTeacherId),
+            eq(teacherDues.yearMonth, yearMonth),
+          ),
         )
         .where(whereClause)
         .orderBy(asc(groups.groupCode))
@@ -143,7 +147,11 @@ export class FinanceStatementsRepository {
         .innerJoin(teachers, eq(groups.primaryTeacherId, teachers.id))
         .leftJoin(
           teacherDues,
-          and(eq(teacherDues.groupId, groups.id), eq(teacherDues.yearMonth, yearMonth)),
+          and(
+            eq(teacherDues.groupId, groups.id),
+            eq(teacherDues.teacherId, groups.primaryTeacherId),
+            eq(teacherDues.yearMonth, yearMonth),
+          ),
         )
         .where(whereClause),
     ]);

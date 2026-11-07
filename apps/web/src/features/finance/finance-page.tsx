@@ -1,12 +1,14 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Banknote,
   Building2,
   Calculator,
   CalendarDays,
   GraduationCap,
   Lock,
   Receipt,
+  TrendingUp,
   UserCheck,
   Users,
   Wallet,
@@ -143,7 +145,7 @@ export function FinancePage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 no-print">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 no-print">
         <StatCard
           title={`مستحقات الطلاب (${formatYearMonthAr(yearMonth)})`}
           value={formatCurrency(summary?.students.totalDue ?? 0)}
@@ -171,6 +173,20 @@ export function FinancePage() {
           subtitle="إيجار ومرافق ومستلزمات وإدارة"
           icon={Building2}
           tone="warning"
+        />
+        <StatCard
+          title="صافي ربح السنتر"
+          value={formatCurrency(summary?.netCenterProfit ?? 0)}
+          subtitle="المستحقات - الالتزامات والمصروفات"
+          icon={TrendingUp}
+          tone={(summary?.netCenterProfit ?? 0) >= 0 ? 'success' : 'danger'}
+        />
+        <StatCard
+          title="صافي التدفق النقدي"
+          value={formatCurrency(summary?.netCashFlow ?? 0)}
+          subtitle="المحصل - المنصرف فعلياً بالخزينة"
+          icon={Banknote}
+          tone={(summary?.netCashFlow ?? 0) >= 0 ? 'success' : 'danger'}
         />
       </div>
 

@@ -72,18 +72,46 @@ export function calculateGroupRevenueSplit(
 
   switch (policy.revenueSplitMethod) {
     case GroupRevenueSplitMethod.FIXED_PER_STUDENT: {
-      teacherAmount = roundMoney(billedStudentsCount * teacherShare);
-      centerAmount = roundMoney(billedStudentsCount * centerShare);
-      calculationBreakdown = `مبلغ ثابت لكل طالب (${billedStudentsCount} طالب × ${teacherShare} ج.م مدرس / ${centerShare} ج.م سنتر)`;
+      if (executedSessionsCount === 0 || cleanGross <= 0 || billedStudentsCount === 0) {
+        teacherAmount = 0;
+        centerAmount = 0;
+        calculationBreakdown = `مبلغ ثابت لكل طالب (0 مستحق لعدم تنفيذ حصص أو غياب الإيراد)`;
+      } else {
+        teacherAmount = roundMoney(billedStudentsCount * teacherShare);
+        centerAmount =
+          centerShare > 0
+            ? roundMoney(billedStudentsCount * centerShare)
+            : roundMoney(Math.max(0, cleanGross - teacherAmount));
+        calculationBreakdown = `مبلغ ثابت لكل طالب (${billedStudentsCount} طالب × ${teacherShare} ج.م مدرس / ${centerAmount} ج.م سنتر)`;
+      }
+      break;
+    }
+
+    case GroupRevenueSplitMethod.FIXED_PER_SESSION: {
+      if (executedSessionsCount === 0 || cleanGross <= 0) {
+        teacherAmount = 0;
+        centerAmount = 0;
+        calculationBreakdown = `مبلغ ثابت لكل حصة (0 مستحق لعدم تنفيذ حصص أو غياب الإيراد)`;
+      } else {
+        teacherAmount = Math.min(cleanGross, roundMoney(executedSessionsCount * teacherShare));
+        centerAmount = roundMoney(cleanGross - teacherAmount);
+        calculationBreakdown = `مبلغ ثابت لكل حصة (${executedSessionsCount} حصة × ${teacherShare} ج.م مدرس / ${centerAmount} ج.م سنتر من إجمالي ${cleanGross} ج.م)`;
+      }
       break;
     }
 
     case GroupRevenueSplitMethod.CUSTOM_PERCENTAGE: {
-      const clampedPct = Math.min(100, Math.max(0, roundMoney(policy.teacherPercentage)));
-      const centerPct = roundMoney(100 - clampedPct);
-      teacherAmount = roundMoney((cleanGross * clampedPct) / 100);
-      centerAmount = roundMoney(cleanGross - teacherAmount);
-      calculationBreakdown = `نسبة مئوية مخصصة (${clampedPct}% مدرس / ${centerPct}% سنتر من إجمالي ${cleanGross} ج.م)`;
+      if (executedSessionsCount === 0 || cleanGross <= 0) {
+        teacherAmount = 0;
+        centerAmount = 0;
+        calculationBreakdown = `نسبة مئوية مخصصة (0 مستحق لعدم تنفيذ حصص أو غياب الإيراد)`;
+      } else {
+        const clampedPct = Math.min(100, Math.max(0, roundMoney(policy.teacherPercentage)));
+        const centerPct = roundMoney(100 - clampedPct);
+        teacherAmount = roundMoney((cleanGross * clampedPct) / 100);
+        centerAmount = roundMoney(cleanGross - teacherAmount);
+        calculationBreakdown = `نسبة مئوية مخصصة (${clampedPct}% مدرس / ${centerPct}% سنتر من إجمالي ${cleanGross} ج.م)`;
+      }
       break;
     }
 
@@ -92,18 +120,19 @@ export function calculateGroupRevenueSplit(
       const sharesSum = roundMoney(teacherShare + centerShare);
       const denominator = monthlyPrice > 0 ? monthlyPrice : sharesSum;
 
-      if (denominator <= 0 || cleanGross <= 0) {
+      if (denominator <= 0 || cleanGross <= 0 || executedSessionsCount === 0) {
         teacherAmount = 0;
         centerAmount = 0;
+        calculationBreakdown = `نسبة الحضور الفعلي (0 مستحق لعدم تنفيذ حصص أو غياب الإيراد)`;
       } else {
-        teacherAmount = roundMoney((cleanGross * teacherShare) / denominator);
-        if (Math.abs(sharesSum - denominator) < 0.01) {
+        teacherAmount = Math.min(cleanGross, roundMoney((cleanGross * teacherShare) / denominator));
+        if (centerShare <= 0 || Math.abs(sharesSum - denominator) < 0.01) {
           centerAmount = roundMoney(cleanGross - teacherAmount);
         } else {
           centerAmount = roundMoney((cleanGross * centerShare) / denominator);
         }
+        calculationBreakdown = `نسبة الحضور الفعلي (${teacherShare}/${denominator} مدرس و ${centerShare}/${denominator} سنتر من إجمالي ${cleanGross} ج.م)`;
       }
-      calculationBreakdown = `نسبة الحضور الفعلي (${teacherShare}/${denominator} مدرس و ${centerShare}/${denominator} سنتر من إجمالي ${cleanGross} ج.م)`;
       break;
     }
   }

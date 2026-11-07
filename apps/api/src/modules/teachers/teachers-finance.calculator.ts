@@ -1,5 +1,7 @@
 import { GroupRevenueSplitMethod, SessionStatus } from '@edu-center/shared';
 import { TeachersProfileRepository } from './teachers-profile.repository';
+import { calculateGroupRevenueSplit } from '../finance/calculators/revenue-split.calculator';
+import { roundMoney } from '../finance/utils/money.util';
 
 export interface TeacherGroupMonthlyItem {
   groupId: string;
@@ -54,38 +56,40 @@ export function computeTeacherMonthlySummary(
     const studentsCount = Number(grp.activeStudentsCount || 0);
     const monthlySessionsCount = Math.max(1, Number(grp.monthlySessionsCount || 1));
     const sessionPrice = Number(grp.calculatedSessionPrice || 0);
+    const monthlyPrice = Number(grp.monthlyPrice || 0);
     const method = grp.revenueSplitMethod || GroupRevenueSplitMethod.ACTUAL_ATTENDANCE_RATIO;
     const teacherSharePerStudent = Number(grp.teacherSharePerStudent || 0);
     const centerSharePerStudent = Number(grp.centerSharePerStudent || 0);
     const teacherPct = Number(grp.teacherPercentage || 0);
 
     let grossRevenue = 0;
-    let teacherShare = 0;
-    let centerShare = 0;
-
-    if (method === GroupRevenueSplitMethod.FIXED_PER_STUDENT) {
-      const ratio = executedSessionsCount > 0 ? executedSessionsCount / monthlySessionsCount : 0;
-      teacherShare = round2(studentsCount * teacherSharePerStudent * (ratio || 1));
-      centerShare = round2(studentsCount * centerSharePerStudent * (ratio || 1));
-      grossRevenue = round2(teacherShare + centerShare);
-    } else if (method === GroupRevenueSplitMethod.CUSTOM_PERCENTAGE) {
+    if (executedSessionsCount > 0) {
       const presentEntries = presentByGroup.get(grp.id) ?? 0;
-      grossRevenue =
-        presentEntries > 0
-          ? round2(presentEntries * sessionPrice)
-          : round2(studentsCount * executedSessionsCount * sessionPrice);
-      teacherShare = round2((grossRevenue * teacherPct) / 100);
-      centerShare = round2(grossRevenue - teacherShare);
-    } else {
-      const presentEntries = presentByGroup.get(grp.id) ?? 0;
-      const teacherPerSessionPerStudent = teacherSharePerStudent / monthlySessionsCount;
-      const centerPerSessionPerStudent = centerSharePerStudent / monthlySessionsCount;
-      const effectiveAttendances =
-        presentEntries > 0 ? presentEntries : studentsCount * executedSessionsCount;
-      teacherShare = round2(effectiveAttendances * teacherPerSessionPerStudent);
-      centerShare = round2(effectiveAttendances * centerPerSessionPerStudent);
-      grossRevenue = round2(teacherShare + centerShare);
+      if (presentEntries > 0 && sessionPrice > 0) {
+        grossRevenue = roundMoney(presentEntries * sessionPrice);
+      } else if (studentsCount > 0 && sessionPrice > 0) {
+        grossRevenue = roundMoney(studentsCount * executedSessionsCount * sessionPrice);
+      } else if (studentsCount > 0 && monthlyPrice > 0) {
+        const ratio = executedSessionsCount / monthlySessionsCount;
+        grossRevenue = roundMoney(studentsCount * monthlyPrice * ratio);
+      }
     }
+
+    const split = calculateGroupRevenueSplit({
+      policy: {
+        revenueSplitMethod: method,
+        monthlyPrice,
+        teacherSharePerStudent,
+        centerSharePerStudent,
+        teacherPercentage: teacherPct,
+      },
+      grossGroupRevenue: grossRevenue,
+      billedStudentsCount: studentsCount,
+      executedSessionsCount,
+    });
+
+    const teacherShare = split.teacherAmount;
+    const centerShare = split.centerAmount;
 
     groupsBreakdown.push({
       groupId: grp.id,
@@ -115,7 +119,7 @@ export function computeTeacherMonthlySummary(
   const totalPayouts = bundle.storedMonthlyRecord?.isClosed
     ? Number(bundle.storedMonthlyRecord.totalPaidOut)
     : monthPayoutsTotal;
-  const remainingBalance = round2(totalDues - totalPayouts);
+  const remainingBalance = Math.max(0, round2(totalDues - totalPayouts));
 
   return {
     groups: groupsBreakdown,

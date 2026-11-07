@@ -93,6 +93,10 @@ export const REVENUE_SPLIT_OPTIONS = [
     label: 'حصة ثابتة عن كل طالب مشترك',
   },
   {
+    value: GroupRevenueSplitMethod.FIXED_PER_SESSION,
+    label: 'مبلغ ثابت للمدرس عن كل حصة منفذة',
+  },
+  {
     value: GroupRevenueSplitMethod.CUSTOM_PERCENTAGE,
     label: 'نسبة مئوية للمدرس من الإيراد (%)',
   },

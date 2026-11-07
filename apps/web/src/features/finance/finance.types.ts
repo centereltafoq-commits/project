@@ -33,6 +33,7 @@ export const EXPENSE_CATEGORY_OPTIONS = Object.entries(EXPENSE_CATEGORY_LABELS).
 export const ASSISTANT_METHOD_LABELS: Record<string, string> = {
   [AssistantCalculationMethod.SESSION_COMMISSION_PERCENT]: 'عمولة % من إيراد الحصص',
   [AssistantCalculationMethod.FIXED_PER_SESSION]: 'مبلغ ثابت لكل حصة',
+  [AssistantCalculationMethod.HOURLY]: 'سعر بالساعة',
   [AssistantCalculationMethod.FIXED_PER_STUDENT]: 'مبلغ ثابت لكل طالب مقيد',
   [AssistantCalculationMethod.PER_ATTENDING_STUDENT]: 'مبلغ عن كل حضور طالب',
   [AssistantCalculationMethod.FIXED_MONTHLY]: 'راتب شهري ثابت',
@@ -91,6 +92,8 @@ export interface MonthExecutiveSummary {
   expenses: {
     totalAmount: number;
   };
+  netCenterProfit?: number;
+  netCashFlow?: number;
 }
 
 export interface StudentMonthlyRecordRow {

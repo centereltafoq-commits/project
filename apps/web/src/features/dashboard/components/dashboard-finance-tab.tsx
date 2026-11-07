@@ -58,7 +58,7 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
         </CardHeader>
         <CardContent className="space-y-6 pt-5">
           {/* مؤشرات الإيراد والتحصيل والمتأخرات */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground block font-medium">
                 إجمالي إيرادات المجموعات (المستهدف)
@@ -109,7 +109,7 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground font-medium">
-                  صافي نتيجة السنتر
+                  صافي أرباح السنتر (استحقاقي)
                 </span>
                 {isProfitable ? (
                   <Badge variant="success">فائض ربحي</Badge>
@@ -127,7 +127,38 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
                 {formatCurrency(data.netCenterResult)}
               </p>
               <span className="mt-1 text-[11px] text-muted-foreground block">
-                بعد سداد أنصبة المدرسين والمساعدين والمصروفات
+                المستحقات - التزامات المدرسين والمساعدين والمصروفات
+              </span>
+            </div>
+
+            <div
+              className={`rounded-xl border p-4 ${
+                (data.netCashFlow ?? 0) >= 0
+                  ? 'border-teal-500/40 bg-teal-500/5'
+                  : 'border-rose-500/40 bg-rose-500/5'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground font-medium">
+                  صافي التدفق النقدي (الخزينة)
+                </span>
+                {(data.netCashFlow ?? 0) >= 0 ? (
+                  <Badge variant="success">سيولة إيجابية</Badge>
+                ) : (
+                  <Badge variant="danger">عجز سيولة</Badge>
+                )}
+              </div>
+              <p
+                className={`mt-1 text-2xl font-black ${
+                  (data.netCashFlow ?? 0) >= 0
+                    ? 'text-teal-600 dark:text-teal-400'
+                    : 'text-rose-600 dark:text-rose-400'
+                }`}
+              >
+                {formatCurrency(data.netCashFlow ?? 0)}
+              </p>
+              <span className="mt-1 text-[11px] text-muted-foreground block">
+                المحصل نقداً - المنصرف فعلياً للمدرسين والمساعدين والمصروفات
               </span>
             </div>
           </div>

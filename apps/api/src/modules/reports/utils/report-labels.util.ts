@@ -26,6 +26,7 @@ export const ASSISTANT_METHOD_AR: Record<string, string> = {
   FIXED_PER_SESSION: 'مبلغ ثابت للحصة',
   FIXED_MONTHLY: 'راتب شهري ثابت',
   SESSION_COMMISSION_PERCENT: 'نسبة مئوية من إيراد الحصة',
+  HOURLY: 'أجر بالساعة',
   CUSTOM_AGREEMENT: 'اتفاق مخصص',
 };
 

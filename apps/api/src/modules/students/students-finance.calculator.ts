@@ -35,12 +35,15 @@ export function computeStudentMonthlyBreakdown(
 
   const storedByGroup = new Map(bundle.monthlyRecords.map((r) => [r.groupId, r]));
   const allocatedByGroup = new Map<string, number>();
-  const allocatedPaymentIds = new Set<string>();
+  const allocatedByPaymentId = new Map<string, number>();
   for (const alloc of bundle.monthAllocations) {
-    allocatedPaymentIds.add(alloc.paymentId);
+    allocatedByPaymentId.set(
+      alloc.paymentId,
+      round2((allocatedByPaymentId.get(alloc.paymentId) ?? 0) + Number(alloc.allocatedAmount || 0)),
+    );
     allocatedByGroup.set(
       alloc.groupId,
-      (allocatedByGroup.get(alloc.groupId) ?? 0) + Number(alloc.allocatedAmount || 0),
+      round2((allocatedByGroup.get(alloc.groupId) ?? 0) + Number(alloc.allocatedAmount || 0)),
     );
   }
 
@@ -121,14 +124,25 @@ export function computeStudentMonthlyBreakdown(
         } else if (
           enr.fullMonthAbsencePolicy === FullMonthAbsencePolicy.CHARGE_FULL_SUBSCRIPTION
         ) {
-          baseDue = Number(enr.agreedMonthlyPrice ?? (totalSessions * sessionPrice));
+          baseDue =
+            Number(enr.agreedMonthlyPrice || 0) > 0
+              ? Number(enr.agreedMonthlyPrice)
+              : Number(enr.agreedSessionsCount || 0) * sessionPrice;
         } else {
           baseDue = 0;
         }
       } else {
         const billableSessionsCount =
           attendedCount + (enr.chargeExcusedAbsence ? excusedCount : 0);
-        baseDue = billableSessionsCount * sessionPrice;
+        if (
+          billableSessionsCount === Number(enr.agreedSessionsCount || 0) &&
+          Number(enr.agreedMonthlyPrice || 0) > 0 &&
+          (!enr.agreedSessionPrice || Number(enr.agreedSessionPrice) <= 0)
+        ) {
+          baseDue = round2(Number(enr.agreedMonthlyPrice));
+        } else {
+          baseDue = round2(billableSessionsCount * sessionPrice);
+        }
       }
     }
 
@@ -153,8 +167,13 @@ export function computeStudentMonthlyBreakdown(
   }
 
   const unallocatedMonthPaid = bundle.studentPayments
-    .filter((p) => p.yearMonth === yearMonth && !allocatedPaymentIds.has(p.id))
-    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    .filter((p) => p.yearMonth === yearMonth)
+    .reduce((sum, p) => {
+      const paymentAmount = Number(p.amount || 0);
+      const allocatedForPayment = allocatedByPaymentId.get(p.id) ?? 0;
+      const unallocated = Math.max(0, round2(paymentAmount - allocatedForPayment));
+      return round2(sum + unallocated);
+    }, 0);
 
   const totalSessions = breakdown.reduce((s, g) => s + g.totalSessions, 0);
   const presentCount = breakdown.reduce((s, g) => s + g.presentCount, 0);

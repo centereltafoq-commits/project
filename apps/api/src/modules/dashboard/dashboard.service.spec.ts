@@ -32,6 +32,9 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     totalAssistantDues: 5000,
     totalExpenses: 7000,
     netCenterResult: 13000,
+    netCashFlow: 10000,
+    totalTeacherPaidOut: 20000,
+    totalAssistantPaidOut: 5000,
     pendingBookingsCount: 3,
     upcomingAppointments: [],
     classroomsSummary: { total: 10, availableNow: 7, occupiedNow: 2, maintenance: 1 },
@@ -65,6 +68,7 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.totalAssistantDues).toBe(5000);
     expect(res.totalExpenses).toBe(7000);
     expect(res.netCenterResult).toBe(13000);
+    expect(res.netCashFlow).toBe(10000);
     expect(res.totalStudents).toBe(150);
   });
 
@@ -101,5 +105,6 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.totalAssistantDues).toBe(0);
     expect(res.totalExpenses).toBe(0);
     expect(res.netCenterResult).toBe(0);
+    expect(res.netCashFlow).toBe(0);
   });
 });

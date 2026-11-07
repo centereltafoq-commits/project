@@ -101,6 +101,7 @@ export function calculateStudentMonthlyBilling(
     const lockedTotalDue = roundMoney(existingRecord.totalDue);
     const totalPaid = roundMoney(currentTotalPaid ?? existingRecord.totalPaid);
     const attendedCount = existingRecord.presentCount + existingRecord.makeupAttendedCount;
+    const isFullMonthAbsence = attendedCount === 0 && lockedTotalDue > 0;
 
     return {
       totalGroupSessions: existingRecord.totalGroupSessions,
@@ -117,7 +118,7 @@ export function calculateStudentMonthlyBilling(
       totalDue: lockedTotalDue,
       totalPaid,
       remainingBalance: roundMoney(Math.max(0, lockedTotalDue - totalPaid)),
-      isFullMonthAbsenceApplied: false,
+      isFullMonthAbsenceApplied: isFullMonthAbsence,
       isClosed: true,
     };
   }
@@ -158,7 +159,11 @@ export function calculateStudentMonthlyBilling(
         ? roundMoney(enrollment.agreedMonthlyPrice / enrollment.agreedSessionsCount)
         : 0;
 
-  const attendedCount = presentCount + makeupAttendedCount;
+  const completedMakeupsCount = makeups.filter(
+    (m) => m.status === MakeupStatus.COMPLETED,
+  ).length;
+  const effectiveMakeupAttendedCount = Math.max(makeupAttendedCount, completedMakeupsCount);
+  const attendedCount = presentCount + effectiveMakeupAttendedCount;
   const billableSessionsCount =
     attendedCount + (policy.chargeExcusedAbsence ? excusedCount : 0);
 
@@ -178,7 +183,10 @@ export function calculateStudentMonthlyBilling(
     isFullMonthAbsenceApplied = true;
     switch (policy.fullMonthAbsencePolicy) {
       case FullMonthAbsencePolicy.CHARGE_FULL_SUBSCRIPTION:
-        baseDue = roundMoney(enrollment.agreedMonthlyPrice);
+        baseDue =
+          enrollment.agreedMonthlyPrice > 0
+            ? roundMoney(enrollment.agreedMonthlyPrice)
+            : roundMoney(enrollment.agreedSessionsCount * sessionPriceSnapshot);
         break;
       case FullMonthAbsencePolicy.CHARGE_FIXED_RESERVATION_FEE:
         baseDue = roundMoney(policy.fullAbsenceFixedFee);
@@ -188,6 +196,12 @@ export function calculateStudentMonthlyBilling(
         baseDue = 0;
         break;
     }
+  } else if (
+    billableSessionsCount === enrollment.agreedSessionsCount &&
+    enrollment.agreedMonthlyPrice > 0 &&
+    (enrollment.agreedSessionPrice === undefined || enrollment.agreedSessionPrice <= 0)
+  ) {
+    baseDue = roundMoney(enrollment.agreedMonthlyPrice);
   } else {
     baseDue = roundMoney(billableSessionsCount * sessionPriceSnapshot);
   }
@@ -202,7 +216,7 @@ export function calculateStudentMonthlyBilling(
     presentCount,
     absentCount,
     excusedCount,
-    makeupAttendedCount,
+    makeupAttendedCount: effectiveMakeupAttendedCount,
     attendedCount,
     billableSessionsCount,
     sessionPriceSnapshot,
