@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentMethod } from '@edu-center/shared';
 import {
   Button,
+  DatePicker,
   Input,
   Modal,
   Select,
@@ -149,12 +150,10 @@ export function PayoutModal({
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input
+          <DatePicker
             label="تاريخ الصرف"
-            type="date"
-            required
             value={payoutDate}
-            onChange={(e) => setPayoutDate(e.target.value)}
+            onChange={setPayoutDate}
           />
           <Input
             label="رقم المرجع (اختياري)"

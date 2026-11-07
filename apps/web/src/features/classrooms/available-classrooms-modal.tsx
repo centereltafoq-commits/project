@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
-import { Input, Modal } from '@/design-system';
+import { DatePicker, Input, Modal } from '@/design-system';
 import { apiClient } from '@/lib/api-client';
 import { getTodayIsoDate } from '@/lib/formatters';
 import { ClassroomRow } from './classrooms.types';
@@ -48,11 +48,10 @@ export function AvailableClassroomsModal({
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Input
+          <DatePicker
             label="التاريخ"
-            type="date"
             value={availQuery.date}
-            onChange={(e) => setAvailQuery({ ...availQuery, date: e.target.value })}
+            onChange={(d) => setAvailQuery({ ...availQuery, date: d })}
           />
           <Input
             label="من الساعة"

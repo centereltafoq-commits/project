@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Badge, Button, Input, Modal } from '@/design-system';
+import { Badge, Button, DatePicker, Modal } from '@/design-system';
 import { apiClient } from '@/lib/api-client';
 import { formatDateAr, getTodayIsoDate } from '@/lib/formatters';
 import { ClassroomRow, ClassroomScheduleData } from './classrooms.types';
@@ -48,17 +48,15 @@ export function ClassroomScheduleModal({
     >
       <div className="space-y-5">
         <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted/20 p-3">
-          <Input
+          <DatePicker
             label="من تاريخ"
-            type="date"
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={setFrom}
           />
-          <Input
+          <DatePicker
             label="إلى تاريخ"
-            type="date"
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={setTo}
           />
           <Button
             type="button"

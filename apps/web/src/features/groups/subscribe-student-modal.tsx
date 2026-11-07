@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PaginatedResult } from '@edu-center/shared';
-import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatCurrency, getTodayIsoDate } from '@/lib/formatters';
@@ -116,13 +116,10 @@ export function SubscribeStudentModal({
         />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Input
+          <DatePicker
             label="تاريخ بدء الاشتراك"
-            type="date"
-            required
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            hint="يدعم الالتحاق في منتصف الشهر"
+            onChange={setStartDate}
           />
           <Input
             label="الاشتراك الشهري المتفق عليه"

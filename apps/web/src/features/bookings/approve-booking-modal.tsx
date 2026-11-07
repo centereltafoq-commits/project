@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Ban, Building2, CheckCircle2, XCircle } from 'lucide-react';
 import { BookingStatus, PERMISSIONS } from '@edu-center/shared';
-import { Badge, Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { Badge, Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import {
@@ -141,11 +141,10 @@ export function ApproveBookingModal({ booking, onClose }: ApproveBookingModalPro
           )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-            <Input
+            <DatePicker
               label="التاريخ"
-              type="date"
               value={requestedDate}
-              onChange={(e) => setRequestedDate(e.target.value)}
+              onChange={setRequestedDate}
             />
             <Input
               label="من الساعة"

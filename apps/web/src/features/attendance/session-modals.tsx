@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { Button, DatePicker, Input, Modal, MonthPicker, Select, Textarea, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getCurrentYearMonth, getTodayIsoDate } from '@/lib/formatters';
 import { AttendanceLookups } from './attendance.types';
@@ -110,12 +110,10 @@ export function CreateSessionModal({
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Input
+          <DatePicker
             label="تاريخ الحصة"
-            type="date"
-            required
             value={form.sessionDate}
-            onChange={(e) => setForm({ ...form, sessionDate: e.target.value })}
+            onChange={(d) => setForm({ ...form, sessionDate: d })}
           />
           <Input
             label="من الساعة"
@@ -216,12 +214,10 @@ export function GenerateMonthModal({
           }))}
         />
 
-        <Input
+        <MonthPicker
           label="الشهر الدراسي"
-          type="month"
-          required
           value={yearMonth}
-          onChange={(e) => setYearMonth(e.target.value)}
+          onChange={setYearMonth}
         />
 
         <div className="flex justify-end gap-2 pt-2">

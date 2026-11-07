@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MakeupStatus, PaginatedResult } from '@edu-center/shared';
-import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getTodayIsoDate } from '@/lib/formatters';
@@ -156,12 +156,11 @@ export function MakeupModal({
         )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input
+          <DatePicker
             label="تاريخ الغياب الأصلي"
-            type="date"
             disabled={Boolean(editingRow)}
             value={absenceDate}
-            onChange={(e) => setAbsenceDate(e.target.value)}
+            onChange={setAbsenceDate}
           />
           <Input
             label="موعد الحصة التعويضية"

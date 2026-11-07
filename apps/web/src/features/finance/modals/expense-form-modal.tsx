@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExpenseCategory, PaymentMethod } from '@edu-center/shared';
 import {
   Button,
+  DatePicker,
   Input,
   Modal,
   Select,
@@ -134,12 +135,10 @@ export function ExpenseFormModal({
             options={PAYMENT_METHOD_OPTIONS}
           />
         </div>
-        <Input
+        <DatePicker
           label="تاريخ المصروف"
-          type="date"
-          required
           value={form.expenseDate}
-          onChange={(e) => setForm({ ...form, expenseDate: e.target.value })}
+          onChange={(d) => setForm({ ...form, expenseDate: d })}
         />
         <Textarea
           label="ملاحظات إضافية"

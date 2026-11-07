@@ -1,5 +1,5 @@
 import { BookingRequestType, BookingStatus } from '@edu-center/shared';
-import { Select } from '@/design-system';
+import { DatePicker, Select } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { BookingLookups } from './bookings.types';
 
@@ -97,19 +97,17 @@ export function BookingsFilters({
         options={(lookups?.teachers ?? []).map((t) => ({ value: t.id, label: t.fullName }))}
         className="w-44"
       />
-      <input
-        type="date"
+      <DatePicker
+        placeholder="من تاريخ"
         value={fromDate}
-        onChange={(e) => onFromDateChange(e.target.value)}
-        title="من تاريخ"
-        className="h-10 rounded-lg border border-input bg-card px-2.5 text-xs text-foreground"
+        onChange={onFromDateChange}
+        className="w-36"
       />
-      <input
-        type="date"
+      <DatePicker
+        placeholder="إلى تاريخ"
         value={toDate}
-        onChange={(e) => onToDateChange(e.target.value)}
-        title="إلى تاريخ"
-        className="h-10 rounded-lg border border-input bg-card px-2.5 text-xs text-foreground"
+        onChange={onToDateChange}
+        className="w-36"
       />
     </>
   );
