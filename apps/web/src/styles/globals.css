@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 33% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 226 71% 45%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 214 32% 94%;
+    --secondary-foreground: 222 47% 15%;
+    --muted: 214 32% 95%;
+    --muted-foreground: 215 16% 44%;
+    --accent: 226 70% 96%;
+    --accent-foreground: 226 71% 40%;
+    --destructive: 0 78% 55%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 28% 89%;
+    --input: 214 28% 87%;
+    --ring: 226 71% 45%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 224 45% 8%;
+    --foreground: 210 40% 96%;
+    --card: 223 42% 11%;
+    --card-foreground: 210 40% 96%;
+    --primary: 224 82% 62%;
+    --primary-foreground: 222 47% 10%;
+    --secondary: 220 32% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 220 30% 16%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 223 38% 18%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 219 28% 20%;
+    --input: 219 28% 20%;
+    --ring: 224 82% 62%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+

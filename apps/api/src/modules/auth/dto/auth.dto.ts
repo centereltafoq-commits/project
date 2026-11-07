@@ -1,0 +1,13 @@
+import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+
+export class LoginDto {
+  @IsEmail({}, { message: 'البريد الإلكتروني غير صالح' })
+  @MaxLength(160)
+  email: string;
+
+  @IsString()
+  @MinLength(6)
+  @MaxLength(100)
+  password: string;
+}
+

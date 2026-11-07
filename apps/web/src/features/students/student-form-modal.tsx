@@ -1,0 +1,161 @@
+import * as React from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { StudentStatus } from '@edu-center/shared';
+import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { apiClient, extractErrorMessage } from '@/lib/api-client';
+import { getTodayIsoDate } from '@/lib/formatters';
+import { GRADE_LEVEL_OPTIONS, STUDENT_STATUS_OPTIONS, StudentRow } from './students.types';
+
+interface StudentFormModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  student?: StudentRow | null;
+}
+
+export function StudentFormModal({ open, onOpenChange, student }: StudentFormModalProps) {
+  const queryClient = useQueryClient();
+  const { notify } = useToast();
+  const isEdit = Boolean(student);
+
+  const [form, setForm] = React.useState({
+    studentCode: '',
+    fullName: '',
+    phone: '',
+    guardianPhone: '',
+    gradeLevel: 'الثالث الثانوي',
+    registrationDate: getTodayIsoDate(),
+    status: StudentStatus.ACTIVE,
+    notes: '',
+  });
+
+  React.useEffect(() => {
+    if (student) {
+      setForm({
+        studentCode: student.studentCode,
+        fullName: student.fullName,
+        phone: student.phone,
+        guardianPhone: student.guardianPhone,
+        gradeLevel: student.gradeLevel,
+        registrationDate: student.registrationDate?.slice(0, 10) || getTodayIsoDate(),
+        status: student.status,
+        notes: student.notes ?? '',
+      });
+    } else {
+      setForm({
+        studentCode: '',
+        fullName: '',
+        phone: '',
+        guardianPhone: '',
+        gradeLevel: 'الثالث الثانوي',
+        registrationDate: getTodayIsoDate(),
+        status: StudentStatus.ACTIVE,
+        notes: '',
+      });
+    }
+  }, [student, open]);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (isEdit && student) {
+        const { studentCode: _code, ...payload } = form;
+        return apiClient.patch(`/students/${student.id}`, payload);
+      }
+      return apiClient.post('/students', {
+        ...form,
+        studentCode: form.studentCode.trim() || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      if (student) {
+        queryClient.invalidateQueries({ queryKey: ['student-profile', student.id] });
+      }
+      notify(isEdit ? 'تم تحديث بيانات الطالب بنجاح' : 'تم تسجيل الطالب بنجاح', 'success');
+      onOpenChange(false);
+    },
+    onError: (err) => notify(extractErrorMessage(err), 'error'),
+  });
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      title={isEdit ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}
+      description="سجّل البيانات الأساسية للطالب وولي الأمر لحفظ ملف دائم بالسنتر"
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
+        className="space-y-4"
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            label="الاسم الرباعي للطالب"
+            required
+            value={form.fullName}
+            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+            placeholder="مثال: أحمد محمد عبد الرحمن"
+          />
+          <Input
+            label="كود الطالب (اختياري - يولّد تلقائياً)"
+            disabled={isEdit}
+            value={form.studentCode}
+            onChange={(e) => setForm({ ...form, studentCode: e.target.value })}
+            placeholder="STU-2026-XXXX"
+          />
+          <Input
+            label="رقم هاتف الطالب"
+            required
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="010xxxxxxxx"
+          />
+          <Input
+            label="رقم هاتف ولي الأمر"
+            required
+            value={form.guardianPhone}
+            onChange={(e) => setForm({ ...form, guardianPhone: e.target.value })}
+            placeholder="011xxxxxxxx"
+          />
+          <Select
+            label="الصف الدراسي"
+            required
+            value={form.gradeLevel}
+            onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
+            options={GRADE_LEVEL_OPTIONS}
+          />
+          <Input
+            label="تاريخ التسجيل"
+            type="date"
+            required
+            value={form.registrationDate}
+            onChange={(e) => setForm({ ...form, registrationDate: e.target.value })}
+          />
+          <Select
+            label="حالة ملف الطالب"
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value as StudentStatus })}
+            options={STUDENT_STATUS_OPTIONS}
+          />
+        </div>
+        <Textarea
+          label="ملاحظات إدارية أو طبية"
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          placeholder="أي ملاحظات خاصة بالطالب..."
+        />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            إلغاء
+          </Button>
+          <Button type="submit" isLoading={mutation.isPending}>
+            {isEdit ? 'حفظ التعديلات' : 'حفظ ملف الطالب'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}

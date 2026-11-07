@@ -1,0 +1,28 @@
+{
+  "name": "edu-center-erp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enterprise Educational Center Management System (NestJS + PostgreSQL + React + Tailwind)",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace=@edu-center/shared",
+    "build:api": "npm run build --workspace=@edu-center/api",
+    "build:web": "npm run build --workspace=@edu-center/web",
+    "build": "npm run build:shared && npm run build:api && npm run build:web",
+    "dev:api": "npm run dev --workspace=@edu-center/api",
+    "dev:web": "npm run dev --workspace=@edu-center/web",
+    "db:migrate": "npm run db:push --workspace=@edu-center/api",
+    "db:seed": "npm run db:seed --workspace=@edu-center/api",
+    "test:api": "npm run test --workspace=@edu-center/api",
+    "test:web": "npm run test --workspace=@edu-center/web",
+    "test": "npm run test:api && npm run test:web"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+
