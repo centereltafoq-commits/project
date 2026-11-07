@@ -28,6 +28,10 @@ export class GroupScheduleSlotDto {
 
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'وقت النهاية يجب أن يكون بصيغة HH:mm' })
   endTime: string;
+
+  @IsOptional()
+  @IsUUID('4', { message: 'معرف القاعة غير صالح' })
+  classroomId?: string | null;
 }
 
 export class FinancialPolicyInputDto {

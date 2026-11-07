@@ -9,6 +9,7 @@ export interface GroupScheduleSlotItem {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  classroomId?: string | null;
 }
 
 export interface GroupRow {

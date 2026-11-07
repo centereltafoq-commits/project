@@ -132,7 +132,11 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
         maxStudents: Number(form.maxStudents),
         isActive: form.isActive,
         notes: form.notes || undefined,
-        scheduleSlots: slots,
+        scheduleSlots: slots.map((s) => ({
+          ...s,
+          dayOfWeek: Number(s.dayOfWeek),
+          classroomId: s.classroomId || null,
+        })),
         financialPolicy: {
           revenueSplitMethod: policyForm.revenueSplitMethod,
           teacherSharePerStudent: Number(policyForm.teacherSharePerStudent || 0),
@@ -193,13 +197,19 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
             options={(teachersData?.data ?? []).map((t) => ({ value: t.id, label: t.fullName }))}
           />
           <Select
-            label="القاعة الافتراضية"
+            label="القاعة الافتراضية (اختياري - تُنظم من إدارة القاعات)"
             searchable
             searchPlaceholder="ابحث باسم أو رقم القاعة..."
-            placeholder="بدون قاعة افتراضية"
+            placeholder="بدون قاعة (تُنظم وتحدد لاحقاً من إدارة القاعات)"
             value={form.defaultClassroomId}
             onChange={(e) => setForm({ ...form, defaultClassroomId: e.target.value })}
-            options={(roomsData?.data ?? []).map((r) => ({ value: r.id, label: `${r.name} (${r.roomNumber})` }))}
+            options={[
+              { value: '', label: 'بدون قاعة (تُنظم وتحدد لاحقاً من إدارة القاعات)' },
+              ...(roomsData?.data ?? []).map((r) => ({
+                value: r.id,
+                label: `${r.name} (${r.roomNumber})`,
+              })),
+            ]}
           />
           <Input label="الحد الأقصى للطلاب" type="number" min={1} required value={form.maxStudents} onChange={(e) => setForm({ ...form, maxStudents: e.target.value })} />
         </div>
@@ -210,6 +220,7 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
           assistantLinks={assistantLinks}
           onAssistantLinksChange={setAssistantLinks}
           assistantOptions={(assistantsData?.data ?? []).map((a) => ({ value: a.id, label: a.fullName }))}
+          classroomOptions={(roomsData?.data ?? []).map((r) => ({ value: r.id, label: `${r.name} (${r.roomNumber})` }))}
         />
         <Textarea label="ملاحظات المجموعة" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         <div className="flex justify-end gap-2 pt-2">

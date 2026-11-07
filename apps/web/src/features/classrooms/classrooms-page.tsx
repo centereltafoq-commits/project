@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarRange, Edit3, Eye, Plus, RotateCcw, Search, Wrench } from 'lucide-react';
+import { CalendarRange, Edit3, Eye, Layers, Plus, RotateCcw, Search, Users, Wrench } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
@@ -14,6 +14,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { AvailableClassroomsModal } from './available-classrooms-modal';
+import { ClassroomAllocationModal } from './classroom-allocation-modal';
 import { ClassroomFormModal } from './classroom-form-modal';
 import { ClassroomMaintenanceModal } from './classroom-maintenance-modal';
 import { ClassroomScheduleModal } from './classroom-schedule-modal';
@@ -39,7 +40,13 @@ export function ClassroomsPage() {
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const [maintRoom, setMaintRoom] = React.useState<ClassroomRow | null>(null);
   const [scheduleRoom, setScheduleRoom] = React.useState<ClassroomRow | null>(null);
+  const [allocationRoom, setAllocationRoom] = React.useState<ClassroomRow | null>(null);
   const [availOpen, setAvailOpen] = React.useState(false);
+
+  const { data: unallocatedGroups } = useQuery<Array<{ id: string }>>({
+    queryKey: ['classroom-unallocated-groups'],
+    queryFn: async () => (await apiClient.get('/classrooms/unallocated-groups')).data,
+  });
 
   const { data, isLoading } = useQuery<PaginatedResult<ClassroomRow>>({
     queryKey: ['classrooms', page, limit, debouncedSearch, statusFilter],
@@ -151,6 +158,17 @@ export function ClassroomsPage() {
           {canManageClassrooms && (
             <Button
               size="sm"
+              variant="outline"
+              className="h-8 gap-1 px-2.5 text-xs font-bold text-primary hover:bg-primary/10"
+              onClick={() => setAllocationRoom(row)}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              تسكين
+            </Button>
+          )}
+          {canManageClassrooms && (
+            <Button
+              size="sm"
               variant="ghost"
               className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => {
@@ -193,6 +211,19 @@ export function ClassroomsPage() {
           </div>
         }
       />
+
+      {unallocatedGroups && unallocatedGroups.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs text-foreground">
+          <div className="flex items-center gap-2">
+            <Badge variant="info" className="text-xs">
+              {unallocatedGroups.length} مجموعات
+            </Badge>
+            <span>
+              يوجد <strong>{unallocatedGroups.length}</strong> مجموعة دراسية بحاجة لتسكين وتنظيم بالقاعات (المجموعات لا تُسكن آلياً وإنما يديرها مسؤولو السنتر).
+            </span>
+          </div>
+        </div>
+      )}
 
       <ServerDataTable
         columns={columns}
@@ -276,6 +307,13 @@ export function ClassroomsPage() {
         open={Boolean(scheduleRoom)}
         onOpenChange={(o) => !o && setScheduleRoom(null)}
         classroom={scheduleRoom}
+        onOpenAllocation={() => setAllocationRoom(scheduleRoom)}
+      />
+
+      <ClassroomAllocationModal
+        open={Boolean(allocationRoom)}
+        onOpenChange={(o) => !o && setAllocationRoom(null)}
+        classroom={allocationRoom}
       />
 
       <AvailableClassroomsModal open={availOpen} onOpenChange={setAvailOpen} />

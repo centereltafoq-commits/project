@@ -1,18 +1,22 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import { ClassroomStatus } from '@edu-center/shared';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { GroupScheduleSlotDto } from '../../groups/dto/group-policy.dto';
 
 export class ClassroomQueryDto extends PaginationQueryDto {
   @IsOptional()
@@ -138,4 +142,23 @@ export class CreateMaintenanceDto {
   @MinLength(2)
   @MaxLength(255)
   reason: string;
+}
+
+export class AllocateGroupToClassroomDto {
+  @IsUUID('4', { message: 'معرف المجموعة مطلوب' })
+  groupId: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GroupScheduleSlotDto)
+  slots?: GroupScheduleSlotDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  updateUpcomingSessions?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allowOverCapacity?: boolean;
 }

@@ -9,6 +9,7 @@ import { AuthenticatedUser } from '../../common/decorators/current-user.decorato
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import {
+  AllocateGroupToClassroomDto,
   AvailableClassroomsQueryDto,
   ClassroomQueryDto,
   ClassroomScheduleQueryDto,
@@ -175,6 +176,143 @@ export class ClassroomsService {
       entityType: 'CLASSROOM_MAINTENANCE',
       entityId: maintId,
       beforeData: deleted,
+    });
+
+    return { success: true };
+  }
+
+  async getAllocatedGroups(classroomId: string) {
+    const room = await this.repository.findById(classroomId);
+    if (!room) {
+      throw new NotFoundException('القاعة غير موجودة');
+    }
+    const allocated = await this.repository.findAllocatedGroups(classroomId);
+    return {
+      classroom: room,
+      groups: allocated.map((g) => ({
+        ...g,
+        isOverCapacity: g.enrolledCount > room.maxCapacity || g.maxStudents > room.maxCapacity,
+      })),
+    };
+  }
+
+  async getUnallocatedGroups(includeAll: boolean = false) {
+    if (includeAll) {
+      return this.repository.findAllActiveGroups();
+    }
+    return this.repository.findUnallocatedGroups();
+  }
+
+  async allocateGroup(
+    classroomId: string,
+    dto: AllocateGroupToClassroomDto,
+    actor: AuthenticatedUser,
+  ) {
+    const room = await this.repository.findById(classroomId);
+    if (!room) {
+      throw new NotFoundException('القاعة غير موجودة');
+    }
+
+    if (room.status !== ClassroomStatus.AVAILABLE) {
+      const statusLabel =
+        room.status === ClassroomStatus.MAINTENANCE ? 'تحت الصيانة' : 'غير مفعلة';
+      throw new ConflictException(
+        `لا يمكن تسكين مجموعة في القاعة (${room.name}) لأنها ${statusLabel}`,
+      );
+    }
+
+    const group = await this.repository.findGroupById(dto.groupId);
+    if (!group) {
+      throw new NotFoundException('المجموعة المطلوبة غير موجودة');
+    }
+
+    const enrolledCount = await this.repository.getGroupActiveEnrollmentCount(dto.groupId);
+    if (enrolledCount > room.maxCapacity && !dto.allowOverCapacity) {
+      throw new ConflictException(
+        `عدد طلاب المجموعة المسجلين (${enrolledCount}) يتجاوز السعة القصوى للقاعة (${room.maxCapacity} طالب). يرجى اختيار قاعة بسعة أكبر أو تفعيل خيار تجاوز السعة`,
+      );
+    }
+
+    // Weekly recurring schedule conflict check
+    const ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const existingAllocated = await this.repository.findAllocatedGroups(classroomId);
+    const otherGroups = existingAllocated.filter((g) => g.id !== dto.groupId);
+
+    const targetSlots = dto.slots ?? group.scheduleSlots ?? [];
+    // Only verify slots intended for THIS classroom
+    const slotsForThisRoom = targetSlots.filter(
+      (s) => !s.classroomId || s.classroomId === classroomId,
+    );
+
+    for (const slotA of slotsForThisRoom) {
+      for (const other of otherGroups) {
+        for (const slotB of other.slotsForThisRoom) {
+          if (
+            Number(slotA.dayOfWeek) === Number(slotB.dayOfWeek) &&
+            slotA.startTime < slotB.endTime &&
+            slotA.endTime > slotB.startTime
+          ) {
+            const dayName = ARABIC_DAYS[slotA.dayOfWeek] ?? String(slotA.dayOfWeek);
+            throw new ConflictException(
+              `تعارض في جدول القاعة: القاعة مشغولة بالفعل بالمجموعة (${other.name}) يوم (${dayName}) من ${slotB.startTime} إلى ${slotB.endTime}`,
+            );
+          }
+        }
+      }
+    }
+
+    const updated = await this.repository.allocateGroup(
+      classroomId,
+      dto.groupId,
+      dto.slots,
+      dto.updateUpcomingSessions ?? true,
+    );
+
+    await this.audit.record({
+      actorUserId: actor.id,
+      actorName: actor.fullName,
+      action: 'ALLOCATE_GROUP_TO_CLASSROOM',
+      entityType: 'CLASSROOM',
+      entityId: classroomId,
+      afterData: {
+        classroomId,
+        groupId: dto.groupId,
+        enrolledCount,
+        slots: targetSlots,
+        updateUpcomingSessions: dto.updateUpcomingSessions ?? true,
+      },
+    });
+
+    return {
+      success: true,
+      group: updated,
+      enrolledCount,
+    };
+  }
+
+  async releaseGroup(classroomId: string, groupId: string, actor: AuthenticatedUser) {
+    const room = await this.repository.findById(classroomId);
+    if (!room) {
+      throw new NotFoundException('القاعة غير موجودة');
+    }
+
+    const group = await this.repository.findGroupById(groupId);
+    if (!group) {
+      throw new NotFoundException('المجموعة المطلوبة غير موجودة');
+    }
+
+    await this.repository.releaseGroup(classroomId, groupId, true);
+
+    await this.audit.record({
+      actorUserId: actor.id,
+      actorName: actor.fullName,
+      action: 'RELEASE_GROUP_FROM_CLASSROOM',
+      entityType: 'CLASSROOM',
+      entityId: classroomId,
+      beforeData: {
+        classroomId,
+        groupId,
+      },
     });
 
     return { success: true };

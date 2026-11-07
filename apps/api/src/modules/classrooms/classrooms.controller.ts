@@ -13,6 +13,7 @@ import { PERMISSIONS } from '@edu-center/shared';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import {
+  AllocateGroupToClassroomDto,
   AvailableClassroomsQueryDto,
   ClassroomQueryDto,
   ClassroomScheduleQueryDto,
@@ -38,6 +39,12 @@ export class ClassroomsController {
     return this.classroomsService.findAvailable(query);
   }
 
+  @Get('unallocated-groups')
+  @RequirePermissions(PERMISSIONS.CLASSROOMS_VIEW)
+  async getUnallocatedGroups(@Query('includeAll') includeAll?: string) {
+    return this.classroomsService.getUnallocatedGroups(includeAll === 'true');
+  }
+
   @Delete('maintenances/:maintId')
   @RequirePermissions(PERMISSIONS.CLASSROOMS_MANAGE)
   async removeMaintenance(
@@ -54,6 +61,32 @@ export class ClassroomsController {
     @Query() query: ClassroomScheduleQueryDto,
   ) {
     return this.classroomsService.getSchedule(id, query);
+  }
+
+  @Get(':id/allocated-groups')
+  @RequirePermissions(PERMISSIONS.CLASSROOMS_VIEW)
+  async getAllocatedGroups(@Param('id', ParseUUIDPipe) id: string) {
+    return this.classroomsService.getAllocatedGroups(id);
+  }
+
+  @Post(':id/allocate-group')
+  @RequirePermissions(PERMISSIONS.CLASSROOMS_MANAGE)
+  async allocateGroup(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AllocateGroupToClassroomDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.classroomsService.allocateGroup(id, dto, actor);
+  }
+
+  @Delete(':id/allocate-group/:groupId')
+  @RequirePermissions(PERMISSIONS.CLASSROOMS_MANAGE)
+  async releaseGroup(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.classroomsService.releaseGroup(id, groupId, actor);
   }
 
   @Get(':id')

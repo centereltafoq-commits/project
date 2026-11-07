@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, gt, gte, lt, lte, ne, notExists } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, lt, lte, ne, notExists, or, sql } from 'drizzle-orm';
 import { ClassroomStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
@@ -76,7 +76,7 @@ export class ClassroomsAvailabilityRepository {
     const rangeStart = new Date(`${from}T00:00:00`);
     const rangeEnd = new Date(`${to}T23:59:59`);
 
-    const [roomSessions, roomBookings, maintenances] = await Promise.all([
+    const [roomSessions, roomBookings, maintenances, rawGroups] = await Promise.all([
       this.db
         .select({
           id: sessions.id,
@@ -123,8 +123,45 @@ export class ClassroomsAvailabilityRepository {
           ),
         )
         .orderBy(desc(classroomMaintenances.startAt)),
+
+      this.db
+        .select({
+          id: groups.id,
+          groupCode: groups.groupCode,
+          name: groups.name,
+          subject: groups.subject,
+          gradeLevel: groups.gradeLevel,
+          teacherName: teachers.fullName,
+          defaultClassroomId: groups.defaultClassroomId,
+          scheduleSlots: groups.scheduleSlots,
+          maxStudents: groups.maxStudents,
+        })
+        .from(groups)
+        .innerJoin(teachers, eq(groups.primaryTeacherId, teachers.id))
+        .where(
+          and(
+            eq(groups.isActive, true),
+            or(
+              eq(groups.defaultClassroomId, classroomId),
+              sql`EXISTS (
+                SELECT 1 FROM jsonb_array_elements(${groups.scheduleSlots}) AS slot
+                WHERE (slot->>'classroomId') = ${classroomId}
+              )`,
+            ),
+          ),
+        )
+        .orderBy(asc(groups.name)),
     ]);
 
-    return { sessions: roomSessions, bookings: roomBookings, maintenances };
+    const allocatedGroups = rawGroups.map((g) => ({
+      ...g,
+      slotsForThisRoom: (g.scheduleSlots ?? []).filter(
+        (s) =>
+          s.classroomId === classroomId ||
+          (!s.classroomId && g.defaultClassroomId === classroomId),
+      ),
+    }));
+
+    return { sessions: roomSessions, bookings: roomBookings, maintenances, allocatedGroups };
   }
 }

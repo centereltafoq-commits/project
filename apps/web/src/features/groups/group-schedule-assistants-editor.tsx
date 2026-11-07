@@ -17,6 +17,7 @@ interface ScheduleAndAssistantsEditorProps {
   assistantLinks: AssistantDraftLink[];
   onAssistantLinksChange: (links: AssistantDraftLink[]) => void;
   assistantOptions: Array<{ value: string; label: string }>;
+  classroomOptions?: Array<{ value: string; label: string }>;
 }
 
 export function GroupScheduleAssistantsEditor({
@@ -25,6 +26,7 @@ export function GroupScheduleAssistantsEditor({
   assistantLinks,
   onAssistantLinksChange,
   assistantOptions,
+  classroomOptions,
 }: ScheduleAndAssistantsEditorProps) {
   return (
     <div className="space-y-4">
@@ -47,7 +49,7 @@ export function GroupScheduleAssistantsEditor({
           <p className="text-xs text-muted-foreground">لم تتم إضافة مواعيد أسبوعية بعد</p>
         ) : (
           slots.map((slot, idx) => (
-            <div key={idx} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-4">
+            <div key={idx} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-5">
               <Select
                 label="اليوم"
                 value={String(slot.dayOfWeek)}
@@ -80,10 +82,26 @@ export function GroupScheduleAssistantsEditor({
                   )
                 }
               />
+              <Select
+                label="القاعة (اختياري)"
+                value={slot.classroomId ?? ''}
+                onChange={(e) =>
+                  onSlotsChange(
+                    slots.map((s, i) =>
+                      i === idx ? { ...s, classroomId: e.target.value || null } : s,
+                    ),
+                  )
+                }
+                options={[
+                  { value: '', label: 'بدون تحديد (تتبع قاعة المجموعة)' },
+                  ...(classroomOptions ?? []),
+                ]}
+              />
               <Button
                 type="button"
                 variant="danger"
                 size="sm"
+                className="h-10"
                 onClick={() => onSlotsChange(slots.filter((_, i) => i !== idx))}
               >
                 <Trash2 className="h-3.5 w-3.5" />

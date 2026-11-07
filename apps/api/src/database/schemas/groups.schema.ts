@@ -19,6 +19,7 @@ export interface GroupScheduleSlot {
   dayOfWeek: number; // 0=Sunday ... 6=Saturday
   startTime: string; // HH:mm
   endTime: string; // HH:mm
+  classroomId?: string | null;
 }
 
 export const groups = pgTable(

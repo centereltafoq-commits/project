@@ -1,8 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, ilike, inArray, or, sql, SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, ilike, inArray, lt, ne, or, sql, SQL } from 'drizzle-orm';
+import { ClassroomStatus, SessionStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   attendance,
+  classroomBookings,
+  classroomMaintenances,
   classrooms,
   groups,
   sessions,
@@ -201,6 +204,149 @@ export class AttendanceRepository {
       .select({ sessionDate: sessions.sessionDate, startTime: sessions.startTime })
       .from(sessions)
       .where(and(eq(sessions.groupId, groupId), eq(sessions.yearMonth, yearMonth)));
+  }
+
+  async checkSessionConflicts(params: {
+    date: string;
+    startTime: string;
+    endTime: string;
+    teacherId: string;
+    classroomId?: string | null;
+    excludeSessionId?: string;
+  }): Promise<{ hasConflict: boolean; message?: string }> {
+    // 1. Check teacher overlapping session
+    const teacherOverlap = await this.db
+      .select({
+        id: sessions.id,
+        startTime: sessions.startTime,
+        endTime: sessions.endTime,
+        groupName: groups.name,
+      })
+      .from(sessions)
+      .innerJoin(groups, eq(sessions.groupId, groups.id))
+      .where(
+        and(
+          eq(sessions.teacherId, params.teacherId),
+          eq(sessions.sessionDate, params.date),
+          ne(sessions.status, SessionStatus.CANCELLED),
+          params.excludeSessionId ? ne(sessions.id, params.excludeSessionId) : sql`1=1`,
+          lt(sessions.startTime, params.endTime),
+          gt(sessions.endTime, params.startTime),
+        ),
+      )
+      .limit(1);
+
+    if (teacherOverlap.length > 0) {
+      return {
+        hasConflict: true,
+        message: `تعارض في جدول المدرس: لديه حصة أخرى (${teacherOverlap[0].groupName}) من ${teacherOverlap[0].startTime} إلى ${teacherOverlap[0].endTime}`,
+      };
+    }
+
+    // 2. If classroom is specified, check classroom status, maintenances, bookings, and other sessions
+    if (params.classroomId) {
+      const [room] = await this.db
+        .select()
+        .from(classrooms)
+        .where(eq(classrooms.id, params.classroomId))
+        .limit(1);
+
+      if (!room) {
+        return { hasConflict: true, message: 'القاعة الدراسية المحددة غير موجودة' };
+      }
+
+      if (room.status !== ClassroomStatus.AVAILABLE) {
+        return {
+          hasConflict: true,
+          message: `القاعة (${room.name}) غير متاحة حالياً (الحالة: ${room.status === 'MAINTENANCE' ? 'تحت الصيانة' : 'غير مفعلة'})`,
+        };
+      }
+
+      // Check maintenance window
+      const normStart =
+        params.startTime.length === 5 ? `${params.startTime}:00` : params.startTime.slice(0, 8);
+      const normEnd =
+        params.endTime.length === 5 ? `${params.endTime}:00` : params.endTime.slice(0, 8);
+      const reqStart = new Date(`${params.date}T${normStart}Z`);
+      const reqEnd = new Date(`${params.date}T${normEnd}Z`);
+
+      const maintOverlap = await this.db
+        .select({ id: classroomMaintenances.id, reason: classroomMaintenances.reason })
+        .from(classroomMaintenances)
+        .where(
+          and(
+            eq(classroomMaintenances.classroomId, params.classroomId),
+            lt(classroomMaintenances.startAt, reqEnd),
+            gt(classroomMaintenances.endAt, reqStart),
+          ),
+        )
+        .limit(1);
+
+      if (maintOverlap.length > 0) {
+        return {
+          hasConflict: true,
+          message: `القاعة (${room.name}) في فترة صيانة مجدولة (${maintOverlap[0].reason})`,
+        };
+      }
+
+      // Check overlapping session in same classroom
+      const roomSessionOverlap = await this.db
+        .select({
+          id: sessions.id,
+          startTime: sessions.startTime,
+          endTime: sessions.endTime,
+          groupName: groups.name,
+        })
+        .from(sessions)
+        .innerJoin(groups, eq(sessions.groupId, groups.id))
+        .where(
+          and(
+            eq(sessions.classroomId, params.classroomId),
+            eq(sessions.sessionDate, params.date),
+            ne(sessions.status, SessionStatus.CANCELLED),
+            params.excludeSessionId ? ne(sessions.id, params.excludeSessionId) : sql`1=1`,
+            lt(sessions.startTime, params.endTime),
+            gt(sessions.endTime, params.startTime),
+          ),
+        )
+        .limit(1);
+
+      if (roomSessionOverlap.length > 0) {
+        return {
+          hasConflict: true,
+          message: `القاعة (${room.name}) مشغولة بحصة (${roomSessionOverlap[0].groupName}) من ${roomSessionOverlap[0].startTime} إلى ${roomSessionOverlap[0].endTime}`,
+        };
+      }
+
+      // Check overlapping confirmed booking
+      const bookingOverlap = await this.db
+        .select({
+          id: classroomBookings.id,
+          title: classroomBookings.title,
+          startTime: classroomBookings.startTime,
+          endTime: classroomBookings.endTime,
+        })
+        .from(classroomBookings)
+        .where(
+          and(
+            eq(classroomBookings.classroomId, params.classroomId),
+            eq(classroomBookings.bookingDate, params.date),
+            eq(classroomBookings.status, 'CONFIRMED'),
+            lt(classroomBookings.startTime, params.endTime),
+            gt(classroomBookings.endTime, params.startTime),
+          ),
+        )
+        .limit(1);
+
+      if (bookingOverlap.length > 0) {
+        return {
+          hasConflict: true,
+          message: `القاعة (${room.name}) محجوزة لموعد آخر (${bookingOverlap[0].title}) من ${bookingOverlap[0].startTime} إلى ${bookingOverlap[0].endTime}`,
+        };
+      }
+    }
+
+    return { hasConflict: false };
   }
 
   async insertSessionsBatch(rows: Array<typeof sessions.$inferInsert>) {

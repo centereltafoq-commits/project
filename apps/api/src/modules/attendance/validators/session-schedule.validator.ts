@@ -36,6 +36,7 @@ export interface GeneratedSlotDate {
   yearMonth: string;
   startTime: string;
   endTime: string;
+  classroomId?: string | null;
 }
 
 export function buildMonthSessionDates(
@@ -71,6 +72,7 @@ export function buildMonthSessionDates(
           yearMonth,
           startTime: slot.startTime,
           endTime: slot.endTime,
+          classroomId: slot.classroomId ?? null,
         });
       }
     }

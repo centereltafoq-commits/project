@@ -22,6 +22,32 @@ export interface ClassroomMaintenanceItem {
   createdAt: string;
 }
 
+export interface AllocatedGroupItem {
+  id: string;
+  groupCode: string;
+  name: string;
+  subject: string;
+  gradeLevel: string;
+  primaryTeacherId: string;
+  teacherName: string;
+  defaultClassroomId: string | null;
+  scheduleSlots: Array<{
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    classroomId?: string | null;
+  }>;
+  slotsForThisRoom?: Array<{
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    classroomId?: string | null;
+  }>;
+  maxStudents: number;
+  enrolledCount: number;
+  isOverCapacity?: boolean;
+}
+
 export interface ClassroomScheduleData {
   classroom: ClassroomRow;
   from: string;
@@ -45,6 +71,7 @@ export interface ClassroomScheduleData {
     status: string;
   }>;
   maintenances: ClassroomMaintenanceItem[];
+  allocatedGroups?: AllocatedGroupItem[];
 }
 
 export const CLASSROOM_STATUS_OPTIONS = [

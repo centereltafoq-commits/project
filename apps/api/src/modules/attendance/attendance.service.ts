@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AttendanceStatus,
   PERMISSIONS,
@@ -49,11 +49,26 @@ export class AttendanceService {
       throw new NotFoundException('المجموعة المطلوبة غير موجودة');
     }
 
+    const targetClassroomId = dto.classroomId ?? group.defaultClassroomId ?? null;
+    const targetTeacherId = dto.teacherId ?? group.primaryTeacherId;
+
+    const conflict = await this.repository.checkSessionConflicts({
+      date: dto.sessionDate,
+      startTime: dto.startTime,
+      endTime: dto.endTime,
+      teacherId: targetTeacherId,
+      classroomId: targetClassroomId,
+    });
+
+    if (conflict.hasConflict) {
+      throw new ConflictException(conflict.message);
+    }
+
     const yearMonth = dto.sessionDate.slice(0, 7);
     const created = await this.repository.createSession({
       groupId: dto.groupId,
-      teacherId: dto.teacherId ?? group.primaryTeacherId,
-      classroomId: dto.classroomId ?? group.defaultClassroomId ?? null,
+      teacherId: targetTeacherId,
+      classroomId: targetClassroomId,
       sessionDate: dto.sessionDate,
       yearMonth,
       startTime: dto.startTime,
@@ -93,7 +108,7 @@ export class AttendanceService {
       .map((slot) => ({
         groupId: group.id,
         teacherId: group.primaryTeacherId,
-        classroomId: group.defaultClassroomId ?? null,
+        classroomId: slot.classroomId ?? group.defaultClassroomId ?? null,
         sessionDate: slot.sessionDate,
         yearMonth: slot.yearMonth,
         startTime: slot.startTime,
