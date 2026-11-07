@@ -110,15 +110,17 @@ export function AssistantsPage() {
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button size="sm" variant="outline" onClick={() => navigate(`/assistants/${row.id}`)}>
-            <Eye className="h-3.5 w-3.5" />
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 px-3 text-xs font-bold" onClick={() => navigate(`/assistants/${row.id}`)}>
+            <Eye className="h-3.5 w-3.5 text-primary" />
             الملف والمستحقات
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => {
               setEditingAssistant(row);
               setModalOpen(true);

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Edit3, Eye, Plus } from 'lucide-react';
+import { Edit3, Eye, Plus, RotateCcw } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import {
   Badge,
@@ -16,6 +16,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatDateAr } from '@/lib/formatters';
 import { TeacherFormModal } from './teacher-form-modal';
+import { TeacherQuickViewModal } from './components/teacher-quick-view-modal';
 import {
   TEACHER_STATUS_META,
   TEACHER_STATUS_OPTIONS,
@@ -35,6 +36,8 @@ export function TeachersPage() {
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingTeacher, setEditingTeacher] = React.useState<TeacherRow | null>(null);
+  const [quickViewTeacher, setQuickViewTeacher] = React.useState<TeacherRow | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery<PaginatedResult<TeacherRow>>({
     queryKey: ['teachers', page, limit, debouncedSearch, statusFilter, debouncedSpec],
@@ -56,50 +59,43 @@ export function TeachersPage() {
     {
       key: 'teacherCode',
       header: 'كود المدرس',
+      className: 'whitespace-nowrap font-mono',
       render: (row) => (
-        <span className="font-mono text-xs font-bold text-primary">{row.teacherCode}</span>
+        <span className="inline-block rounded-md bg-purple-500/10 px-2.5 py-0.5 font-mono text-xs font-bold text-purple-600 dark:text-purple-400">
+          {row.teacherCode}
+        </span>
       ),
     },
     {
       key: 'fullName',
       header: 'اسم المدرس',
-      render: (row) => <span className="font-bold text-foreground">{row.fullName}</span>,
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <span className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer">
+          {row.fullName}
+        </span>
+      ),
     },
     {
       key: 'specialization',
       header: 'التخصص',
+      className: 'whitespace-nowrap',
       render: (row) => <Badge variant="info">{row.specialization}</Badge>,
     },
     {
       key: 'phone',
       header: 'رقم الهاتف',
-      render: (row) => <span dir="ltr">{row.phone}</span>,
-    },
-    {
-      key: 'assignedGroupsCount',
-      header: 'المجموعات المسندة',
+      className: 'whitespace-nowrap font-mono',
       render: (row) => (
-        <Badge variant="purple">{row.assignedGroupsCount ?? 0} مجموعة</Badge>
+        <span dir="ltr" className="font-mono text-xs font-semibold text-foreground">
+          {row.phone || '—'}
+        </span>
       ),
-    },
-    {
-      key: 'bookingsPerm',
-      header: 'اعتماد الحجوزات',
-      render: (row) =>
-        row.canApproveBookings ? (
-          <Badge variant="success">مسموح</Badge>
-        ) : (
-          <Badge variant="neutral">إدارة فقط</Badge>
-        ),
-    },
-    {
-      key: 'contractDate',
-      header: 'تاريخ التعاقد',
-      render: (row) => formatDateAr(row.contractDate),
     },
     {
       key: 'status',
       header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) => {
         const meta = TEACHER_STATUS_META[row.employmentStatus] ?? {
           label: row.employmentStatus,
@@ -111,15 +107,28 @@ export function TeachersPage() {
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button size="sm" variant="outline" onClick={() => navigate(`/teachers/${row.id}`)}>
-            <Eye className="h-3.5 w-3.5" />
-            الملف والمستحقات
+        <div
+          className="flex items-center justify-end gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 px-3 text-xs font-bold"
+            onClick={() => {
+              setQuickViewTeacher(row);
+              setQuickViewOpen(true);
+            }}
+          >
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            تفاصيل
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => {
               setEditingTeacher(row);
               setModalOpen(true);
@@ -157,7 +166,10 @@ export function TeachersPage() {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
-        onRowClick={(r) => navigate(`/teachers/${r.id}`)}
+        onRowClick={(r) => {
+          setQuickViewTeacher(r);
+          setQuickViewOpen(true);
+        }}
         searchPlaceholder="ابحث باسم المدرس أو الكود أو الهاتف أو التخصص..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -172,7 +184,7 @@ export function TeachersPage() {
           setPage(1);
         }}
         filters={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="فلترة بالتخصص..."
               value={specFilter}
@@ -192,7 +204,23 @@ export function TeachersPage() {
               options={TEACHER_STATUS_OPTIONS}
               className="w-40"
             />
-          </>
+            {(specFilter || statusFilter || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSpecFilter('');
+                  setStatusFilter('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -200,6 +228,16 @@ export function TeachersPage() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         teacher={editingTeacher}
+      />
+
+      <TeacherQuickViewModal
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        teacher={quickViewTeacher}
+        onEdit={(t) => {
+          setEditingTeacher(t);
+          setModalOpen(true);
+        }}
       />
     </div>
   );

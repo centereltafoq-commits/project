@@ -17,6 +17,7 @@ import { formatDateAr } from '@/lib/formatters';
 import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { StudentFormModal } from './student-form-modal';
+import { StudentQuickViewModal } from './components/student-quick-view-modal';
 import {
   GRADE_LEVEL_OPTIONS,
   STUDENT_STATUS_META,
@@ -36,6 +37,8 @@ export function StudentsPage() {
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingStudent, setEditingStudent] = React.useState<StudentRow | null>(null);
+  const [quickViewStudent, setQuickViewStudent] = React.useState<StudentRow | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
   const { options: dynamicGradeOptions } = useGradeLevels(true);
   const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
@@ -62,7 +65,7 @@ export function StudentsPage() {
       header: 'كود الطالب',
       className: 'whitespace-nowrap font-mono',
       render: (row) => (
-        <span className="inline-block rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+        <span className="inline-block rounded-md bg-primary/10 px-2.5 py-0.5 font-mono text-xs font-bold text-primary">
           {row.studentCode}
         </span>
       ),
@@ -72,7 +75,7 @@ export function StudentsPage() {
       header: 'الاسم الكامل',
       className: 'whitespace-nowrap',
       render: (row) => (
-        <span className="font-bold text-foreground hover:text-primary transition-colors">
+        <span className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer">
           {row.fullName}
         </span>
       ),
@@ -85,41 +88,11 @@ export function StudentsPage() {
     },
     {
       key: 'phone',
-      header: 'هاتف الطالب',
+      header: 'رقم الهاتف',
       className: 'whitespace-nowrap font-mono',
       render: (row) => (
         <span dir="ltr" className="font-mono text-xs font-semibold text-foreground">
           {row.phone || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'guardianPhone',
-      header: 'هاتف ولي الأمر',
-      className: 'whitespace-nowrap font-mono',
-      render: (row) => (
-        <span dir="ltr" className="font-mono text-xs text-muted-foreground">
-          {row.guardianPhone || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'activeGroupsCount',
-      header: 'المجموعات النشطة',
-      className: 'whitespace-nowrap',
-      render: (row) => (
-        <Badge variant={row.activeGroupsCount && row.activeGroupsCount > 0 ? 'purple' : 'neutral'}>
-          {row.activeGroupsCount ?? 0} مجموعة
-        </Badge>
-      ),
-    },
-    {
-      key: 'registrationDate',
-      header: 'تاريخ التسجيل',
-      className: 'whitespace-nowrap text-xs text-muted-foreground',
-      render: (row) => (
-        <span className="text-xs text-muted-foreground font-medium">
-          {formatDateAr(row.registrationDate)}
         </span>
       ),
     },
@@ -148,10 +121,13 @@ export function StudentsPage() {
             size="sm"
             variant="outline"
             className="h-8 gap-1.5 px-3 text-xs font-bold"
-            onClick={() => navigate(`/students/${row.id}`)}
+            onClick={() => {
+              setQuickViewStudent(row);
+              setQuickViewOpen(true);
+            }}
           >
             <Eye className="h-3.5 w-3.5 text-primary" />
-            الملف الدائم
+            تفاصيل
           </Button>
           <Button
             size="sm"
@@ -204,7 +180,10 @@ export function StudentsPage() {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
-        onRowClick={(r) => navigate(`/students/${r.id}`)}
+        onRowClick={(r) => {
+          setQuickViewStudent(r);
+          setQuickViewOpen(true);
+        }}
         searchPlaceholder="ابحث بالاسم أو كود الطالب أو رقم الهاتف أو هاتف ولي الأمر..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -264,6 +243,16 @@ export function StudentsPage() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         student={editingStudent}
+      />
+
+      <StudentQuickViewModal
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        student={quickViewStudent}
+        onEdit={(st) => {
+          setEditingStudent(st);
+          setModalOpen(true);
+        }}
       />
 
       <GradeLevelsModal
