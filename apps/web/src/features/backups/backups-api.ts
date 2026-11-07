@@ -38,5 +38,36 @@ export const backupsApi = {
   },
 
   downloadUrl: (id: string) => `/api/backups/${id}/download`,
+
+  download: async (id: string, fileName: string): Promise<void> => {
+    try {
+      const res = await apiClient.get<Blob>(`/backups/${id}/download`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data], { type: 'application/gzip' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed.message) {
+            err.message = parsed.message;
+            if (!err.response.data.message) {
+              err.response.data = parsed;
+            }
+          }
+        } catch {}
+      }
+      throw err;
+    }
+  },
 };
 

@@ -6,6 +6,7 @@ import {
   SystemRole,
 } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AttendanceRepository } from './attendance.repository';
@@ -28,6 +29,7 @@ export class AttendanceService {
     private readonly repository: AttendanceRepository,
     private readonly sheetRepository: SessionSheetRepository,
     private readonly audit: AuditLogsService,
+    private readonly cache: CacheService,
   ) {}
 
   async getLookups() {
@@ -224,6 +226,10 @@ export class AttendanceService {
         afterData: { insertedCount: inserts.length },
       });
     }
+
+    try {
+      await this.cache.invalidatePrefix('dashboard:summary:');
+    } catch {}
 
     return this.getSessionSheet(sessionId);
   }

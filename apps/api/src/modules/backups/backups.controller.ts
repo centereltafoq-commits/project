@@ -66,6 +66,14 @@ export class BackupsController {
     res.setHeader('Content-Length', record.fileSizeBytes);
 
     const stream = fs.createReadStream(record.filePath);
+    stream.on('error', () => {
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'فشل في قراءة ملف النسخة الاحتياطية' });
+      }
+    });
+    res.on('close', () => {
+      stream.destroy();
+    });
     stream.pipe(res);
   }
 

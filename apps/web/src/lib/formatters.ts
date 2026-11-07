@@ -47,12 +47,21 @@ export function getCurrentYearMonth(): string {
 }
 
 export function getTodayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export function formatDateAr(isoDate: string | Date | null | undefined): string {
-  if (!isoDate) return '—';
-  const d = typeof isoDate === 'string' ? new Date(isoDate) : isoDate;
+  if (!isoDate || isoDate === 'null' || isoDate === 'undefined') return '—';
+  const d =
+    typeof isoDate === 'string'
+      ? /^\d{4}-\d{2}-\d{2}$/.test(isoDate)
+        ? new Date(`${isoDate}T00:00:00`)
+        : new Date(isoDate)
+      : isoDate;
   if (Number.isNaN(d.getTime())) return String(isoDate);
   return d.toLocaleDateString('ar-EG', {
     year: 'numeric',
@@ -110,9 +119,9 @@ export function formatTimeRangeAr(
   endTime: string | null | undefined,
 ): string {
   if (!startTime && !endTime) return '—';
-  const formattedStart = formatTimeAr(startTime);
-  const formattedEnd = formatTimeAr(endTime);
-  return `${formattedStart} إلى ${formattedEnd}`;
+  if (startTime && !endTime) return formatTimeAr(startTime);
+  if (!startTime && endTime) return formatTimeAr(endTime);
+  return `${formatTimeAr(startTime)} إلى ${formatTimeAr(endTime)}`;
 }
 
 /**
@@ -120,7 +129,7 @@ export function formatTimeRangeAr(
  * Example: '07 نوفمبر 2026، 02:30 م'
  */
 export function formatDateTimeAr(isoDate: string | Date | null | undefined): string {
-  if (!isoDate) return '—';
+  if (!isoDate || isoDate === 'null' || isoDate === 'undefined') return '—';
   const d = typeof isoDate === 'string' ? new Date(isoDate) : isoDate;
   if (Number.isNaN(d.getTime())) return String(isoDate);
 

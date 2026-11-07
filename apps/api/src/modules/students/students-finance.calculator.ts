@@ -80,6 +80,7 @@ export function computeStudentMonthlyBreakdown(
     const eligibleSessions = bundle.groupSessionsInMonth.filter(
       (s) =>
         s.groupId === groupId &&
+        (s.status as string) !== 'CANCELLED' &&
         s.sessionDate >= enr.startDate &&
         (!enr.endDate || s.sessionDate <= enr.endDate),
     );
@@ -101,32 +102,39 @@ export function computeStudentMonthlyBreakdown(
       .reduce((sum, m) => sum + Number(m.extraFee || 0), 0);
 
     const totalSessions = eligibleSessions.length;
-    const sessionPrice = Number(enr.agreedSessionPrice || 0);
+    const sessionPrice =
+      Number(enr.agreedSessionPrice || 0) > 0
+        ? round2(Number(enr.agreedSessionPrice))
+        : Number(enr.agreedSessionsCount || 0) > 0
+          ? round2(Number(enr.agreedMonthlyPrice || 0) / Number(enr.agreedSessionsCount))
+          : 0;
     let baseDue = 0;
 
     if (totalSessions > 0) {
+      const attendedCount = presentCount + makeupCount;
       const isFullMonthAbsent =
-        presentCount === 0 && makeupCount === 0 && absentCount >= totalSessions;
+        attendedCount === 0 && (!enr.chargeExcusedAbsence || excusedCount === 0);
+
       if (isFullMonthAbsent) {
         if (enr.fullMonthAbsencePolicy === FullMonthAbsencePolicy.CHARGE_FIXED_RESERVATION_FEE) {
           baseDue = Number(enr.fullAbsenceFixedFee || 0);
         } else if (
           enr.fullMonthAbsencePolicy === FullMonthAbsencePolicy.CHARGE_FULL_SUBSCRIPTION
         ) {
-          baseDue = totalSessions * sessionPrice;
+          baseDue = Number(enr.agreedMonthlyPrice ?? (totalSessions * sessionPrice));
         } else {
           baseDue = 0;
         }
       } else {
-        const deductedExcused = enr.chargeExcusedAbsence ? 0 : excusedCount;
-        const chargeableSessions = Math.max(0, totalSessions - deductedExcused);
-        baseDue = chargeableSessions * sessionPrice;
+        const billableSessionsCount =
+          attendedCount + (enr.chargeExcusedAbsence ? excusedCount : 0);
+        baseDue = billableSessionsCount * sessionPrice;
       }
     }
 
     const totalDue = round2(baseDue + extraMakeupFees);
     const totalPaid = round2(allocatedByGroup.get(groupId) ?? 0);
-    const remaining = round2(totalDue - totalPaid);
+    const remaining = round2(Math.max(0, totalDue - totalPaid));
 
     breakdown.push({
       groupId,
@@ -155,7 +163,7 @@ export function computeStudentMonthlyBreakdown(
   const makeupCount = breakdown.reduce((s, g) => s + g.makeupCount, 0);
   const totalDue = round2(breakdown.reduce((s, g) => s + g.totalDue, 0));
   const totalPaid = round2(breakdown.reduce((s, g) => s + g.totalPaid, 0) + unallocatedMonthPaid);
-  const remaining = round2(totalDue - totalPaid);
+  const remaining = round2(Math.max(0, totalDue - totalPaid));
 
   return {
     breakdown,

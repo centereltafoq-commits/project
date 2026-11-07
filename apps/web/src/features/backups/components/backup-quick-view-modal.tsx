@@ -11,7 +11,7 @@ import {
   Usb,
   XCircle,
 } from 'lucide-react';
-import { Badge, Button, Modal } from '@/design-system';
+import { Badge, Button, Modal, useToast } from '@/design-system';
 import { formatDateTimeAr } from '@/lib/formatters';
 import { backupsApi } from '../backups-api';
 import { BackupRecord } from '../backups.types';
@@ -29,6 +29,7 @@ export function BackupQuickViewModal({
   onOpenChange,
   onRestore,
 }: BackupQuickViewModalProps) {
+  const { notify } = useToast();
   if (!record) return null;
 
   const isSuccess = record.status === 'SUCCESS';
@@ -68,14 +69,22 @@ export function BackupQuickViewModal({
           <div className="flex items-center gap-1.5 shrink-0">
             {isSuccess && (
               <>
-                <a
-                  href={backupsApi.downloadUrl(record.id)}
-                  download={record.fileName}
-                  className="inline-flex items-center justify-center h-8 px-2.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-accent transition-colors gap-1"
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await backupsApi.download(record.id, record.fileName);
+                      notify(`تم تحميل النسخة (${record.fileName}) بنجاح`, 'success');
+                    } catch (err: any) {
+                      notify(err.response?.data?.message || err.message || 'فشل تحميل ملف النسخة الاحتياطية', 'error');
+                    }
+                  }}
+                  className="h-8 gap-1 px-2.5 text-xs font-semibold"
                 >
                   <Download className="h-3.5 w-3.5 text-primary" />
                   تحميل
-                </a>
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"

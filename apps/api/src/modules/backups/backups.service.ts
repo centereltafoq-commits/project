@@ -46,6 +46,18 @@ export class BackupsService {
       : 'psql';
   }
 
+  private getDbCredentials(): { dbUrl: string; password?: string } {
+    const dbUrl = this.config.getOrThrow<string>('databaseUrl');
+    let password = process.env.PGPASSWORD || undefined;
+    try {
+      const parsed = new URL(dbUrl);
+      if (parsed.password) {
+        password = decodeURIComponent(parsed.password);
+      }
+    } catch {}
+    return { dbUrl, password };
+  }
+
   async getSettings() {
     return this.repository.getSettings();
   }
@@ -84,46 +96,60 @@ export class BackupsService {
     });
 
     try {
-      const dbUrl = this.config.getOrThrow<string>('databaseUrl');
+      const { dbUrl, password } = this.getDbCredentials();
       const hash = crypto.createHash('sha256');
       const gzip = zlib.createGzip({ level: 9 });
       const outputStream = fs.createWriteStream(targetFilePath);
 
       await new Promise<void>((resolve, reject) => {
+        let isSettled = false;
+        const safeResolve = () => {
+          if (!isSettled) {
+            isSettled = true;
+            resolve();
+          }
+        };
+        const safeReject = (err: unknown) => {
+          if (!isSettled) {
+            isSettled = true;
+            reject(err);
+          }
+        };
+
         const dump = spawn(
           this.pgDumpPath,
           ['--dbname', dbUrl, '--clean', '--if-exists', '--no-owner', '--no-privileges'],
           {
-            env: { ...process.env, PGPASSWORD: 'postgres' },
+            env: { ...process.env, ...(password ? { PGPASSWORD: password } : {}) },
           },
         );
 
         let errOutput = '';
         dump.stderr.on('data', (chunk) => (errOutput += chunk.toString()));
-        dump.stdout.on('data', (chunk) => hash.update(chunk));
+        gzip.on('data', (chunk) => hash.update(chunk));
 
         let dumpFinished = false;
         let dumpCode: number | null = null;
+        let outputFinished = false;
 
         const checkCompletion = () => {
+          if (dumpFinished && dumpCode !== 0) {
+            safeReject(new Error(`pg_dump failed (code ${dumpCode}): ${errOutput}`));
+            return;
+          }
           if (dumpFinished && outputFinished) {
-            if (dumpCode === 0) {
-              resolve();
-            } else {
-              reject(new Error(`pg_dump failed (code ${dumpCode}): ${errOutput}`));
-            }
+            safeResolve();
           }
         };
 
-        let outputFinished = false;
         outputStream.on('finish', () => {
           outputFinished = true;
           checkCompletion();
         });
 
-        outputStream.on('error', reject);
-        gzip.on('error', reject);
-        dump.on('error', reject);
+        outputStream.on('error', safeReject);
+        gzip.on('error', safeReject);
+        dump.on('error', safeReject);
 
         dump.on('close', (code) => {
           dumpFinished = true;
@@ -166,6 +192,11 @@ export class BackupsService {
       await this.enforceRetentionPolicy(settings.retentionCount);
       return updated;
     } catch (err: any) {
+      if (fs.existsSync(targetFilePath)) {
+        try {
+          fs.unlinkSync(targetFilePath);
+        } catch {}
+      }
       this.logger.error(`Backup creation failed: ${err.message}`, err.stack);
       await this.repository.updateRecord(initialRecord.id, {
         status: 'FAILED',
@@ -231,27 +262,47 @@ export class BackupsService {
   }
 
   private async executeRestore(filePath: string): Promise<void> {
-    const dbUrl = this.config.getOrThrow<string>('databaseUrl');
+    const { dbUrl, password } = this.getDbCredentials();
     const gunzip = zlib.createGunzip();
     const fileStream = fs.createReadStream(filePath);
 
     return new Promise((resolve, reject) => {
+      let isSettled = false;
+      const safeReject = (err: unknown) => {
+        if (!isSettled) {
+          isSettled = true;
+          reject(err);
+        }
+      };
+      const safeResolve = () => {
+        if (!isSettled) {
+          isSettled = true;
+          resolve();
+        }
+      };
+
       const psql = spawn(this.psqlPath, ['-d', dbUrl, '-v', 'ON_ERROR_STOP=0'], {
-        env: { ...process.env, PGPASSWORD: 'postgres' },
+        env: { ...process.env, ...(password ? { PGPASSWORD: password } : {}) },
       });
+
+      fileStream.on('error', safeReject);
+      gunzip.on('error', safeReject);
+      psql.stdin.on('error', (err: any) => {
+        if (err.code !== 'EPIPE') safeReject(err);
+      });
+      psql.on('error', safeReject);
 
       fileStream.pipe(gunzip).pipe(psql.stdin);
 
       let errOutput = '';
       psql.stderr.on('data', (c) => (errOutput += c.toString()));
 
-      psql.on('error', (err) => reject(new Error(`Failed to start psql: ${err.message}`)));
       psql.on('close', (code) => {
         if (code === 0) {
-          resolve();
+          safeResolve();
         } else {
           this.logger.warn(`psql exited with code ${code}: ${errOutput}`);
-          resolve(); // psql warnings on clean drop/recreate are normal
+          safeResolve(); // psql warnings on clean drop/recreate are normal
         }
       });
     });

@@ -78,6 +78,10 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session-sheet', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['student-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
       notify('تم حفظ كشف الحضور بنجاح وتحديث حالة الحصة', 'success');
       onClose();
     },

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PaymentMethod } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { CreatePaymentDto, PaymentsQueryDto } from './dto/payments-payouts.dto';
@@ -16,6 +17,7 @@ export class PaymentsService {
     private readonly writeRepo: PaymentsRepository,
     private readonly monthlySettlementService: MonthlySettlementService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly cache: CacheService,
   ) {}
 
   async list(query: PaymentsQueryDto) {
@@ -82,6 +84,10 @@ export class PaymentsService {
         allocations: created.allocations,
       },
     });
+
+    try {
+      await this.cache.invalidatePrefix('dashboard:summary:');
+    } catch {}
 
     return {
       ...created,

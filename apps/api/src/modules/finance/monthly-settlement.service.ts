@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { buildStaffSettlementBatch } from './calculators/staff-batch.builder';
@@ -24,6 +25,7 @@ export class MonthlySettlementService {
     private readonly staffRecordsRepo: StaffRecordsRepository,
     private readonly writeRepo: MonthlySettlementWriteRepository,
     private readonly auditLogsService: AuditLogsService,
+    private readonly cache: CacheService,
   ) {}
 
   async getLookups() {
@@ -85,6 +87,10 @@ export class MonthlySettlementService {
       });
     }
 
+    try {
+      await this.cache.invalidatePrefix('dashboard:summary:');
+    } catch {}
+
     return summary;
   }
 
@@ -100,6 +106,10 @@ export class MonthlySettlementService {
       entityId: yearMonth,
       afterData: { yearMonth, ...lockSummary },
     });
+
+    try {
+      await this.cache.invalidatePrefix('dashboard:summary:');
+    } catch {}
 
     return {
       yearMonth,

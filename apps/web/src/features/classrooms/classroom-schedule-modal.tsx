@@ -6,9 +6,12 @@ import { formatDateAr, formatTimeRangeAr, getTodayIsoDate } from '@/lib/formatte
 import { ClassroomRow, ClassroomScheduleData } from './classrooms.types';
 
 function addDaysIso(isoDate: string, days: number): string {
-  const d = new Date(isoDate);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const date = new Date(y, m - 1, d + days);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 interface ClassroomScheduleModalProps {

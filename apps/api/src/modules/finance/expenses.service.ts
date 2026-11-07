@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PaymentMethod } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import {
@@ -16,6 +17,7 @@ export class ExpensesService {
   constructor(
     private readonly repository: ExpensesRepository,
     private readonly auditLogsService: AuditLogsService,
+    private readonly cache: CacheService,
   ) {}
 
   async list(query: ExpensesQueryDto) {
@@ -50,6 +52,10 @@ export class ExpensesService {
       entityId: created.id,
       afterData: created,
     });
+
+    try {
+      await this.cache.invalidatePrefix('dashboard:summary:');
+    } catch {}
 
     return created;
   }
@@ -86,6 +92,10 @@ export class ExpensesService {
       afterData: updated,
     });
 
+    try {
+      await this.cache.invalidatePrefix('dashboard:summary:');
+    } catch {}
+
     return updated;
   }
 
@@ -105,6 +115,10 @@ export class ExpensesService {
       entityId: id,
       beforeData: { ...existing, amount: parseMoney(existing.amount) },
     });
+
+    try {
+      await this.cache.invalidatePrefix('dashboard:summary:');
+    } catch {}
 
     return { deleted: true, id };
   }

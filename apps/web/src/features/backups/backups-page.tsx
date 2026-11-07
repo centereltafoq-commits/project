@@ -198,15 +198,23 @@ export function BackupsPage() {
             <Eye className="h-3.5 w-3.5 text-primary" />
             تفاصيل
           </Button>
-          <a
-            href={backupsApi.downloadUrl(row.id)}
-            download={row.fileName}
-            className="inline-flex items-center justify-center h-8 px-2.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-accent transition-colors gap-1"
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 px-2.5 text-xs font-semibold"
             title="تحميل الملف على الكمبيوتر أو الفلاشة"
+            onClick={async () => {
+              try {
+                await backupsApi.download(row.id, row.fileName);
+                notify(`تم تحميل النسخة (${row.fileName}) بنجاح`, 'success');
+              } catch (err: any) {
+                notify(err.response?.data?.message || 'فشل تحميل ملف النسخة الاحتياطية', 'error');
+              }
+            }}
           >
             <Download className="h-3.5 w-3.5 text-primary" />
             <span>تحميل</span>
-          </a>
+          </Button>
           <Button
             size="sm"
             variant="ghost"

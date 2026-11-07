@@ -31,8 +31,10 @@ export function getStudentsColumns(): TableColumn<Row>[] {
       header: 'رقم الهاتف',
       render: (r) => (
         <div className="text-xs">
-          <div className="font-mono font-semibold">{String(r.phone)}</div>
-          <div className="text-muted-foreground">ولي الأمر: {String(r.guardianPhone)}</div>
+          <div className="font-mono font-semibold">{r.phone ? String(r.phone) : '—'}</div>
+          <div className="text-muted-foreground">
+            {r.guardianPhone ? `ولي الأمر: ${String(r.guardianPhone)}` : '—'}
+          </div>
         </div>
       ),
     },
@@ -126,24 +128,24 @@ export function getBookingsColumns(): TableColumn<Row>[] {
     {
       key: 'partyLabel',
       header: 'الطالب / المدرس',
-      render: (r) => <span className="font-bold">{String(r.partyLabel)}</span>,
+      render: (r) => <span className="font-bold">{r.partyLabel ? String(r.partyLabel) : '—'}</span>,
     },
     {
       key: 'purpose',
       header: 'الغرض من الموعد',
-      render: (r) => <span className="text-xs font-medium">{String(r.purpose)}</span>,
+      render: (r) => <span className="text-xs font-medium">{r.purpose ? String(r.purpose) : '—'}</span>,
     },
     {
       key: 'dateAndTime',
       header: 'التاريخ والوقت',
       render: (r) => {
-        const slot = String(r.timeSlot || '');
+        const slot = r.timeSlot ? String(r.timeSlot) : '';
         const [start, end] = slot.includes('-')
           ? slot.split('-').map((s) => s.trim())
           : [slot, ''];
         return (
           <div className="text-xs">
-            <div className="font-semibold">{formatDateAr(String(r.requestedDate))}</div>
+            <div className="font-semibold">{formatDateAr(r.requestedDate as string)}</div>
             <div className="text-muted-foreground">{formatTimeRangeAr(start, end)}</div>
           </div>
         );
@@ -152,7 +154,7 @@ export function getBookingsColumns(): TableColumn<Row>[] {
     {
       key: 'classroomLabel',
       header: 'القاعة',
-      render: (r) => <span className="text-xs font-semibold">{String(r.classroomLabel)}</span>,
+      render: (r) => <span className="text-xs font-semibold">{r.classroomLabel ? String(r.classroomLabel) : '—'}</span>,
     },
     {
       key: 'status',
