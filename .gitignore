@@ -29,4 +29,7 @@ Thumbs.db
 
 # Scratch / Agent Temp
 .superpowers/
+storage/
+apps/api/storage/
+*.sql.gz
 

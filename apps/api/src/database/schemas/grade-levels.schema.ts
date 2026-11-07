@@ -26,3 +26,4 @@ export const gradeLevels = pgTable(
     index('idx_grade_levels_active').on(t.isActive),
   ],
 );
+

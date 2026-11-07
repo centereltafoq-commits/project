@@ -80,3 +80,4 @@ export class GradeLevelQueryDto {
   @Transform(({ value }: { value: unknown }) => value === true || value === 'true')
   activeOnly?: boolean;
 }
+

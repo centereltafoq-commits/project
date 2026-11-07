@@ -21,3 +21,4 @@ export interface UpdateGradeLevelPayload {
   orderIndex?: number;
   isActive?: boolean;
 }
+

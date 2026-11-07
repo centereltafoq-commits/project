@@ -90,24 +90,48 @@ export class BackupsService {
       const outputStream = fs.createWriteStream(targetFilePath);
 
       await new Promise<void>((resolve, reject) => {
-        const dump = spawn(this.pgDumpPath, ['--dbname', dbUrl, '--clean', '--if-exists', '--no-owner', '--no-privileges'], {
-          env: { ...process.env, PGPASSWORD: 'postgres' },
-        });
-
-        dump.stdout.on('data', (chunk) => hash.update(chunk));
-        dump.stdout.pipe(gzip).pipe(outputStream);
+        const dump = spawn(
+          this.pgDumpPath,
+          ['--dbname', dbUrl, '--clean', '--if-exists', '--no-owner', '--no-privileges'],
+          {
+            env: { ...process.env, PGPASSWORD: 'postgres' },
+          },
+        );
 
         let errOutput = '';
         dump.stderr.on('data', (chunk) => (errOutput += chunk.toString()));
+        dump.stdout.on('data', (chunk) => hash.update(chunk));
 
-        dump.on('error', (err) => reject(new Error(`Failed to start pg_dump: ${err.message}`)));
-        dump.on('close', (code) => {
-          if (code === 0) {
-            outputStream.on('finish', () => resolve());
-          } else {
-            reject(new Error(`pg_dump failed (code ${code}): ${errOutput}`));
+        let dumpFinished = false;
+        let dumpCode: number | null = null;
+
+        const checkCompletion = () => {
+          if (dumpFinished && outputFinished) {
+            if (dumpCode === 0) {
+              resolve();
+            } else {
+              reject(new Error(`pg_dump failed (code ${dumpCode}): ${errOutput}`));
+            }
           }
+        };
+
+        let outputFinished = false;
+        outputStream.on('finish', () => {
+          outputFinished = true;
+          checkCompletion();
         });
+
+        outputStream.on('error', reject);
+        gzip.on('error', reject);
+        dump.on('error', reject);
+
+        dump.on('close', (code) => {
+          dumpFinished = true;
+          dumpCode = code;
+          checkCompletion();
+        });
+
+        dump.stdout.pipe(gzip).pipe(outputStream);
       });
 
       const stats = fs.statSync(targetFilePath);
