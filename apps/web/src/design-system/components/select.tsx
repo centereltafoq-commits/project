@@ -45,13 +45,17 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
 
     if (searchable) {
       const stringValue = props.value !== undefined ? String(props.value) : undefined;
+      const stringDefaultValue =
+        props.defaultValue !== undefined ? String(props.defaultValue) : undefined;
       return (
         <Combobox
+          ref={ref as any}
           id={selectId}
           label={label}
           error={error}
           options={options}
           value={stringValue}
+          defaultValue={stringDefaultValue}
           placeholder={placeholder}
           searchPlaceholder={searchPlaceholder}
           emptyText={emptyText}

@@ -32,10 +32,11 @@ export interface ComboboxProps {
 
 /**
  * Normalizes Arabic text for robust fuzzy searching:
- * - Removes diacritics / tashkeel
- * - Normalizes Alef forms (أ, إ, آ, ء) -> ا
+ * - Removes diacritics / tashkeel and Tatweel (Kashida)
+ * - Normalizes Alef forms (أ, إ, آ, ء, ٱ) -> ا
  * - Normalizes Teh Marbuta (ة) -> ه
- * - Normalizes Alef Maqsura / Yaa (ى, ي) -> ي
+ * - Normalizes Alef Maqsura / Yaa with Hamza (ى, ئ) -> ي
+ * - Normalizes Waw with Hamza (ؤ) -> و
  */
 export function normalizeArabic(text: string): string {
   if (!text) return '';
@@ -43,10 +44,11 @@ export function normalizeArabic(text: string): string {
     .toString()
     .trim()
     .toLowerCase()
-    .replace(/[\u064B-\u065F\u0670]/g, '') // Tashkeel
-    .replace(/[أإآء]/g, 'ا')
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '') // Tashkeel and Tatweel
+    .replace(/[أإآءٱ]/g, 'ا')
     .replace(/ة/g, 'ه')
-    .replace(/[ى]/g, 'ي');
+    .replace(/[ىئ]/g, 'ي')
+    .replace(/ؤ/g, 'و');
 }
 
 export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
@@ -108,23 +110,24 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       });
     }, [options, searchQuery]);
 
-    // Reset highlight index when filtered list changes
+    // Reset highlight index when search query changes
     React.useEffect(() => {
       setHighlightedIndex(0);
-    }, [filteredOptions]);
+    }, [searchQuery]);
 
-    // Auto-focus search input when opened
+    // Auto-focus search input when opened and highlight current selection
     React.useEffect(() => {
       if (open) {
         setSearchQuery('');
-        setHighlightedIndex(0);
+        const selectedIdx = options.findIndex((opt) => String(opt.value) === String(currentValue));
+        setHighlightedIndex(selectedIdx >= 0 ? selectedIdx : 0);
         // Small timeout to allow popover animation / mounting
         const timer = setTimeout(() => {
           searchInputRef.current?.focus();
         }, 30);
         return () => clearTimeout(timer);
       }
-    }, [open]);
+    }, [open, currentValue, options]);
 
     // Scroll active item into view
     React.useEffect(() => {
@@ -143,13 +146,14 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       setOpen(false);
     };
 
-    const handleClear = (e: React.MouseEvent) => {
-      e.stopPropagation();
+    const handleClear = (e: React.MouseEvent | React.SyntheticEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       if (!isControlled) {
         setInternalValue('');
       }
       onChange?.('');
+      setOpen(false);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -161,6 +165,14 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
         return;
       }
 
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
+
+      if (filteredOptions.length === 0) return;
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setHighlightedIndex((prev) => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
@@ -169,12 +181,10 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
         setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (filteredOptions[highlightedIndex] && !filteredOptions[highlightedIndex].disabled) {
-          selectValue(filteredOptions[highlightedIndex].value);
+        const targetOption = filteredOptions[highlightedIndex];
+        if (targetOption && !targetOption.disabled) {
+          selectValue(targetOption.value);
         }
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        setOpen(false);
       }
     };
 
@@ -187,7 +197,6 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
           <label
             htmlFor={comboboxId}
             className="block text-xs font-semibold text-foreground cursor-pointer select-none"
-            onClick={() => !disabled && setOpen((prev) => !prev)}
           >
             {label}
             {required && <span className="text-destructive mr-1">*</span>}
@@ -215,6 +224,13 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
               )}
             >
               <span
+                title={
+                  selectedOption
+                    ? selectedOption.sublabel
+                      ? `${selectedOption.label} (${selectedOption.sublabel})`
+                      : selectedOption.label
+                    : undefined
+                }
                 className={cn(
                   'truncate text-right flex-1 select-none',
                   !selectedOption && 'text-muted-foreground font-normal',
@@ -229,7 +245,18 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                   <span
                     role="button"
                     tabIndex={0}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
                     onClick={handleClear}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleClear(e);
+                      }
+                    }}
                     title="إلغاء التحديد"
                     className="rounded p-0.5 hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                   >
@@ -247,7 +274,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
               sideOffset={4}
               collisionPadding={12}
               className={cn(
-                'z-[70] min-w-[200px] w-[var(--radix-popover-trigger-width)] max-w-[95vw] rounded-xl border border-border bg-card p-1.5 shadow-xl',
+                'z-[70] min-w-[240px] w-[var(--radix-popover-trigger-width)] max-w-[95vw] rounded-xl border border-border bg-card p-1.5 shadow-xl',
                 'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
               )}
               dir="rtl"
@@ -264,10 +291,9 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                   placeholder={searchPlaceholder}
                   className="h-8 w-full rounded-lg border border-input bg-muted/40 pr-8 pl-8 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none focus:ring-1 focus:ring-primary transition-all"
                   onKeyDown={(e) => {
-                    // Prevent form submission on enter
+                    // Prevent form submission on enter (bubbles to Content onKeyDown for selection)
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      handleKeyDown(e);
                     }
                   }}
                 />
@@ -327,6 +353,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                         role="option"
                         aria-selected={isSelected}
                         aria-disabled={opt.disabled}
+                        title={opt.sublabel ? `${opt.label} (${opt.sublabel})` : opt.label}
                         onClick={() => !opt.disabled && selectValue(opt.value)}
                         onMouseEnter={() => setHighlightedIndex(idx)}
                         className={cn(

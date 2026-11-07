@@ -232,6 +232,9 @@ export function CreateBookingModal({ open, onOpenChange, lookups }: CreateBookin
 
         <Select
           label="القاعة المفضلة (اختياري — التخصيص النهائي للإدارة)"
+          searchable
+          clearable
+          searchPlaceholder="ابحث باسم أو رقم القاعة..."
           placeholder="بدون تفضيل قاعة محددة"
           value={requestedClassroomId}
           onChange={(e) => setRequestedClassroomId(e.target.value)}
