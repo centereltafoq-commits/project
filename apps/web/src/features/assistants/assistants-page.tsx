@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Edit3, Eye, Plus } from 'lucide-react';
+import { Edit3, Eye, Plus, RotateCcw } from 'lucide-react';
 import {
   AssistantCalculationMethod,
   DEFAULT_PAGE_SIZE,
@@ -19,6 +19,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
 import { AssistantFormModal } from './assistant-form-modal';
+import { AssistantQuickViewModal } from './components/assistant-quick-view-modal';
 import {
   ASSISTANT_CALC_METHOD_LABELS,
   ASSISTANT_CALC_METHOD_OPTIONS,
@@ -38,6 +39,8 @@ export function AssistantsPage() {
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingAssistant, setEditingAssistant] = React.useState<AssistantRow | null>(null);
+  const [quickViewAssistant, setQuickViewAssistant] = React.useState<AssistantRow | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery<PaginatedResult<AssistantRow>>({
     queryKey: ['assistants', page, limit, debouncedSearch, statusFilter, methodFilter],
@@ -59,47 +62,57 @@ export function AssistantsPage() {
     {
       key: 'assistantCode',
       header: 'كود المساعد',
+      className: 'whitespace-nowrap font-mono',
       render: (row) => (
-        <span className="font-mono text-xs font-bold text-primary">{row.assistantCode}</span>
+        <span className="inline-block rounded-md bg-primary/10 px-2.5 py-0.5 font-mono text-xs font-bold text-primary">
+          {row.assistantCode}
+        </span>
       ),
     },
     {
       key: 'fullName',
       header: 'الاسم الكامل',
-      render: (row) => <span className="font-bold text-foreground">{row.fullName}</span>,
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <span className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer">
+          {row.fullName}
+        </span>
+      ),
     },
     {
       key: 'phone',
       header: 'رقم الهاتف',
-      render: (row) => <span dir="ltr">{row.phone}</span>,
-    },
-    {
-      key: 'calculationMethod',
-      header: 'طريقة احتساب المستحقات',
+      className: 'whitespace-nowrap font-mono',
       render: (row) => (
-        <Badge variant="info">
-          {ASSISTANT_CALC_METHOD_LABELS[row.calculationMethod] ?? row.calculationMethod}
-        </Badge>
+        <span dir="ltr" className="font-mono text-xs font-semibold text-foreground">
+          {row.phone || '—'}
+        </span>
       ),
     },
     {
-      key: 'rateValue',
-      header: 'القيمة / النسبة',
-      render: (row) =>
-        row.calculationMethod === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT ? (
-          <span className="font-bold">{Number(row.rateValue)}%</span>
-        ) : (
-          <span className="font-bold">{formatCurrency(row.rateValue)}</span>
-        ),
-    },
-    {
-      key: 'linkedGroupsCount',
-      header: 'المجموعات المرتبطة',
-      render: (row) => <Badge variant="purple">{row.linkedGroupsCount ?? 0} مجموعة</Badge>,
+      key: 'calculationMethod',
+      header: 'نظام المستحقات والقيمة',
+      className: 'whitespace-nowrap',
+      render: (row) => {
+        const isPct =
+          row.calculationMethod === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT;
+        const valStr = isPct ? `${Number(row.rateValue)}%` : formatCurrency(row.rateValue);
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant="info">
+              {ASSISTANT_CALC_METHOD_LABELS[row.calculationMethod] ?? row.calculationMethod}
+            </Badge>
+            <span className="font-extrabold text-xs text-foreground font-mono">
+              ({valStr})
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'status',
       header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) =>
         row.status === 'ACTIVE' ? (
           <Badge variant="success">نشط</Badge>
@@ -113,9 +126,17 @@ export function AssistantsPage() {
       className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
         <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 px-3 text-xs font-bold" onClick={() => navigate(`/assistants/${row.id}`)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 px-3 text-xs font-bold"
+            onClick={() => {
+              setQuickViewAssistant(row);
+              setQuickViewOpen(true);
+            }}
+          >
             <Eye className="h-3.5 w-3.5 text-primary" />
-            الملف والمستحقات
+            تفاصيل
           </Button>
           <Button
             size="sm"
@@ -158,7 +179,10 @@ export function AssistantsPage() {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
-        onRowClick={(r) => navigate(`/assistants/${r.id}`)}
+        onRowClick={(r) => {
+          setQuickViewAssistant(r);
+          setQuickViewOpen(true);
+        }}
         searchPlaceholder="ابحث باسم المساعد أو الكود أو رقم الهاتف..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -173,7 +197,7 @@ export function AssistantsPage() {
           setPage(1);
         }}
         filters={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               placeholder="كل طرق الاحتساب"
               value={methodFilter}
@@ -194,7 +218,23 @@ export function AssistantsPage() {
               options={ASSISTANT_STATUS_OPTIONS}
               className="w-36"
             />
-          </>
+            {(methodFilter || statusFilter || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setMethodFilter('');
+                  setStatusFilter('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -202,6 +242,16 @@ export function AssistantsPage() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         assistant={editingAssistant}
+      />
+
+      <AssistantQuickViewModal
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        assistant={quickViewAssistant}
+        onEdit={(a) => {
+          setEditingAssistant(a);
+          setModalOpen(true);
+        }}
       />
     </div>
   );
