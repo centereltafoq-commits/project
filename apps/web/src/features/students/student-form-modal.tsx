@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { StudentStatus } from '@edu-center/shared';
-import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getTodayIsoDate } from '@/lib/formatters';
 import { GRADE_LEVEL_OPTIONS, STUDENT_STATUS_OPTIONS, StudentRow } from './students.types';
@@ -127,12 +127,10 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
             onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
             options={GRADE_LEVEL_OPTIONS}
           />
-          <Input
+          <DatePicker
             label="تاريخ التسجيل"
-            type="date"
-            required
             value={form.registrationDate}
-            onChange={(e) => setForm({ ...form, registrationDate: e.target.value })}
+            onChange={(d) => setForm({ ...form, registrationDate: d })}
           />
           <Select
             label="حالة ملف الطالب"

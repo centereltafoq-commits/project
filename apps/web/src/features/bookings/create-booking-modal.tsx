@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BookingRequestType } from '@edu-center/shared';
-import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { ARABIC_DAYS, getTodayIsoDate } from '@/lib/formatters';
 import { SegmentedToggle } from './bookings-filters';
@@ -167,12 +167,10 @@ export function CreateBookingModal({ open, onOpenChange, lookups }: CreateBookin
 
         {!isSeries ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Input
+            <DatePicker
               label="تاريخ الحجز"
-              type="date"
-              required
               value={requestedDate}
-              onChange={(e) => setRequestedDate(e.target.value)}
+              onChange={setRequestedDate}
             />
             <Input
               label="من الساعة"
@@ -198,19 +196,15 @@ export function CreateBookingModal({ open, onOpenChange, lookups }: CreateBookin
                 onChange={(e) => setDayOfWeek(e.target.value)}
                 options={ARABIC_DAYS.map((name, idx) => ({ value: String(idx), label: name }))}
               />
-              <Input
+              <DatePicker
                 label="من تاريخ"
-                type="date"
-                required
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={setStartDate}
               />
-              <Input
+              <DatePicker
                 label="إلى تاريخ"
-                type="date"
-                required
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={setEndDate}
               />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

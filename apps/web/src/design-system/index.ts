@@ -6,6 +6,7 @@ export * from './components/card';
 export * from './components/modal';
 export * from './components/tabs';
 export * from './components/toast';
+export * from './components/date-picker';
 export * from './components/page-header';
 export * from './components/server-data-table';
 

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TeacherEmploymentStatus } from '@edu-center/shared';
-import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getTodayIsoDate } from '@/lib/formatters';
 import { TEACHER_STATUS_OPTIONS, TeacherRow } from './teachers.types';
@@ -119,12 +119,10 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: TeacherFormMod
             onChange={(e) => setForm({ ...form, specialization: e.target.value })}
             placeholder="مثال: فيزياء - المرحلة الثانوية"
           />
-          <Input
+          <DatePicker
             label="تاريخ التعاقد"
-            type="date"
-            required
             value={form.contractDate}
-            onChange={(e) => setForm({ ...form, contractDate: e.target.value })}
+            onChange={(d) => setForm({ ...form, contractDate: d })}
           />
           <Select
             label="حالة العمل بالسنتر"
