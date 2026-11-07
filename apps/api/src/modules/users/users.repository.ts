@@ -105,6 +105,16 @@ export class UsersRepository {
     return row ?? null;
   }
 
+  async findPasswordHashById(id: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ passwordHash: users.passwordHash })
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return row?.passwordHash ?? null;
+  }
+
+
   async computeEffectivePermissions(userId: string, roleId: string): Promise<string[]> {
     const [rolePerms, overrides] = await Promise.all([
       this.db

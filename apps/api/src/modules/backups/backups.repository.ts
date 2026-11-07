@@ -75,10 +75,10 @@ export class BackupsRepository {
       meta: {
         page,
         limit,
-        total,
+        totalItems: total,
         totalPages: Math.ceil(total / limit) || 1,
-        hasNext: page * limit < total,
-        hasPrev: page > 1,
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1,
       },
     };
   }
