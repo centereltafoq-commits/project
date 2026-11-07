@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Badge, Card } from '@/design-system';
-import { formatCurrency, formatDateAr } from '@/lib/formatters';
+import { formatCurrency, formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
 import { StudentProfileData } from './students.types';
 
 const ENROLLMENT_STATUS_BADGE: Record<
@@ -202,8 +202,8 @@ export function StudentAttendanceTab({ data }: { data: StudentProfileData }) {
                   <tr key={rec.id} className="hover:bg-accent/30">
                     <td className="px-4 py-3 font-semibold">{formatDateAr(rec.sessionDate)}</td>
                     <td className="px-4 py-3">{rec.groupName}</td>
-                    <td className="px-4 py-3" dir="ltr">
-                      {rec.startTime} - {rec.endTime}
+                    <td className="px-4 py-3">
+                      {formatTimeRangeAr(rec.startTime, rec.endTime)}
                     </td>
                     <td className="px-4 py-3">{rec.topic || '—'}</td>
                     <td className="px-4 py-3">

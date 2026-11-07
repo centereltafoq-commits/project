@@ -4,7 +4,7 @@ import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import { Badge, ServerDataTable, TableColumn } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
-import { formatCurrency, formatDateAr } from '@/lib/formatters';
+import { formatCurrency, formatDateTimeAr } from '@/lib/formatters';
 import { PAYMENT_METHOD_LABELS } from '../finance.types';
 
 interface GenericPayoutRow {
@@ -82,8 +82,8 @@ export function PayoutsSubtable({ mode, yearMonth, filters }: PayoutsSubtablePro
     },
     {
       key: 'date',
-      header: 'تاريخ الصرف',
-      render: (r) => formatDateAr(r.payoutDate),
+      header: 'تاريخ ووقت الصرف',
+      render: (r) => formatDateTimeAr(r.payoutDate),
     },
     {
       key: 'paidBy',

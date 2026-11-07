@@ -18,7 +18,7 @@ import {
 import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { formatCurrency, formatDateAr } from '@/lib/formatters';
+import { formatCurrency, formatDateAr, formatDateTimeAr } from '@/lib/formatters';
 import {
   AttendanceLookups,
   MAKEUP_STATUS_META,
@@ -102,12 +102,7 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
       render: (row) => (
         <div>
           <div className="font-medium text-foreground">
-            {row.scheduledAt
-              ? new Date(row.scheduledAt).toLocaleString('ar-EG', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })
-              : 'غير محدد بعد'}
+            {row.scheduledAt ? formatDateTimeAr(row.scheduledAt) : 'غير محدد بعد'}
           </div>
           <div className="text-xs text-muted-foreground">
             {row.classroomName ? `${row.classroomName} (${row.roomNumber})` : 'بدون قاعة'}

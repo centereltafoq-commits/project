@@ -61,3 +61,70 @@ export function formatDateAr(isoDate: string | Date | null | undefined): string 
   });
 }
 
+/**
+ * Format any time string ('14:30', '14:30:00', ISO string, or Date)
+ * into friendly 12-hour Arabic format with ص (صباحاً) / م (مساءً)
+ * Examples: '14:30' -> '02:30 م', '09:00' -> '09:00 ص'
+ */
+export function formatTimeAr(time: string | Date | null | undefined): string {
+  if (!time) return '—';
+
+  let hours: number;
+  let minutes: number;
+
+  if (time instanceof Date) {
+    if (Number.isNaN(time.getTime())) return '—';
+    hours = time.getHours();
+    minutes = time.getMinutes();
+  } else if (typeof time === 'string') {
+    const trimmed = time.trim();
+    if (trimmed.includes('T')) {
+      const d = new Date(trimmed);
+      if (Number.isNaN(d.getTime())) return trimmed;
+      hours = d.getHours();
+      minutes = d.getMinutes();
+    } else if (trimmed.includes(':')) {
+      const parts = trimmed.split(':');
+      hours = parseInt(parts[0], 10);
+      minutes = parseInt(parts[1], 10);
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) return trimmed;
+    } else {
+      return trimmed;
+    }
+  } else {
+    return String(time);
+  }
+
+  const period = hours >= 12 ? 'م' : 'ص';
+  const h12 = hours % 12 === 0 ? 12 : hours % 12;
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return `${pad(h12)}:${pad(minutes)} ${period}`;
+}
+
+/**
+ * Formats a time range, e.g. ('14:00', '16:00') -> '02:00 م - 04:00 م'
+ */
+export function formatTimeRangeAr(
+  startTime: string | null | undefined,
+  endTime: string | null | undefined,
+): string {
+  if (!startTime && !endTime) return '—';
+  const formattedStart = formatTimeAr(startTime);
+  const formattedEnd = formatTimeAr(endTime);
+  return `${formattedStart} إلى ${formattedEnd}`;
+}
+
+/**
+ * Format date & time into complete Arabic representation
+ * Example: '07 نوفمبر 2026، 02:30 م'
+ */
+export function formatDateTimeAr(isoDate: string | Date | null | undefined): string {
+  if (!isoDate) return '—';
+  const d = typeof isoDate === 'string' ? new Date(isoDate) : isoDate;
+  if (Number.isNaN(d.getTime())) return String(isoDate);
+
+  const datePart = formatDateAr(d);
+  const timePart = formatTimeAr(d);
+  return `${datePart} - ${timePart}`;
+}

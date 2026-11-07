@@ -14,7 +14,7 @@ import {
 import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
-import { ARABIC_DAYS, formatDateAr, getCurrentYearMonth } from '@/lib/formatters';
+import { ARABIC_DAYS, formatDateAr, formatTimeRangeAr, getCurrentYearMonth } from '@/lib/formatters';
 import {
   AttendanceLookups,
   SESSION_STATUS_META,
@@ -85,7 +85,7 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
               {dayName} — {formatDateAr(row.sessionDate)}
             </div>
             <div className="text-xs text-muted-foreground">
-              {row.startTime} إلى {row.endTime}
+              {formatTimeRangeAr(row.startTime, row.endTime)}
             </div>
           </div>
         );

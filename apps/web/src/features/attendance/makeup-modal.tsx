@@ -4,7 +4,7 @@ import { MakeupStatus, PaginatedResult } from '@edu-center/shared';
 import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { getTodayIsoDate } from '@/lib/formatters';
+import { formatDateAr, formatTimeAr, getTodayIsoDate } from '@/lib/formatters';
 import {
   AttendanceLookups,
   MakeupSessionRow,
@@ -149,7 +149,7 @@ export function MakeupModal({
               }}
               options={(recentSessions?.data ?? []).map((s) => ({
                 value: s.id,
-                label: `${s.groupName} — ${s.sessionDate} (${s.startTime})`,
+                label: `${s.groupName} — ${formatDateAr(s.sessionDate)} (${formatTimeAr(s.startTime)})`,
               }))}
             />
           </>

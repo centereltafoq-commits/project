@@ -42,3 +42,4 @@ export interface UpdateBackupSettingsPayload {
 export interface RestoreBackupPayload {
   password: string;
 }
+

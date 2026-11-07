@@ -1,7 +1,7 @@
 import { Check, Repeat, Settings2 } from 'lucide-react';
 import { BookingRequestType, BookingStatus } from '@edu-center/shared';
 import { Badge, Button, TableColumn } from '@/design-system';
-import { formatDateAr } from '@/lib/formatters';
+import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
 import {
   BOOKING_STATUS_META,
   BOOKING_TYPE_LABELS,
@@ -55,7 +55,7 @@ export function buildBookingColumns(params: {
         <div>
           <div className="font-semibold text-foreground">{formatDateAr(row.requestedDate)}</div>
           <div className="text-xs text-muted-foreground">
-            {row.startTime} - {row.endTime} ({row.durationMinutes} دقيقة)
+            {formatTimeRangeAr(row.startTime, row.endTime)} ({row.durationMinutes} دقيقة)
           </div>
         </div>
       ),

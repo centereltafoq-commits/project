@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button, Input, Modal, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { formatDateAr } from '@/lib/formatters';
+import { formatDateTimeAr } from '@/lib/formatters';
 import { ClassroomMaintenanceItem, ClassroomRow } from './classrooms.types';
 
 interface ClassroomMaintenanceModalProps {
@@ -127,7 +127,7 @@ export function ClassroomMaintenanceModal({
                 <div>
                   <p className="font-bold text-foreground">{m.reason}</p>
                   <p className="text-xs text-muted-foreground">
-                    من {formatDateAr(m.startAt)} إلى {formatDateAr(m.endAt)}
+                    من {formatDateTimeAr(m.startAt)} إلى {formatDateTimeAr(m.endAt)}
                   </p>
                 </div>
                 <Button

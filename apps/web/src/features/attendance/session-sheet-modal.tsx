@@ -5,7 +5,7 @@ import { AttendanceStatus, PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Input, Modal, useToast } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { formatDateAr } from '@/lib/formatters';
+import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
 import { SessionSheetResponse } from './attendance.types';
 import { SessionSheetRow } from './session-sheet-row';
 
@@ -118,7 +118,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
       }
       description={
         data
-          ? `${formatDateAr(data.session.sessionDate)} | ${data.session.startTime} - ${data.session.endTime} | المدرس: ${data.session.teacherName}`
+          ? `${formatDateAr(data.session.sessionDate)} | ${formatTimeRangeAr(data.session.startTime, data.session.endTime)} | المدرس: ${data.session.teacherName}`
           : undefined
       }
     >

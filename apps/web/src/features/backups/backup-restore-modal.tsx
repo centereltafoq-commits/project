@@ -5,6 +5,7 @@ import { Button } from '@/design-system/components/button';
 import { Input } from '@/design-system/components/input';
 import { Modal } from '@/design-system/components/modal';
 import { useToast } from '@/design-system/components/toast';
+import { formatDateTimeAr } from '@/lib/formatters';
 import { BackupRecord } from './backups.types';
 import { useBackupMutations } from './use-backups';
 
@@ -91,7 +92,7 @@ export function BackupRestoreModal({ open, onOpenChange, record }: BackupRestore
           </div>
           <div className="flex justify-between">
             <span>تاريخ النسخة:</span>
-            <span className="text-foreground">{record?.createdAt?.slice(0, 19).replace('T', ' ')}</span>
+            <span className="text-foreground">{formatDateTimeAr(record?.createdAt)}</span>
           </div>
           <div className="flex justify-between">
             <span>الحجم:</span>

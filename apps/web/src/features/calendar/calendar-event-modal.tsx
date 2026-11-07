@@ -1,5 +1,5 @@
 import { Badge, Button, Modal } from '@/design-system';
-import { formatDateAr } from '@/lib/formatters';
+import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
 import { EVENT_CATEGORY_STYLES, UnifiedCalendarEvent } from './calendar.types';
 
 interface CalendarEventModalProps {
@@ -26,7 +26,7 @@ export function CalendarEventModal({ event, onClose }: CalendarEventModalProps) 
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">التوقيت:</span>
             <span className="font-bold text-foreground">
-              {event.startTime} إلى {event.endTime}
+              {formatTimeRangeAr(event.startTime, event.endTime)}
             </span>
           </div>
           <div className="flex items-center justify-between">

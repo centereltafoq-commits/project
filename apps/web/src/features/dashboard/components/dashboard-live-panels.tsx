@@ -10,7 +10,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/design-system';
-import { formatDateAr } from '@/lib/formatters';
+import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
 import { DashboardSummaryData } from '../dashboard.types';
 
 interface DashboardLivePanelsProps {
@@ -118,7 +118,7 @@ export function DashboardLivePanels({ data }: DashboardLivePanelsProps) {
                           </td>
                           <td className="px-4 py-3 font-medium">{s.teacherName}</td>
                           <td className="px-4 py-3 font-mono text-xs font-semibold">
-                            {s.startTime} - {s.endTime}
+                            {formatTimeRangeAr(s.startTime, s.endTime)}
                           </td>
                           <td className="px-4 py-3 text-xs">
                             {s.classroomName ? `${s.roomNumber} - ${s.classroomName}` : '—'}
@@ -172,7 +172,7 @@ export function DashboardLivePanels({ data }: DashboardLivePanelsProps) {
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" />
-                        {formatDateAr(appt.requestedDate)} ({appt.startTime} - {appt.endTime})
+                        {formatDateAr(appt.requestedDate)} ({formatTimeRangeAr(appt.startTime, appt.endTime)})
                       </span>
                     </div>
                   </div>

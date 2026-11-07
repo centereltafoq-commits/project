@@ -27,6 +27,7 @@ import {
   TableColumn,
 } from '@/design-system/components/server-data-table';
 import { useToast } from '@/design-system/components/toast';
+import { formatDateTimeAr, formatTimeAr } from '@/lib/formatters';
 import { backupsApi } from './backups-api';
 import { BackupRecord } from './backups.types';
 import { BackupRestoreModal } from './backup-restore-modal';
@@ -158,7 +159,7 @@ export function BackupsPage() {
       header: 'التاريخ والتوقيت',
       render: (row) => (
         <span className="text-xs text-muted-foreground font-mono">
-          {row.createdAt?.slice(0, 19).replace('T', ' ')}
+          {formatDateTimeAr(row.createdAt)}
         </span>
       ),
     },
@@ -225,7 +226,7 @@ export function BackupsPage() {
             <span className="text-xs text-muted-foreground block">آخر نسخة ناجحة</span>
             <span className="text-sm font-bold text-foreground">
               {latestSuccessBackup
-                ? latestSuccessBackup.createdAt.slice(0, 16).replace('T', ' ')
+                ? formatDateTimeAr(latestSuccessBackup.createdAt)
                 : 'لا توجد نسخ بعد'}
             </span>
           </div>
@@ -253,7 +254,7 @@ export function BackupsPage() {
             <span className="text-xs text-muted-foreground block">النسخ التلقائي المجدول</span>
             <span className="text-sm font-bold text-foreground">
               {settings?.autoBackupEnabled
-                ? `مفعل (يومياً ${settings.scheduleTime})`
+                ? `مفعل (يومياً ${formatTimeAr(settings.scheduleTime)})`
                 : 'معطل'}
             </span>
           </div>

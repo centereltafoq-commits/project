@@ -9,3 +9,4 @@ export interface IBackupStorageDriver {
   readonly name: string;
   upload(filePath: string, fileName: string): Promise<StorageUploadResult>;
 }
+

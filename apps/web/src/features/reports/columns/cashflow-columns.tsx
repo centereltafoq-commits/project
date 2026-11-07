@@ -1,6 +1,6 @@
 import { Badge, TableColumn } from '@/design-system';
 import { cn } from '@/lib/cn';
-import { formatCurrency, formatDateAr } from '@/lib/formatters';
+import { formatCurrency, formatDateAr, formatDateTimeAr } from '@/lib/formatters';
 
 type Row = Record<string, unknown>;
 
@@ -15,8 +15,8 @@ export function getCollectionsColumns(): TableColumn<Row>[] {
     },
     {
       key: 'paymentDate',
-      header: 'التاريخ',
-      render: (r) => <span className="text-xs font-semibold">{formatDateAr(String(r.paymentDate))}</span>,
+      header: 'تاريخ ووقت التحصيل',
+      render: (r) => <span className="text-xs font-semibold">{formatDateTimeAr(String(r.paymentDate))}</span>,
     },
     {
       key: 'studentName',

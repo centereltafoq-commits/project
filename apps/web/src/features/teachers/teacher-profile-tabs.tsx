@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@/design-system';
-import { ARABIC_DAYS, formatCurrency } from '@/lib/formatters';
+import { ARABIC_DAYS, formatCurrency, formatTimeRangeAr } from '@/lib/formatters';
 import { SPLIT_METHOD_LABELS, TeacherProfileData } from './teachers.types';
 export { TeacherBookingsTab, TeacherPayoutsTab } from './teacher-payouts-bookings-tabs';
 
@@ -160,8 +160,8 @@ export function TeacherGroupsAndScheduleTab({ data }: { data: TeacherProfileData
                 >
                   <div className="flex items-center justify-between">
                     <Badge variant="info">{ARABIC_DAYS[s.dayOfWeek]}</Badge>
-                    <span className="font-mono text-xs font-bold" dir="ltr">
-                      {s.startTime} - {s.endTime}
+                    <span className="font-semibold text-xs text-muted-foreground">
+                      {formatTimeRangeAr(s.startTime, s.endTime)}
                     </span>
                   </div>
                   <p className="mt-2 font-bold text-foreground">{s.groupName}</p>

@@ -11,7 +11,7 @@ import {
 } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
-import { formatCurrency, formatDateAr } from '@/lib/formatters';
+import { formatCurrency, formatDateTimeAr } from '@/lib/formatters';
 import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHOD_OPTIONS,
@@ -120,8 +120,8 @@ export function PaymentsHistoryTab({
     },
     {
       key: 'date',
-      header: 'تاريخ السداد',
-      render: (r) => formatDateAr(r.paymentDate),
+      header: 'تاريخ ووقت السداد',
+      render: (r) => formatDateTimeAr(r.paymentDate),
     },
     {
       key: 'receiver',

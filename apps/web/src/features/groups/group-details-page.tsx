@@ -20,7 +20,7 @@ import {
   StatCard,
 } from '@/design-system';
 import { apiClient } from '@/lib/api-client';
-import { ARABIC_DAYS, formatCurrency } from '@/lib/formatters';
+import { ARABIC_DAYS, formatCurrency, formatTimeRangeAr } from '@/lib/formatters';
 import { SPLIT_METHOD_LABELS } from '../teachers/teachers.types';
 import { GroupFormModal } from './group-form-modal';
 import { GroupEnrollmentsSection } from './group-enrollments-section';
@@ -182,8 +182,8 @@ export function GroupDetailsPage() {
                   className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs"
                 >
                   <span className="font-bold">{ARABIC_DAYS[slot.dayOfWeek]}</span>
-                  <span className="font-mono font-semibold" dir="ltr">
-                    {slot.startTime} - {slot.endTime}
+                  <span className="font-semibold text-muted-foreground">
+                    {formatTimeRangeAr(slot.startTime, slot.endTime)}
                   </span>
                 </div>
               ))

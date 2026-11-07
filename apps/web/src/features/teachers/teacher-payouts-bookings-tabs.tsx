@@ -1,5 +1,6 @@
 import { Badge, Card } from '@/design-system';
-import { formatCurrency, formatDateAr, formatYearMonthAr } from '@/lib/formatters';
+import { formatCurrency, formatDateAr, formatTimeRangeAr, formatYearMonthAr } from '@/lib/formatters';
+import { BOOKING_STATUS_META } from '../bookings/bookings.types';
 import { PAYMENT_METHOD_LABELS } from '../students/students.types';
 import { TeacherProfileData } from './teachers.types';
 
@@ -87,13 +88,13 @@ export function TeacherBookingsTab({ data }: { data: TeacherProfileData }) {
                     {b.purpose}
                   </td>
                   <td className="px-4 py-3">{formatDateAr(b.requestedDate)}</td>
-                  <td className="px-4 py-3" dir="ltr">
-                    {b.startTime} - {b.endTime}
+                  <td className="px-4 py-3">
+                    {formatTimeRangeAr(b.startTime, b.endTime)}
                   </td>
                   <td className="px-4 py-3">{b.classroomName || 'لم تخصص'}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={b.status === 'CONFIRMED' ? 'success' : 'warning'}>
-                      {b.status}
+                    <Badge variant={BOOKING_STATUS_META[b.status]?.variant || 'neutral'}>
+                      {BOOKING_STATUS_META[b.status]?.label || b.status}
                     </Badge>
                   </td>
                 </tr>

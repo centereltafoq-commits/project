@@ -2,7 +2,7 @@ import { CheckCircle2, Printer } from 'lucide-react';
 import { Badge, Button, Modal } from '@/design-system';
 import {
   formatCurrency,
-  formatDateAr,
+  formatDateTimeAr,
   formatYearMonthAr,
 } from '@/lib/formatters';
 import { PAYMENT_METHOD_LABELS, PaymentRow } from '../finance.types';
@@ -41,7 +41,7 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
                 {receipt.receiptNumber}
               </Badge>
               <p className="mt-1 text-xs text-muted-foreground">
-                التاريخ: {formatDateAr(receipt.paymentDate)}
+                التاريخ والوقت: {formatDateTimeAr(receipt.paymentDate)}
               </p>
             </div>
           </div>

@@ -4,7 +4,8 @@ import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import { Badge, PageHeader, Select, ServerDataTable, TableColumn } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
-import { formatDateAr } from '@/lib/formatters';
+import { formatDateTimeAr } from '@/lib/formatters';
+import { translateAuditAction, translateAuditEntity } from '@/lib/translations';
 
 interface AuditLogRow {
   id: string;
@@ -43,8 +44,8 @@ export function AuditLogsPage() {
       key: 'createdAt',
       header: 'التاريخ والوقت',
       render: (r) => (
-        <span className="text-xs font-medium text-muted-foreground">
-          {formatDateAr(r.createdAt)} - {new Date(r.createdAt).toLocaleTimeString('ar-EG')}
+        <span className="text-xs font-medium text-muted-foreground font-mono">
+          {formatDateTimeAr(r.createdAt)}
         </span>
       ),
     },
@@ -56,12 +57,17 @@ export function AuditLogsPage() {
     {
       key: 'action',
       header: 'العملية',
-      render: (r) => <Badge variant="info">{r.action}</Badge>,
+      render: (r) => {
+        const actionMeta = translateAuditAction(r.action);
+        return <Badge variant={actionMeta.variant}>{actionMeta.label}</Badge>;
+      },
     },
     {
       key: 'entityType',
       header: 'القسم / الكيان',
-      render: (r) => <Badge variant="neutral">{r.entityType}</Badge>,
+      render: (r) => (
+        <Badge variant="neutral">{translateAuditEntity(r.entityType)}</Badge>
+      ),
     },
     {
       key: 'entityId',
@@ -111,7 +117,7 @@ export function AuditLogsPage() {
             }}
             className="w-44"
             options={[
-              { value: 'AUTH', label: 'تسجيل الدخول' },
+              { value: 'AUTH', label: 'المصادقة وتسجيل الدخول' },
               { value: 'USER', label: 'المستخدمون' },
               { value: 'ROLE', label: 'الأدوار والصلاحيات' },
               { value: 'STUDENT', label: 'الطلاب' },
@@ -122,8 +128,10 @@ export function AuditLogsPage() {
               { value: 'ATTENDANCE', label: 'الحضور والغياب' },
               { value: 'PAYMENT', label: 'المدفوعات' },
               { value: 'EXPENSE', label: 'المصروفات' },
+              { value: 'monthly_settlement', label: 'التسويات المالية الشهرية' },
               { value: 'BOOKING', label: 'الحجوزات' },
               { value: 'CLASSROOM', label: 'القاعات' },
+              { value: 'BACKUP', label: 'النسخ الاحتياطي' },
             ]}
           />
         }

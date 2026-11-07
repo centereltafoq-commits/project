@@ -1,5 +1,5 @@
 import { Badge, Card } from '@/design-system';
-import { formatCurrency, formatDateAr, formatYearMonthAr } from '@/lib/formatters';
+import { formatCurrency, formatDateAr, formatDateTimeAr, formatTimeRangeAr, formatYearMonthAr } from '@/lib/formatters';
 import { PAYMENT_METHOD_LABELS, StudentProfileData } from './students.types';
 
 const MAKEUP_STATUS_BADGE: Record<
@@ -105,7 +105,7 @@ export function StudentMakeupsTab({ data }: { data: StudentProfileData }) {
                   <tr key={m.id} className="hover:bg-accent/30">
                     <td className="px-4 py-3 font-bold">{m.groupName}</td>
                     <td className="px-4 py-3">{formatDateAr(m.absenceDate)}</td>
-                    <td className="px-4 py-3">{formatDateAr(m.scheduledAt)}</td>
+                    <td className="px-4 py-3">{m.scheduledAt ? formatDateTimeAr(m.scheduledAt) : 'غير محدد بعد'}</td>
                     <td className="px-4 py-3">{m.classroomName || '—'}</td>
                     <td className="px-4 py-3">
                       {m.isFree ? (
@@ -162,8 +162,8 @@ export function StudentBookingsTab({ data }: { data: StudentProfileData }) {
                     <td className="px-4 py-3 font-bold">{b.teacherName}</td>
                     <td className="px-4 py-3">{b.purpose}</td>
                     <td className="px-4 py-3">{formatDateAr(b.requestedDate)}</td>
-                    <td className="px-4 py-3" dir="ltr">
-                      {b.startTime} - {b.endTime}
+                    <td className="px-4 py-3">
+                      {formatTimeRangeAr(b.startTime, b.endTime)}
                     </td>
                     <td className="px-4 py-3">{b.classroomName || 'لم تخصص بعد'}</td>
                     <td className="px-4 py-3">

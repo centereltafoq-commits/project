@@ -1,5 +1,5 @@
 import { Badge, TableColumn } from '@/design-system';
-import { formatDateAr } from '@/lib/formatters';
+import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
 
 type Row = Record<string, unknown>;
 
@@ -136,12 +136,18 @@ export function getBookingsColumns(): TableColumn<Row>[] {
     {
       key: 'dateAndTime',
       header: 'التاريخ والوقت',
-      render: (r) => (
-        <div className="text-xs">
-          <div className="font-semibold">{formatDateAr(String(r.requestedDate))}</div>
-          <div className="font-mono text-muted-foreground">{String(r.timeSlot)}</div>
-        </div>
-      ),
+      render: (r) => {
+        const slot = String(r.timeSlot || '');
+        const [start, end] = slot.includes('-')
+          ? slot.split('-').map((s) => s.trim())
+          : [slot, ''];
+        return (
+          <div className="text-xs">
+            <div className="font-semibold">{formatDateAr(String(r.requestedDate))}</div>
+            <div className="text-muted-foreground">{formatTimeRangeAr(start, end)}</div>
+          </div>
+        );
+      },
     },
     {
       key: 'classroomLabel',

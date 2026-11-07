@@ -1,7 +1,7 @@
 import { Building2, Clock, User } from 'lucide-react';
 import { Card } from '@/design-system';
 import { cn } from '@/lib/cn';
-import { ARABIC_DAYS } from '@/lib/formatters';
+import { ARABIC_DAYS, formatTimeAr, formatTimeRangeAr } from '@/lib/formatters';
 import {
   EVENT_CATEGORY_STYLES,
   toIsoDate,
@@ -53,9 +53,9 @@ export function DailyTimelineView({
             className="flex w-full flex-col gap-2 p-4 text-right transition-colors hover:bg-accent/40 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-start gap-3">
-              <div className="flex w-28 shrink-0 items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs font-bold text-foreground">
+              <div className="flex w-36 shrink-0 items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs font-bold text-foreground">
                 <Clock className="h-3.5 w-3.5 text-primary" />
-                {ev.startTime} - {ev.endTime}
+                {formatTimeRangeAr(ev.startTime, ev.endTime)}
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export function WeeklyGridView({
                         )}
                       >
                         <div className="font-bold">
-                          {ev.startTime} - {ev.endTime}
+                          {formatTimeRangeAr(ev.startTime, ev.endTime)}
                         </div>
                         <div className="mt-0.5 line-clamp-2 font-semibold">{ev.title}</div>
                         {ev.classroomName && (
@@ -232,7 +232,7 @@ export function MonthlyGridView({
                           style.pillClass,
                         )}
                       >
-                        {ev.startTime} {ev.title}
+                        {formatTimeAr(ev.startTime)} {ev.title}
                       </button>
                     );
                   })}

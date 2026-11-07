@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge, Button, DatePicker, Modal } from '@/design-system';
 import { apiClient } from '@/lib/api-client';
-import { formatDateAr, getTodayIsoDate } from '@/lib/formatters';
+import { formatDateAr, formatTimeRangeAr, getTodayIsoDate } from '@/lib/formatters';
 import { ClassroomRow, ClassroomScheduleData } from './classrooms.types';
 
 function addDaysIso(isoDate: string, days: number): string {
@@ -92,8 +92,8 @@ export function ClassroomScheduleModal({
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
                         المدرس: {s.teacherName} • الوقت:{' '}
-                        <span dir="ltr">
-                          {s.startTime} - {s.endTime}
+                        <span>
+                          {formatTimeRangeAr(s.startTime, s.endTime)}
                         </span>
                       </p>
                     </div>
@@ -116,8 +116,8 @@ export function ClassroomScheduleModal({
                         <span className="font-bold">{b.title}</span>
                         <Badge variant="purple">{formatDateAr(b.bookingDate)}</Badge>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground" dir="ltr">
-                        {b.startTime} - {b.endTime}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatTimeRangeAr(b.startTime, b.endTime)}
                       </p>
                     </div>
                   ))}

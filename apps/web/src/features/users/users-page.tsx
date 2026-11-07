@@ -19,7 +19,7 @@ import {
 } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { formatDateAr } from '@/lib/formatters';
+import { formatDateAr, formatDateTimeAr } from '@/lib/formatters';
 import { RolesPermissionsTab } from './roles-permissions-tab';
 
 interface UserRow {
@@ -135,7 +135,8 @@ export function UsersPage() {
     {
       key: 'lastLogin',
       header: 'آخر دخول',
-      render: (row) => formatDateAr(row.lastLoginAt),
+      render: (row) =>
+        row.lastLoginAt ? formatDateTimeAr(row.lastLoginAt) : 'لم يسجل دخول بعد',
     },
     {
       key: 'actions',
