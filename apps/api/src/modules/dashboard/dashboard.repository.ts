@@ -37,6 +37,8 @@ export class DashboardRepository {
       [groupStats],
       todaySessionsRows,
       [todayAttRow],
+      [monthlySessionsRow],
+      [studentSessionsRow],
       [studentFinRow],
       [paymentsRow],
       [teacherFinRow],
@@ -97,6 +99,40 @@ export class DashboardRepository {
         .from(attendance)
         .innerJoin(sessions, eq(attendance.sessionId, sessions.id))
         .where(eq(sessions.sessionDate, todayDate)),
+      this.db
+        .select({
+          totalSessions: sql<number>`COUNT(*)::int`,
+          executedSessions: sql<number>`COUNT(*) FILTER (WHERE ${sessions.status} = 'COMPLETED' OR (${sessions.sessionDate} <= ${todayDate} AND ${sessions.status} != 'CANCELLED'))::int`,
+          scheduledSessions: sql<number>`COUNT(*) FILTER (WHERE ${sessions.status} = 'SCHEDULED' AND ${sessions.sessionDate} > ${todayDate})::int`,
+        })
+        .from(sessions)
+        .where(eq(sessions.yearMonth, yearMonth)),
+      this.db
+        .select({
+          totalBillableSessions: sql<number>`COALESCE(SUM(${studentMonthlyRecords.presentCount} + ${studentMonthlyRecords.makeupAttendedCount}), 0)::int`,
+          totalPaidSessions: sql<number>`COALESCE(SUM(
+            CASE 
+              WHEN ${studentMonthlyRecords.sessionPriceSnapshot} > 0 
+              THEN LEAST(
+                ${studentMonthlyRecords.presentCount} + ${studentMonthlyRecords.makeupAttendedCount}, 
+                FLOOR(${studentMonthlyRecords.totalPaid} / ${studentMonthlyRecords.sessionPriceSnapshot})::int
+              )
+              ELSE (${studentMonthlyRecords.presentCount} + ${studentMonthlyRecords.makeupAttendedCount})
+            END
+          ), 0)::int`,
+          totalUnpaidSessions: sql<number>`COALESCE(SUM(
+            CASE 
+              WHEN ${studentMonthlyRecords.sessionPriceSnapshot} > 0 
+              THEN GREATEST(
+                0, 
+                (${studentMonthlyRecords.presentCount} + ${studentMonthlyRecords.makeupAttendedCount}) - FLOOR(${studentMonthlyRecords.totalPaid} / ${studentMonthlyRecords.sessionPriceSnapshot})::int
+              )
+              ELSE 0
+            END
+          ), 0)::int`,
+        })
+        .from(studentMonthlyRecords)
+        .where(eq(studentMonthlyRecords.yearMonth, yearMonth)),
       this.db
         .select({
           totalRevenue: sql<string>`COALESCE(SUM(${studentMonthlyRecords.totalDue}), 0)::text`,
@@ -175,6 +211,14 @@ export class DashboardRepository {
       (totalRevenue - totalTeacherDues - totalAssistantDues - totalExpenses).toFixed(2),
     );
 
+    const totalBillableSessions = Number(studentSessionsRow?.totalBillableSessions ?? 0);
+    const totalPaidSessions = Number(studentSessionsRow?.totalPaidSessions ?? 0);
+    const totalUnpaidSessions = Number(studentSessionsRow?.totalUnpaidSessions ?? 0);
+    const collectionRateSessions =
+      totalBillableSessions > 0
+        ? Math.min(100, Math.round((totalPaidSessions / totalBillableSessions) * 100))
+        : 0;
+
     return {
       yearMonth,
       todayDate,
@@ -190,6 +234,15 @@ export class DashboardRepository {
         absent: Number(todayAttRow?.absent ?? 0),
         excused: Number(todayAttRow?.excused ?? 0),
         makeup: Number(todayAttRow?.makeup ?? 0),
+      },
+      monthlySessionsStats: {
+        totalSessions: Number(monthlySessionsRow?.totalSessions ?? 0),
+        executedSessions: Number(monthlySessionsRow?.executedSessions ?? 0),
+        scheduledSessions: Number(monthlySessionsRow?.scheduledSessions ?? 0),
+        totalBillableSessions,
+        totalPaidSessions,
+        totalUnpaidSessions,
+        collectionRateSessions,
       },
       totalRevenue,
       totalCollectedPayments,

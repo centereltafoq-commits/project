@@ -48,6 +48,16 @@ export interface DashboardClassroomsSummary {
   maintenance: number;
 }
 
+export interface DashboardMonthlySessionsStats {
+  totalSessions: number;
+  executedSessions: number;
+  scheduledSessions: number;
+  totalBillableSessions: number;
+  totalPaidSessions: number;
+  totalUnpaidSessions: number;
+  collectionRateSessions: number;
+}
+
 export interface DashboardSummaryResponse {
   yearMonth: string;
   todayDate: string;
@@ -59,6 +69,7 @@ export interface DashboardSummaryResponse {
   todaySessionsCount: number;
   todaySessions: DashboardTodaySessionItem[];
   todayAttendance: DashboardTodayAttendance;
+  monthlySessionsStats: DashboardMonthlySessionsStats;
   totalRevenue: number;
   totalCollectedPayments: number;
   totalReceivables: number;

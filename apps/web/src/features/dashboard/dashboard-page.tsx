@@ -21,6 +21,7 @@ import { formatYearMonthAr, getCurrentYearMonth } from '@/lib/formatters';
 import { DashboardAcademicTab } from './components/dashboard-academic-tab';
 import { DashboardFinanceTab } from './components/dashboard-finance-tab';
 import { DashboardHeroKpis } from './components/dashboard-hero-kpis';
+import { DashboardMonthlySessionsCard } from './components/dashboard-monthly-sessions-card';
 import { DashboardOperationsTab } from './components/dashboard-operations-tab';
 import { DashboardSummaryData } from './dashboard.types';
 
@@ -102,7 +103,10 @@ export function DashboardPage() {
           {/* 1. الشريط العلوي الثابت لأهم 4 أرقام حيوية */}
           <DashboardHeroKpis data={data} />
 
-          {/* 2. التبويبات التنفيذية المنظمة */}
+          {/* 2. مؤشرات حركة الحصص والتحصيل الشهري (المنفذة، المستحقة، المسددة، والمتأخرات) */}
+          <DashboardMonthlySessionsCard data={data} />
+
+          {/* 3. التبويبات التنفيذية المنظمة */}
           <Tabs defaultValue="operations" className="space-y-5">
             <TabsList className="grid w-full grid-cols-3 sm:w-auto">
               <TabsTrigger value="operations" className="gap-2 font-bold">

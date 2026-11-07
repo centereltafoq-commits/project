@@ -34,6 +34,16 @@ export interface DashboardClassroomLive {
   occupantTitle: string | null;
 }
 
+export interface DashboardMonthlySessionsStats {
+  totalSessions: number;
+  executedSessions: number;
+  scheduledSessions: number;
+  totalBillableSessions: number;
+  totalPaidSessions: number;
+  totalUnpaidSessions: number;
+  collectionRateSessions: number;
+}
+
 export interface DashboardSummaryData {
   yearMonth: string;
   todayDate: string;
@@ -50,6 +60,7 @@ export interface DashboardSummaryData {
     excused: number;
     makeup: number;
   };
+  monthlySessionsStats: DashboardMonthlySessionsStats;
   totalRevenue: number;
   totalCollectedPayments: number;
   totalReceivables: number;

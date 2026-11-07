@@ -80,7 +80,10 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
               </p>
               <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
                 <CheckCircle2 className="h-3 w-3" />
-                <span>تم تحصيل {collectionRate}% من المستهدف</span>
+                <span>
+                  تم تحصيل {collectionRate}% (
+                  {data.monthlySessionsStats?.totalPaidSessions ?? 0} حصة مسددة)
+                </span>
               </div>
             </div>
 
@@ -92,7 +95,8 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
                 {formatCurrency(data.totalReceivables)}
               </p>
               <span className="mt-1 text-[11px] text-amber-700 dark:text-amber-300 block">
-                مبالغ لم تسدد بعد من فواتير الطلاب
+                مبالغ لم تسدد بعد ({data.monthlySessionsStats?.totalUnpaidSessions ?? 0} حصة
+                متأخرة)
               </span>
             </div>
 
