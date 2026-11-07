@@ -5,6 +5,8 @@ import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS, SessionStatus } from '
 import {
   Badge,
   Button,
+  DatePicker,
+  MonthPicker,
   Select,
   ServerDataTable,
   TableColumn,
@@ -188,25 +190,23 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
         }}
         filters={
           <>
-            <input
-              type="date"
+            <DatePicker
+              placeholder="تصفية بيوم محدد"
               value={sessionDate}
-              onChange={(e) => {
-                setSessionDate(e.target.value);
+              onChange={(d) => {
+                setSessionDate(d);
                 setPage(1);
               }}
-              title="تصفية بيوم محدد"
-              className="h-10 rounded-lg border border-input bg-card px-3 text-sm text-foreground"
+              className="w-44"
             />
-            <input
-              type="month"
+            <MonthPicker
               value={yearMonth}
               disabled={Boolean(sessionDate)}
-              onChange={(e) => {
-                setYearMonth(e.target.value);
+              onChange={(m) => {
+                setYearMonth(m);
                 setPage(1);
               }}
-              className="h-10 rounded-lg border border-input bg-card px-3 text-sm text-foreground disabled:opacity-50"
+              className="w-44"
             />
             <Select
               placeholder="كل المجموعات"

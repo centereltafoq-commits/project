@@ -1,5 +1,5 @@
 import { RotateCcw } from 'lucide-react';
-import { Button, Card, Select } from '@/design-system';
+import { Button, Card, MonthPicker, Select } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { formatDateAr, formatYearMonthAr } from '@/lib/formatters';
 import {
@@ -98,18 +98,11 @@ export function ReportsToolbar({
       <Card className="p-4 no-print">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
-            <label htmlFor="rep-month" className="block text-xs font-bold text-muted-foreground">
-              الشهر المالي
-            </label>
-            <input
-              id="rep-month"
-              type="month"
+            <MonthPicker
+              label="الشهر المالي"
               value={yearMonth}
               disabled={!activeDefinition.usesMonth}
-              onChange={(e) => {
-                if (e.target.value) onYearMonthChange(e.target.value);
-              }}
-              className="flex h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              onChange={onYearMonthChange}
             />
           </div>
 

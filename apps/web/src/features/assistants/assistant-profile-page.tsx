@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   Input,
+  MonthPicker,
   PageHeader,
   StatCard,
   Tabs,
@@ -66,11 +67,9 @@ export function AssistantProfilePage() {
         description={`الكود: ${assistant.assistantCode} • ${ASSISTANT_CALC_METHOD_LABELS[assistant.calculationMethod]}`}
         actions={
           <>
-            <Input
-              type="month"
+            <MonthPicker
               value={yearMonth}
-              onChange={(e) => e.target.value && setYearMonth(e.target.value)}
-              className="w-44"
+              onChange={setYearMonth}
             />
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Edit3 className="h-4 w-4" />

@@ -14,6 +14,7 @@ import {
 import {
   Badge,
   Button,
+  MonthPicker,
   PageHeader,
   StatCard,
   Tabs,
@@ -98,15 +99,10 @@ export function FinancePage() {
         description="احتساب الحضور الفعلي للطلاب، الإيصالات، نسب المدرسين والمساعدين، المصروفات، والإغلاق الشهري"
         actions={
           <div className="flex flex-wrap items-center gap-2 no-print">
-            <div className="flex items-center gap-2 rounded-lg border border-input bg-card px-3 h-10">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              <input
-                type="month"
+            <div className="flex items-center gap-2">
+              <MonthPicker
                 value={yearMonth}
-                onChange={(e) => {
-                  if (e.target.value) setYearMonth(e.target.value);
-                }}
-                className="bg-transparent text-sm font-bold text-foreground focus:outline-none"
+                onChange={setYearMonth}
               />
               {summary?.isMonthClosed && (
                 <Badge variant="purple">

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, RefreshCw } from 'lucide-react';
-import { Button, Card, PageHeader } from '@/design-system';
+import { Button, Card, MonthPicker, PageHeader } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatYearMonthAr, getCurrentYearMonth } from '@/lib/formatters';
 import { DashboardKpiGrids } from './components/dashboard-kpi-grids';
@@ -30,21 +30,11 @@ export function DashboardPage() {
         description={`نظرة شاملة ومباشرة على الأداء الأكاديمي والمالي والتشغيلي للسنتر — ${formatYearMonthAr(yearMonth)}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 rounded-lg border border-input bg-card px-3 py-1.5">
-              <Calendar className="h-4 w-4 text-primary" />
-              <label htmlFor="dashboard-month" className="text-xs font-bold text-muted-foreground">
-                الشهر المالي:
-              </label>
-              <input
-                id="dashboard-month"
-                type="month"
-                value={yearMonth}
-                onChange={(e) => {
-                  if (e.target.value) setYearMonth(e.target.value);
-                }}
-                className="bg-transparent text-sm font-bold text-foreground focus:outline-none"
-              />
-            </div>
+            <MonthPicker
+              label="الشهر المالي:"
+              value={yearMonth}
+              onChange={setYearMonth}
+            />
 
             {yearMonth !== getCurrentYearMonth() && (
               <Button
