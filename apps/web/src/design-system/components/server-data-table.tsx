@@ -86,7 +86,7 @@ export function ServerDataTable<T>({
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-right text-sm">
+        <table className="w-full min-w-full border-collapse text-right text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-xs font-bold text-muted-foreground">
               {columns.map((col) => (
@@ -101,7 +101,7 @@ export function ServerDataTable<T>({
               Array.from({ length: 6 }).map((_, idx) => (
                 <tr key={idx} className="animate-pulse">
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3.5">
+                    <td key={col.key} className="px-4 py-3.5 whitespace-nowrap">
                       <div className="h-4 w-3/4 rounded bg-muted" />
                     </td>
                   ))}
@@ -130,7 +130,7 @@ export function ServerDataTable<T>({
                   )}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className={cn('px-4 py-3 align-middle', col.className)}>
+                    <td key={col.key} className={cn('px-4 py-3 align-middle whitespace-nowrap', col.className)}>
                       {col.render(row, idx)}
                     </td>
                   ))}

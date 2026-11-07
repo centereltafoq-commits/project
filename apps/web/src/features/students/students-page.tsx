@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Edit3, Eye, GraduationCap, Plus } from 'lucide-react';
+import { Edit3, Eye, GraduationCap, Plus, RotateCcw } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import {
   Badge,
@@ -60,45 +60,73 @@ export function StudentsPage() {
     {
       key: 'studentCode',
       header: 'كود الطالب',
+      className: 'whitespace-nowrap font-mono',
       render: (row) => (
-        <span className="font-mono text-xs font-bold text-primary">{row.studentCode}</span>
+        <span className="inline-block rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+          {row.studentCode}
+        </span>
       ),
     },
     {
       key: 'fullName',
       header: 'الاسم الكامل',
-      render: (row) => <span className="font-bold text-foreground">{row.fullName}</span>,
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <span className="font-bold text-foreground hover:text-primary transition-colors">
+          {row.fullName}
+        </span>
+      ),
     },
     {
       key: 'gradeLevel',
       header: 'الصف الدراسي',
+      className: 'whitespace-nowrap',
       render: (row) => <Badge variant="info">{row.gradeLevel}</Badge>,
     },
     {
       key: 'phone',
       header: 'هاتف الطالب',
-      render: (row) => <span dir="ltr">{row.phone}</span>,
+      className: 'whitespace-nowrap font-mono',
+      render: (row) => (
+        <span dir="ltr" className="font-mono text-xs font-semibold text-foreground">
+          {row.phone || '—'}
+        </span>
+      ),
     },
     {
       key: 'guardianPhone',
       header: 'هاتف ولي الأمر',
-      render: (row) => <span dir="ltr">{row.guardianPhone}</span>,
+      className: 'whitespace-nowrap font-mono',
+      render: (row) => (
+        <span dir="ltr" className="font-mono text-xs text-muted-foreground">
+          {row.guardianPhone || '—'}
+        </span>
+      ),
     },
     {
       key: 'activeGroupsCount',
       header: 'المجموعات النشطة',
+      className: 'whitespace-nowrap',
       render: (row) => (
-        <Badge variant="purple">{row.activeGroupsCount ?? 0} مجموعة</Badge>
+        <Badge variant={row.activeGroupsCount && row.activeGroupsCount > 0 ? 'purple' : 'neutral'}>
+          {row.activeGroupsCount ?? 0} مجموعة
+        </Badge>
       ),
     },
     {
       key: 'registrationDate',
       header: 'تاريخ التسجيل',
-      render: (row) => formatDateAr(row.registrationDate),
+      className: 'whitespace-nowrap text-xs text-muted-foreground',
+      render: (row) => (
+        <span className="text-xs text-muted-foreground font-medium">
+          {formatDateAr(row.registrationDate)}
+        </span>
+      ),
     },
     {
       key: 'status',
       header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) => {
         const meta = STUDENT_STATUS_META[row.status] ?? {
           label: row.status,
@@ -110,22 +138,25 @@ export function StudentsPage() {
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
         <div
-          className="flex items-center gap-1.5"
+          className="flex items-center justify-end gap-1.5"
           onClick={(e) => e.stopPropagation()}
         >
           <Button
             size="sm"
             variant="outline"
+            className="h-8 gap-1.5 px-3 text-xs font-bold"
             onClick={() => navigate(`/students/${row.id}`)}
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-3.5 w-3.5 text-primary" />
             الملف الدائم
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => {
               setEditingStudent(row);
               setModalOpen(true);
@@ -188,7 +219,7 @@ export function StudentsPage() {
           setPage(1);
         }}
         filters={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               placeholder="كل الصفوف الدراسية"
               value={gradeFilter}
@@ -209,7 +240,23 @@ export function StudentsPage() {
               options={STUDENT_STATUS_OPTIONS}
               className="w-40"
             />
-          </>
+            {(gradeFilter || statusFilter || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setGradeFilter('');
+                  setStatusFilter('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 
