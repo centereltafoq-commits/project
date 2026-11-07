@@ -222,6 +222,9 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث باسم الطالب أو الكود..."
               placeholder="كل الطلاب"
               value={studentFilter}
               onChange={(e) => {
@@ -232,7 +235,7 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
                 value: s.id,
                 label: `${s.fullName} (${s.studentCode})`,
               }))}
-              className="w-48"
+              className="w-52"
             />
             <Select
               placeholder="كل الحالات"

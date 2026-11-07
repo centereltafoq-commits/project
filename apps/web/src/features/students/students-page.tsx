@@ -200,6 +200,9 @@ export function StudentsPage() {
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث في الصفوف..."
               placeholder="كل الصفوف الدراسية"
               value={gradeFilter}
               onChange={(e) => {
@@ -207,7 +210,7 @@ export function StudentsPage() {
                 setPage(1);
               }}
               options={gradeOptions}
-              className="w-44"
+              className="w-48"
             />
             <Select
               placeholder="كل الحالات"

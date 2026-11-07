@@ -121,6 +121,8 @@ export function GroupScheduleAssistantsEditor({
           <div key={idx} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-4">
             <Select
               label="المساعد"
+              searchable
+              searchPlaceholder="ابحث باسم المساعد..."
               value={lnk.assistantId}
               onChange={(e) =>
                 onAssistantLinksChange(

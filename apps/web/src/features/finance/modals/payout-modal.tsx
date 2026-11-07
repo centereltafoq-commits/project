@@ -124,6 +124,8 @@ export function PayoutModal({
           <Select
             label={isTeacher ? 'المدرس' : 'المساعد'}
             required
+            searchable
+            searchPlaceholder={isTeacher ? 'ابحث باسم المدرس أو الكود...' : 'ابحث باسم المساعد أو الكود...'}
             placeholder={isTeacher ? 'اختر المدرس...' : 'اختر المساعد...'}
             value={targetId}
             onChange={(e) => setTargetId(e.target.value)}

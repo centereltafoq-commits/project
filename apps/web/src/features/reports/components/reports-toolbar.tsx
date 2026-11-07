@@ -109,6 +109,9 @@ export function ReportsToolbar({
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-muted-foreground">المجموعة</label>
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث باسم أو كود المجموعة..."
               placeholder="كل المجموعات"
               value={groupId}
               disabled={!activeDefinition.usesGroup}
@@ -125,6 +128,9 @@ export function ReportsToolbar({
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-muted-foreground">المدرس</label>
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث باسم المدرس..."
               placeholder="كل المدرسين"
               value={teacherId}
               disabled={!activeDefinition.usesTeacher}
@@ -141,6 +147,9 @@ export function ReportsToolbar({
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-muted-foreground">الطالب</label>
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث باسم أو كود الطالب..."
               placeholder="كل الطلاب"
               value={studentId}
               disabled={!activeDefinition.usesStudent}

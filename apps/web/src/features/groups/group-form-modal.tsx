@@ -181,10 +181,12 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Input label="اسم المجموعة" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="المادة الدراسية" required value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-          <Select label="الصف الدراسي" value={form.gradeLevel} onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })} options={gradeOptions} />
+          <Select label="الصف الدراسي" searchable searchPlaceholder="ابحث في المراحل..." value={form.gradeLevel} onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })} options={gradeOptions} />
           <Select
             label="المدرس الأساسي"
             required
+            searchable
+            searchPlaceholder="ابحث باسم المدرس..."
             placeholder="اختر المدرس"
             value={form.primaryTeacherId}
             onChange={(e) => setForm({ ...form, primaryTeacherId: e.target.value })}
@@ -192,6 +194,8 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
           />
           <Select
             label="القاعة الافتراضية"
+            searchable
+            searchPlaceholder="ابحث باسم أو رقم القاعة..."
             placeholder="بدون قاعة افتراضية"
             value={form.defaultClassroomId}
             onChange={(e) => setForm({ ...form, defaultClassroomId: e.target.value })}

@@ -96,11 +96,14 @@ export function BookingsFilters({
         className="w-36"
       />
       <Select
+        searchable
+        clearable
+        searchPlaceholder="ابحث باسم المدرس..."
         placeholder="كل المدرسين"
         value={teacherFilter}
         onChange={(e) => onTeacherChange(e.target.value)}
         options={(lookups?.teachers ?? []).map((t) => ({ value: t.id, label: t.fullName }))}
-        className="w-44"
+        className="w-48"
       />
       <DatePicker
         placeholder="من تاريخ"

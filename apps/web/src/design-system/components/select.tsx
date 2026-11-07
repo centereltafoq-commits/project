@@ -1,10 +1,13 @@
 import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { Combobox } from './combobox';
 
 export interface SelectOption {
   value: string;
   label: string;
+  sublabel?: string;
+  disabled?: boolean;
 }
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -13,12 +16,64 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   options: SelectOption[];
   placeholder?: string;
   containerClassName?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  emptyText?: string;
+  clearable?: boolean;
 }
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, containerClassName, label, error, options, placeholder, id, ...props }, ref) => {
+  (
+    {
+      className,
+      containerClassName,
+      label,
+      error,
+      options,
+      placeholder,
+      id,
+      searchable = false,
+      searchPlaceholder,
+      emptyText,
+      clearable,
+      ...props
+    },
+    ref,
+  ) => {
     const generatedId = React.useId();
     const selectId = id || generatedId;
+
+    if (searchable) {
+      const stringValue = props.value !== undefined ? String(props.value) : undefined;
+      return (
+        <Combobox
+          id={selectId}
+          label={label}
+          error={error}
+          options={options}
+          value={stringValue}
+          placeholder={placeholder}
+          searchPlaceholder={searchPlaceholder}
+          emptyText={emptyText}
+          clearable={clearable}
+          disabled={props.disabled}
+          required={props.required}
+          className={className}
+          containerClassName={containerClassName}
+          name={props.name}
+          onChange={(val) => {
+            if (props.onChange) {
+              const syntheticEvent = {
+                target: { value: val, name: props.name || '' },
+                currentTarget: { value: val, name: props.name || '' },
+              } as React.ChangeEvent<HTMLSelectElement>;
+              props.onChange(syntheticEvent);
+            }
+          }}
+        />
+      );
+    }
+
     return (
       <div className={cn('relative space-y-1.5', containerClassName)}>
         {label && (
@@ -39,7 +94,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           >
             {placeholder && <option value="">{placeholder}</option>}
             {options.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
                 {opt.label}
               </option>
             ))}
@@ -52,4 +107,3 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   },
 );
 Select.displayName = 'Select';
-

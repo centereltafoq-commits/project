@@ -126,6 +126,8 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
           <Select
             label="الصف الدراسي"
             required
+            searchable
+            searchPlaceholder="ابحث في المراحل والصفوف..."
             value={form.gradeLevel}
             onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
             options={gradeOptions}

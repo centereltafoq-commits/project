@@ -77,6 +77,8 @@ export function CreateSessionModal({
         <Select
           label="المجموعة الدراسية"
           required
+          searchable
+          searchPlaceholder="ابحث باسم المجموعة أو الكود..."
           placeholder="اختر المجموعة..."
           value={form.groupId}
           onChange={(e) => handleGroupChange(e.target.value)}
@@ -89,6 +91,8 @@ export function CreateSessionModal({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Select
             label="المدرس"
+            searchable
+            searchPlaceholder="ابحث باسم المدرس..."
             placeholder="مدرس المجموعة الأساسي"
             value={form.teacherId}
             onChange={(e) => setForm({ ...form, teacherId: e.target.value })}
@@ -99,6 +103,8 @@ export function CreateSessionModal({
           />
           <Select
             label="القاعة الدراسية"
+            searchable
+            searchPlaceholder="ابحث باسم أو رقم القاعة..."
             placeholder="اختر القاعة (اختياري)"
             value={form.classroomId}
             onChange={(e) => setForm({ ...form, classroomId: e.target.value })}
@@ -205,6 +211,8 @@ export function GenerateMonthModal({
         <Select
           label="المجموعة الدراسية"
           required
+          searchable
+          searchPlaceholder="ابحث باسم المجموعة أو الكود..."
           placeholder="اختر المجموعة..."
           value={groupId}
           onChange={(e) => setGroupId(e.target.value)}

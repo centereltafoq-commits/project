@@ -180,6 +180,9 @@ export function ApproveBookingModal({ booking, onClose }: ApproveBookingModalPro
 
             {isAdminApprover ? (
               <Select
+                searchable
+                clearable
+                searchPlaceholder="ابحث باسم أو رقم القاعة..."
                 placeholder="بدون تخصيص قاعة / اختر قاعة متاحة..."
                 value={assignedClassroomId}
                 onChange={(e) => setAssignedClassroomId(e.target.value)}

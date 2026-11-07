@@ -207,6 +207,9 @@ export function StudentBillingTab({
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث في المجموعات..."
               placeholder="كل المجموعات الدراسية"
               value={groupId}
               onChange={(e) => {
@@ -217,7 +220,7 @@ export function StudentBillingTab({
                 value: g.id,
                 label: `${g.name} (${g.code})`,
               }))}
-              className="w-48"
+              className="w-52"
             />
             <Button
               size="sm"

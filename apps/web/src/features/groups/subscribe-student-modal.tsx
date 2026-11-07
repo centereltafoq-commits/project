@@ -22,8 +22,6 @@ export function SubscribeStudentModal({
   const queryClient = useQueryClient();
   const { notify } = useToast();
 
-  const [studentSearch, setStudentSearch] = React.useState('');
-  const debouncedStudentSearch = useDebounce(studentSearch, 250);
   const [studentId, setStudentId] = React.useState('');
   const [startDate, setStartDate] = React.useState(getTodayIsoDate());
   const [agreedMonthlyPrice, setAgreedMonthlyPrice] = React.useState(String(group.monthlyPrice));
@@ -43,15 +41,14 @@ export function SubscribeStudentModal({
   }, [open, group]);
 
   const { data: studentsList } = useQuery<PaginatedResult<StudentRow>>({
-    queryKey: ['students-picker', debouncedStudentSearch],
+    queryKey: ['students-picker'],
     enabled: open,
     queryFn: async () =>
       (
         await apiClient.get('/students', {
           params: {
-            limit: 50,
+            limit: 250,
             status: 'ACTIVE',
-            search: debouncedStudentSearch || undefined,
           },
         })
       ).data,
@@ -97,21 +94,17 @@ export function SubscribeStudentModal({
         }}
         className="space-y-4"
       >
-        <Input
-          label="ابحث عن الطالب بالاسم أو الكود أو الهاتف"
-          placeholder="اكتب اسم الطالب لتصفية القائمة..."
-          value={studentSearch}
-          onChange={(e) => setStudentSearch(e.target.value)}
-        />
         <Select
-          label="اختر الطالب"
+          label="الطالب"
           required
-          placeholder="اختر الطالب من القائمة"
+          searchable
+          searchPlaceholder="ابحث باسم الطالب أو الكود..."
+          placeholder="اختر الطالب المراد تسجيله في المجموعة..."
           value={studentId}
           onChange={(e) => setStudentId(e.target.value)}
           options={(studentsList?.data ?? []).map((s) => ({
             value: s.id,
-            label: `${s.fullName} (${s.studentCode}) - ${s.gradeLevel}`,
+            label: `${s.fullName} (${s.studentCode}) — ${s.gradeLevel}`,
           }))}
         />
 

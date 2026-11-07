@@ -163,6 +163,9 @@ export function CalendarPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث باسم المدرس..."
               placeholder="كل المدرسين"
               value={teacherId}
               onChange={(e) => setTeacherId(e.target.value)}
@@ -170,9 +173,12 @@ export function CalendarPage() {
                 value: t.id,
                 label: t.fullName,
               }))}
-              className="w-44"
+              className="w-48"
             />
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث باسم أو رقم القاعة..."
               placeholder="كل القاعات"
               value={classroomId}
               onChange={(e) => setClassroomId(e.target.value)}
@@ -180,7 +186,7 @@ export function CalendarPage() {
                 value: c.id,
                 label: `${c.name} (${c.roomNumber})`,
               }))}
-              className="w-44"
+              className="w-48"
             />
           </div>
         </div>

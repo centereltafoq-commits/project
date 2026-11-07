@@ -221,6 +221,9 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
               className="w-44"
             />
             <Select
+              searchable
+              clearable
+              searchPlaceholder="ابحث في المجموعات..."
               placeholder="كل المجموعات"
               value={groupId}
               onChange={(e) => {
@@ -231,7 +234,7 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
                 value: g.id,
                 label: `${g.name} (${g.groupCode})`,
               }))}
-              className="w-48"
+              className="w-52"
             />
             <Select
               placeholder="كل الحالات"

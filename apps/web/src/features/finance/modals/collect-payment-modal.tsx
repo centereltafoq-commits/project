@@ -124,6 +124,8 @@ export function CollectPaymentModal({
             <Select
               label="الطالب"
               required
+              searchable
+              searchPlaceholder="ابحث باسم الطالب أو كود الطالب..."
               placeholder="اختر الطالب..."
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
@@ -134,6 +136,8 @@ export function CollectPaymentModal({
             />
             <Select
               label="تخصيص لمجموعة محددة (اختياري)"
+              searchable
+              searchPlaceholder="ابحث باسم المجموعة أو الكود..."
               placeholder="توزيع تلقائي على مستحقات الطالب غير المسددة"
               value={groupId}
               onChange={(e) => setGroupId(e.target.value)}

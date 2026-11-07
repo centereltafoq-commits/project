@@ -128,6 +128,8 @@ export function MakeupModal({
             <Select
               label="الطالب"
               required
+              searchable
+              searchPlaceholder="ابحث باسم الطالب أو الكود..."
               placeholder="اختر الطالب..."
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
@@ -139,6 +141,8 @@ export function MakeupModal({
             <Select
               label="الحصة الأصلية التي غاب عنها الطالب"
               required
+              searchable
+              searchPlaceholder="ابحث بالمجموعة أو التاريخ..."
               placeholder="اختر الحصة الأصلية..."
               value={originalSessionId}
               onChange={(e) => {
@@ -173,6 +177,8 @@ export function MakeupModal({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Select
             label="القاعة الدراسية"
+            searchable
+            searchPlaceholder="ابحث باسم أو رقم القاعة..."
             placeholder="اختر القاعة (اختياري)"
             value={classroomId}
             onChange={(e) => setClassroomId(e.target.value)}

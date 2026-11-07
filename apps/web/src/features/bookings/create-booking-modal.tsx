@@ -124,6 +124,8 @@ export function CreateBookingModal({ open, onOpenChange, lookups }: CreateBookin
           <Select
             label="المدرس"
             required
+            searchable
+            searchPlaceholder="ابحث باسم المدرس أو التخصص..."
             placeholder="اختر المدرس..."
             value={teacherId}
             onChange={(e) => setTeacherId(e.target.value)}
@@ -136,6 +138,8 @@ export function CreateBookingModal({ open, onOpenChange, lookups }: CreateBookin
             <Select
               label="الطالب"
               required
+              searchable
+              searchPlaceholder="ابحث باسم الطالب أو الكود..."
               placeholder="اختر الطالب..."
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
