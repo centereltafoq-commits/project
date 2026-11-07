@@ -5,6 +5,7 @@ import {
   Calendar,
   CalendarCheck2,
   ClipboardCheck,
+  Database,
   GraduationCap,
   LayoutDashboard,
   ScrollText,
@@ -37,5 +38,6 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
   { label: 'التقارير التفصيلية', to: '/reports', icon: BarChart3, permission: PERMISSIONS.REPORTS_VIEW },
   { label: 'المستخدمون والصلاحيات', to: '/users', icon: ShieldCheck, permission: PERMISSIONS.USERS_VIEW },
   { label: 'سجل العمليات (Audit)', to: '/audit-logs', icon: ScrollText, permission: PERMISSIONS.AUDIT_VIEW },
+  { label: 'النسخ الاحتياطي والأمان', to: '/backups', icon: Database, permission: PERMISSIONS.USERS_VIEW },
 ];
 

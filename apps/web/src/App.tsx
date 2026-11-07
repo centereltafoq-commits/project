@@ -62,6 +62,9 @@ const UsersPage = React.lazy(() =>
 const AuditLogsPage = React.lazy(() =>
   import('@/features/audit-logs/audit-logs-page').then((m) => ({ default: m.AuditLogsPage })),
 );
+const BackupsPage = React.lazy(() =>
+  import('@/features/backups/backups-page').then((m) => ({ default: m.BackupsPage })),
+);
 
 function PageLoader() {
   return (
@@ -110,6 +113,7 @@ export function App() {
               <Route path="reports" element={<ReportsPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="audit-logs" element={<AuditLogsPage />} />
+              <Route path="backups" element={<BackupsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
