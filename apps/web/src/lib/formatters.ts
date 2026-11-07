@@ -25,8 +25,8 @@ export const ARABIC_DAYS = [
 
 export function formatCurrency(value: number | string | null | undefined): string {
   const num = Number(value ?? 0);
-  if (Number.isNaN(num)) return '0.00 ج.م';
-  return `${num.toLocaleString('ar-EG', {
+  if (Number.isNaN(num)) return '0 ج.م';
+  return `${num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })} ج.م`;

@@ -9,6 +9,7 @@ export interface TableColumn<T> {
   key: string;
   header: string;
   className?: string;
+  headerClassName?: string;
   render: (row: T, index: number) => React.ReactNode;
 }
 
@@ -26,6 +27,7 @@ interface ServerDataTableProps<T> {
   limit?: number;
   onLimitChange?: (limit: number) => void;
   filters?: React.ReactNode;
+  actions?: React.ReactNode;
   emptyTitle?: string;
   emptyDescription?: string;
   onRowClick?: (row: T) => void;
@@ -45,6 +47,7 @@ export function ServerDataTable<T>({
   limit = DEFAULT_PAGE_SIZE,
   onLimitChange,
   filters,
+  actions,
   emptyTitle = 'لا توجد بيانات مطابقة',
   emptyDescription = 'جرّب تعديل كلمات البحث أو الفلاتر أو أضف سجلاً جديداً.',
   onRowClick,
@@ -58,39 +61,48 @@ export function ServerDataTable<T>({
 
   return (
     <Card className="overflow-hidden">
-      {(onSearchChange || filters) && (
-        <div className="flex flex-col gap-3 border-b border-border bg-muted/30 p-4 md:flex-row md:items-center md:justify-between no-print">
-          {onSearchChange && (
-            <div className="relative w-full md:max-w-sm">
-              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchValue ?? ''}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={searchPlaceholder}
-                className="h-10 w-full rounded-lg border border-input bg-card pr-9 pl-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              {searchValue && (
-                <button
-                  type="button"
-                  onClick={() => onSearchChange('')}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-          )}
-          {filters && <div className="flex flex-wrap items-center gap-2">{filters}</div>}
+      {(onSearchChange || filters || actions) && (
+        <div className="flex flex-col gap-3 border-b border-border bg-muted/20 p-3.5 lg:flex-row lg:items-center lg:justify-between no-print">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            {onSearchChange && (
+              <div className="relative w-full sm:w-72 md:w-80">
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchValue ?? ''}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="h-9 w-full rounded-lg border border-input bg-card pr-9 pl-8 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                {searchValue && (
+                  <button
+                    type="button"
+                    onClick={() => onSearchChange('')}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+            {filters}
+          </div>
+          {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-full border-collapse text-right text-sm">
+        <table className="w-full min-w-full border-collapse text-right text-xs">
           <thead>
-            <tr className="border-b border-border bg-muted/50 text-xs font-bold text-muted-foreground">
+            <tr className="border-b border-border bg-muted/40 text-xs font-bold text-muted-foreground">
               {columns.map((col) => (
-                <th key={col.key} className={cn('px-4 py-3.5 whitespace-nowrap', col.className)}>
+                <th
+                  key={col.key}
+                  className={cn(
+                    'px-3.5 py-3 text-right text-xs font-bold text-muted-foreground whitespace-nowrap',
+                    col.headerClassName,
+                  )}
+                >
                   {col.header}
                 </th>
               ))}
@@ -101,7 +113,7 @@ export function ServerDataTable<T>({
               Array.from({ length: 6 }).map((_, idx) => (
                 <tr key={idx} className="animate-pulse">
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3.5 whitespace-nowrap">
+                    <td key={col.key} className="px-3.5 py-3 whitespace-nowrap">
                       <div className="h-4 w-3/4 rounded bg-muted" />
                     </td>
                   ))}
@@ -130,7 +142,13 @@ export function ServerDataTable<T>({
                   )}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className={cn('px-4 py-3 align-middle whitespace-nowrap', col.className)}>
+                    <td
+                      key={col.key}
+                      className={cn(
+                        'px-3.5 py-2.5 align-middle whitespace-nowrap text-xs',
+                        col.className,
+                      )}
+                    >
                       {col.render(row, idx)}
                     </td>
                   ))}

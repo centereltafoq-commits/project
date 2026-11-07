@@ -162,17 +162,6 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
         <History className="h-3.5 w-3.5" />
         {viewMode === 'dues' ? 'سجل صرفيات المدرسين' : 'العودة لملخص المستحقات'}
       </Button>
-      <Button
-        size="sm"
-        className="h-9 gap-1 text-xs"
-        onClick={() => {
-          setPreset(null);
-          setPayoutOpen(true);
-        }}
-      >
-        <Plus className="h-4 w-4" />
-        صرف دفعة للمدرس
-      </Button>
       {search && (
         <Button
           variant="ghost"
@@ -188,6 +177,20 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
         </Button>
       )}
     </div>
+  );
+
+  const toolbarActions = (
+    <Button
+      size="sm"
+      className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-sm"
+      onClick={() => {
+        setPreset(null);
+        setPayoutOpen(true);
+      }}
+    >
+      <Plus className="h-4 w-4" />
+      صرف دفعة للمدرس
+    </Button>
   );
 
   return (
@@ -222,6 +225,7 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
             setPage(1);
           }}
           filters={toolbarFilters}
+          actions={toolbarActions}
         />
       ) : (
         <PayoutsSubtable mode="teacher" yearMonth={yearMonth} filters={toolbarFilters} />

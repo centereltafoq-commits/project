@@ -66,7 +66,6 @@ export function StudentBillingTab({
     {
       key: 'student',
       header: 'الطالب',
-      className: 'whitespace-nowrap',
       render: (r) => (
         <div>
           <div className="font-bold text-foreground text-xs">{r.studentName}</div>
@@ -79,11 +78,12 @@ export function StudentBillingTab({
     {
       key: 'group',
       header: 'المجموعة',
-      className: 'whitespace-nowrap',
       render: (r) => (
-        <div>
-          <div className="font-semibold text-foreground text-xs">{r.groupName}</div>
-          <span className="inline-block rounded bg-primary/10 px-1.5 py-0.2 font-mono text-[10px] font-bold text-primary">
+        <div className="max-w-[200px]">
+          <div className="font-semibold text-foreground text-xs truncate" title={r.groupName}>
+            {r.groupName}
+          </div>
+          <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
             {r.groupCode}
           </span>
         </div>
@@ -92,7 +92,6 @@ export function StudentBillingTab({
     {
       key: 'attendance',
       header: 'الحضور / المؤهل',
-      className: 'whitespace-nowrap',
       render: (r) => (
         <div className="text-xs space-y-0.5">
           <span className="font-bold text-foreground">
@@ -107,12 +106,11 @@ export function StudentBillingTab({
     {
       key: 'sessionPrice',
       header: 'سعر الحصة',
-      className: 'whitespace-nowrap',
       render: (r) => (
         <div>
-          <span className="font-semibold text-xs">{formatCurrency(r.sessionPriceSnapshot)}</span>
+          <span className="font-medium text-xs">{formatCurrency(r.sessionPriceSnapshot)}</span>
           {r.extraMakeupFees > 0 && (
-            <div className="text-[11px] text-amber-600 font-medium">
+            <div className="text-[10px] text-amber-600 font-medium">
               + تعويضي {formatCurrency(r.extraMakeupFees)}
             </div>
           )}
@@ -122,22 +120,23 @@ export function StudentBillingTab({
     {
       key: 'totalDue',
       header: 'المستحق',
-      className: 'whitespace-nowrap font-bold text-xs',
+      className: 'font-bold text-xs',
       render: (r) => formatCurrency(r.totalDue),
     },
     {
       key: 'totalPaid',
       header: 'المدفوع',
-      className: 'whitespace-nowrap font-semibold text-emerald-600 dark:text-emerald-400 text-xs',
+      className: 'font-semibold text-emerald-600 dark:text-emerald-400 text-xs',
       render: (r) => formatCurrency(r.totalPaid),
     },
     {
       key: 'remaining',
       header: 'المتبقي',
-      className: 'whitespace-nowrap',
       render: (r) =>
         r.remainingBalance > 0 ? (
-          <Badge variant="danger">{formatCurrency(r.remainingBalance)}</Badge>
+          <Badge variant="danger" className="font-bold">
+            {formatCurrency(r.remainingBalance)}
+          </Badge>
         ) : (
           <Badge variant="success">خالص</Badge>
         ),
@@ -145,10 +144,9 @@ export function StudentBillingTab({
     {
       key: 'state',
       header: 'الحالة',
-      className: 'whitespace-nowrap',
       render: (r) =>
         r.isClosed ? (
-          <Badge variant="purple">
+          <Badge variant="purple" className="gap-1">
             <Lock className="h-3 w-3" />
             مغلق
           </Badge>
@@ -159,13 +157,13 @@ export function StudentBillingTab({
     {
       key: 'actions',
       header: 'إجراءات',
-      className: 'whitespace-nowrap text-left pl-4',
+      className: 'text-left pl-3',
       render: (r) => (
         <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
           <Button
             size="sm"
             variant={r.remainingBalance > 0 ? 'primary' : 'outline'}
-            className="h-8 gap-1 px-2.5 text-xs font-semibold"
+            className="h-8 gap-1 px-3 text-xs font-semibold"
             onClick={() => {
               setSelectedRecord(r);
               setCollectOpen(true);
@@ -219,7 +217,7 @@ export function StudentBillingTab({
                 value: g.id,
                 label: `${g.name} (${g.code})`,
               }))}
-              className="w-52"
+              className="w-48"
             />
             <Button
               size="sm"
@@ -231,18 +229,6 @@ export function StudentBillingTab({
               }}
             >
               {onlyUnpaid ? 'عرض الكل' : 'المتأخرات فقط'}
-            </Button>
-            <Button
-              size="sm"
-              variant="success"
-              className="h-9 gap-1 px-3 text-xs"
-              onClick={() => {
-                setSelectedRecord(null);
-                setCollectOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              تسجيل دفعة / إيصال
             </Button>
             {(groupId || onlyUnpaid || search) && (
               <Button
@@ -261,6 +247,20 @@ export function StudentBillingTab({
               </Button>
             )}
           </div>
+        }
+        actions={
+          <Button
+            size="sm"
+            variant="success"
+            className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-sm"
+            onClick={() => {
+              setSelectedRecord(null);
+              setCollectOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            تسجيل دفعة / إيصال
+          </Button>
         }
       />
 

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export interface SelectOption {
@@ -11,36 +12,40 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   error?: string;
   options: SelectOption[];
   placeholder?: string;
+  containerClassName?: string;
 }
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, options, placeholder, id, ...props }, ref) => {
+  ({ className, containerClassName, label, error, options, placeholder, id, ...props }, ref) => {
     const generatedId = React.useId();
     const selectId = id || generatedId;
     return (
-      <div className="space-y-1.5">
+      <div className={cn('relative space-y-1.5', containerClassName)}>
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-semibold text-foreground">
+          <label htmlFor={selectId} className="block text-xs font-semibold text-foreground">
             {label}
           </label>
         )}
-        <select
-          id={selectId}
-          ref={ref}
-          className={cn(
-            'flex h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
-            error && 'border-destructive',
-            className,
-          )}
-          {...props}
-        >
-          {placeholder && <option value="">{placeholder}</option>}
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            id={selectId}
+            ref={ref}
+            className={cn(
+              'flex h-9 w-full appearance-none rounded-lg border border-input bg-card pr-3 pl-8 text-xs text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer',
+              error && 'border-destructive',
+              className,
+            )}
+            {...props}
+          >
+            {placeholder && <option value="">{placeholder}</option>}
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        </div>
         {error && <p className="text-xs font-medium text-destructive">{error}</p>}
       </div>
     );

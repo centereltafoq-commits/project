@@ -214,17 +214,6 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
               options={EXPENSE_CATEGORY_OPTIONS}
               className="w-48"
             />
-            <Button
-              size="sm"
-              className="h-9 gap-1 text-xs"
-              onClick={() => {
-                setEditing(null);
-                setModalOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              تسجيل مصروف جديد
-            </Button>
             {(categoryFilter || search) && (
               <Button
                 variant="ghost"
@@ -241,6 +230,19 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
               </Button>
             )}
           </div>
+        }
+        actions={
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-sm"
+            onClick={() => {
+              setEditing(null);
+              setModalOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            تسجيل مصروف جديد
+          </Button>
         }
       />
 
