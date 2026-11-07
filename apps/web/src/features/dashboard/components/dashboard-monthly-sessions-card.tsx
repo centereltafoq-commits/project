@@ -11,7 +11,9 @@ import {
   Receipt,
   Sparkles,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatYearMonthAr } from '@/lib/formatters';
 import { DashboardSummaryData } from '../dashboard.types';
 
@@ -20,6 +22,9 @@ interface DashboardMonthlySessionsCardProps {
 }
 
 export function DashboardMonthlySessionsCard({ data }: DashboardMonthlySessionsCardProps) {
+  const { hasPermission } = useAuth();
+  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+
   const stats = data.monthlySessionsStats ?? {
     totalSessions: 0,
     executedSessions: 0,
@@ -66,12 +71,14 @@ export function DashboardMonthlySessionsCard({ data }: DashboardMonthlySessionsC
               سجل الحضور والجلسات
             </Button>
           </Link>
-          <Link to="/finance">
-            <Button size="sm" variant="primary">
-              سجل التحصيل المالي
-              <ArrowLeft className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
+          {canViewFinance && (
+            <Link to="/finance">
+              <Button size="sm" variant="primary">
+                سجل التحصيل المالي
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          )}
         </div>
       </CardHeader>
 

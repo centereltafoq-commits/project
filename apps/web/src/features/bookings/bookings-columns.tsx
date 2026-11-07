@@ -9,6 +9,7 @@ import {
 } from './bookings.types';
 
 export function buildBookingColumns(params: {
+  canApprove?: boolean;
   onReview: (row: BookingRow) => void;
   onComplete: (id: string) => void;
   onQuickView: (row: BookingRow) => void;
@@ -113,7 +114,7 @@ export function buildBookingColumns(params: {
             تفاصيل
           </Button>
 
-          {row.status === BookingStatus.PENDING && (
+          {params.canApprove && row.status === BookingStatus.PENDING && (
             <Button
               size="sm"
               variant="ghost"
@@ -125,7 +126,7 @@ export function buildBookingColumns(params: {
             </Button>
           )}
 
-          {row.status === BookingStatus.CONFIRMED && (
+          {params.canApprove && row.status === BookingStatus.CONFIRMED && (
             <Button
               size="sm"
               variant="success"

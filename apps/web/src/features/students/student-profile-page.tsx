@@ -33,6 +33,8 @@ import {
   formatYearMonthAr,
   getCurrentYearMonth,
 } from '@/lib/formatters';
+import { PERMISSIONS } from '@edu-center/shared';
+import { useAuth } from '@/features/auth/auth-context';
 import { StudentFormModal } from './student-form-modal';
 import {
   StudentAttendanceTab,
@@ -49,6 +51,10 @@ import { STUDENT_STATUS_META, StudentProfileData } from './students.types';
 export function StudentProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canUpdate = hasPermission(PERMISSIONS.STUDENTS_UPDATE);
+  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+
   const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
   const [editOpen, setEditOpen] = React.useState(false);
 
@@ -93,10 +99,12 @@ export function StudentProfilePage() {
               value={yearMonth}
               onChange={setYearMonth}
             />
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
-              <Edit3 className="h-4 w-4" />
-              تعديل البيانات
-            </Button>
+            {canUpdate && (
+              <Button variant="outline" onClick={() => setEditOpen(true)}>
+                <Edit3 className="h-4 w-4" />
+                تعديل البيانات
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => navigate('/students')}>
               <ArrowRight className="h-4 w-4" />
               قائمة الطلاب
@@ -141,35 +149,65 @@ export function StudentProfilePage() {
           icon={UserCheck}
           tone="primary"
         />
-        <StatCard
-          title="إجمالي المستحق للشهر"
-          value={formatCurrency(monthTotals.totalDue)}
-          subtitle={`عن ${formatYearMonthAr(yearMonth)}`}
-          icon={Wallet}
-          tone="purple"
-        />
-        <StatCard
-          title="المدفوع في الشهر"
-          value={formatCurrency(monthTotals.totalPaid)}
-          subtitle="موزع على المجموعات"
-          icon={CheckCircle2}
-          tone="success"
-        />
-        <StatCard
-          title="الرصيد المتبقي"
-          value={formatCurrency(monthTotals.remaining)}
-          subtitle={monthTotals.remaining > 0 ? 'مستحق السداد' : 'مسدد بالكامل'}
-          icon={CreditCard}
-          tone={monthTotals.remaining > 0 ? 'danger' : 'success'}
-        />
+        {canViewFinance ? (
+          <>
+            <StatCard
+              title="إجمالي المستحق للشهر"
+              value={formatCurrency(monthTotals?.totalDue ?? 0)}
+              subtitle={`عن ${formatYearMonthAr(yearMonth)}`}
+              icon={Wallet}
+              tone="purple"
+            />
+            <StatCard
+              title="المدفوع في الشهر"
+              value={formatCurrency(monthTotals?.totalPaid ?? 0)}
+              subtitle="موزع على المجموعات"
+              icon={CheckCircle2}
+              tone="success"
+            />
+            <StatCard
+              title="الرصيد المتبقي"
+              value={formatCurrency(monthTotals?.remaining ?? 0)}
+              subtitle={(monthTotals?.remaining ?? 0) > 0 ? 'مستحق السداد' : 'مسدد بالكامل'}
+              icon={CreditCard}
+              tone={(monthTotals?.remaining ?? 0) > 0 ? 'danger' : 'success'}
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="المجموعات المشترك بها"
+              value={data.enrollments.length}
+              subtitle="مجموعات مسجل بها حالياً"
+              icon={BookOpen}
+              tone="purple"
+            />
+            <StatCard
+              title="الحصص التعويضية"
+              value={data.makeupSessions.length}
+              subtitle="إجمالي طلبات التعويض"
+              icon={RefreshCw}
+              tone="success"
+            />
+            <StatCard
+              title="المواعيد والحجوزات"
+              value={data.bookings.length}
+              subtitle="طلبات الحجز المسجلة"
+              icon={CalendarClock}
+              tone="warning"
+            />
+          </>
+        )}
       </div>
 
-      <Tabs defaultValue="monthly">
+      <Tabs defaultValue={canViewFinance ? 'monthly' : 'enrollments'}>
         <TabsList>
-          <TabsTrigger value="monthly">
-            <Wallet className="h-4 w-4" />
-            السجل الشهري والحسابات
-          </TabsTrigger>
+          {canViewFinance && (
+            <TabsTrigger value="monthly">
+              <Wallet className="h-4 w-4" />
+              السجل الشهري والحسابات
+            </TabsTrigger>
+          )}
           <TabsTrigger value="enrollments">
             <BookOpen className="h-4 w-4" />
             المجموعات والاشتراكات ({data.enrollments.length})
@@ -178,10 +216,12 @@ export function StudentProfilePage() {
             <UserCheck className="h-4 w-4" />
             سجل الحضور والغياب ({data.attendanceRecords.length})
           </TabsTrigger>
-          <TabsTrigger value="payments">
-            <CreditCard className="h-4 w-4" />
-            المدفوعات ({data.payments.length})
-          </TabsTrigger>
+          {canViewFinance && (
+            <TabsTrigger value="payments">
+              <CreditCard className="h-4 w-4" />
+              المدفوعات ({data.payments.length})
+            </TabsTrigger>
+          )}
           <TabsTrigger value="makeups">
             <RefreshCw className="h-4 w-4" />
             الحصص التعويضية ({data.makeupSessions.length})
@@ -192,18 +232,22 @@ export function StudentProfilePage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="monthly">
-          <StudentMonthlyFinancialTab data={data} />
-        </TabsContent>
+        {canViewFinance && (
+          <TabsContent value="monthly">
+            <StudentMonthlyFinancialTab data={data} />
+          </TabsContent>
+        )}
         <TabsContent value="enrollments">
           <StudentEnrollmentsTab data={data} />
         </TabsContent>
         <TabsContent value="attendance">
           <StudentAttendanceTab data={data} />
         </TabsContent>
-        <TabsContent value="payments">
-          <StudentPaymentsTab data={data} />
-        </TabsContent>
+        {canViewFinance && (
+          <TabsContent value="payments">
+            <StudentPaymentsTab data={data} />
+          </TabsContent>
+        )}
         <TabsContent value="makeups">
           <StudentMakeupsTab data={data} />
         </TabsContent>

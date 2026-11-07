@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save, Shield } from 'lucide-react';
-import { SystemRole } from '@edu-center/shared';
+import { PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, useToast } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 
 interface RoleItem {
@@ -23,6 +24,8 @@ interface PermissionItem {
 export function RolesPermissionsTab() {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { hasPermission } = useAuth();
+  const canManageRoles = hasPermission(PERMISSIONS.ROLES_MANAGE);
   const [selectedRoleId, setSelectedRoleId] = React.useState<string>('');
   const [selectedCodes, setSelectedCodes] = React.useState<string[]>([]);
 
@@ -116,7 +119,7 @@ export function RolesPermissionsTab() {
                   </p>
                 </div>
               </div>
-              {currentRole.code !== SystemRole.OWNER && (
+              {canManageRoles && currentRole.code !== SystemRole.OWNER && (
                 <Button
                   size="sm"
                   onClick={() => saveMutation.mutate()}
@@ -145,7 +148,7 @@ export function RolesPermissionsTab() {
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={currentRole.code === SystemRole.OWNER}
+                            disabled={!canManageRoles || currentRole.code === SystemRole.OWNER}
                             onChange={() => togglePerm(perm.code)}
                             className="h-4 w-4 rounded accent-primary"
                           />

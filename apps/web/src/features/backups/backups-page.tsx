@@ -18,6 +18,7 @@ import {
   Usb,
   XCircle,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Badge } from '@/design-system/components/badge';
 import { Button } from '@/design-system/components/button';
 import { Card } from '@/design-system/components/card';
@@ -29,6 +30,7 @@ import {
   TableColumn,
 } from '@/design-system/components/server-data-table';
 import { useToast } from '@/design-system/components/toast';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatDateTimeAr, formatTimeAr } from '@/lib/formatters';
 import { backupsApi } from './backups-api';
 import { BackupRecord } from './backups.types';
@@ -37,6 +39,9 @@ import { BackupRestoreModal } from './backup-restore-modal';
 import { useBackupMutations, useBackups, useBackupSettings } from './use-backups';
 
 export function BackupsPage() {
+  const { hasPermission } = useAuth();
+  const canManageBackups = hasPermission(PERMISSIONS.BACKUPS_MANAGE);
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [selectedRecordForRestore, setSelectedRecordForRestore] = useState<BackupRecord | null>(null);
@@ -198,36 +203,40 @@ export function BackupsPage() {
             <Eye className="h-3.5 w-3.5 text-primary" />
             تفاصيل
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 gap-1 px-2.5 text-xs font-semibold"
-            title="تحميل الملف على الكمبيوتر أو الفلاشة"
-            onClick={async () => {
-              try {
-                await backupsApi.download(row.id, row.fileName);
-                notify(`تم تحميل النسخة (${row.fileName}) بنجاح`, 'success');
-              } catch (err: any) {
-                notify(err.response?.data?.message || 'فشل تحميل ملف النسخة الاحتياطية', 'error');
-              }
-            }}
-          >
-            <Download className="h-3.5 w-3.5 text-primary" />
-            <span>تحميل</span>
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setSelectedRecordForRestore(row);
-              setRestoreModalOpen(true);
-            }}
-            className="h-8 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
-            title="استعادة قاعدة البيانات من هذه النسخة"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span>استعادة</span>
-          </Button>
+          {canManageBackups && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 px-2.5 text-xs font-semibold"
+                title="تحميل الملف على الكمبيوتر أو الفلاشة"
+                onClick={async () => {
+                  try {
+                    await backupsApi.download(row.id, row.fileName);
+                    notify(`تم تحميل النسخة (${row.fileName}) بنجاح`, 'success');
+                  } catch (err: any) {
+                    notify(err.response?.data?.message || 'فشل تحميل ملف النسخة الاحتياطية', 'error');
+                  }
+                }}
+              >
+                <Download className="h-3.5 w-3.5 text-primary" />
+                <span>تحميل</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setSelectedRecordForRestore(row);
+                  setRestoreModalOpen(true);
+                }}
+                className="h-8 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                title="استعادة قاعدة البيانات من هذه النسخة"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>استعادة</span>
+              </Button>
+            </>
+          )}
         </div>
       ),
     },
@@ -239,18 +248,20 @@ export function BackupsPage() {
         title="النسخ الاحتياطي واستعادة البيانات"
         description="إدارة وتأمين بيانات السنتر محلياً وسحابياً وحفظها تلقائياً على الفلاشة أو الديسك توب أو Google Drive"
         actions={
-          <Button
-            onClick={handleCreateBackup}
-            disabled={triggerMutation.isPending}
-            className="gap-2"
-          >
-            {triggerMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ShieldCheck className="h-4 w-4" />
-            )}
-            <span>إنشاء نسخة احتياطية فورية الآن</span>
-          </Button>
+          canManageBackups ? (
+            <Button
+              onClick={handleCreateBackup}
+              disabled={triggerMutation.isPending}
+              className="gap-2"
+            >
+              {triggerMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4" />
+              )}
+              <span>إنشاء نسخة احتياطية فورية الآن</span>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -330,23 +341,26 @@ export function BackupsPage() {
               label="مسار المجلد المحلي على الجهاز"
               placeholder="مثال: C:\Users\Mohamed\Desktop\EduCenter_Backups أو E:\Backups"
               value={localPathInput}
+              disabled={!canManageBackups}
               onChange={(e) => setLocalPathInput(e.target.value)}
             />
-            <div className="flex justify-end pt-1">
-              <Button
-                type="submit"
-                size="sm"
-                disabled={updateSettingsMutation.isPending}
-                className="gap-1.5"
-              >
-                {updateSettingsMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                <span>حفظ المسار المحلي</span>
-              </Button>
-            </div>
+            {canManageBackups && (
+              <div className="flex justify-end pt-1">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={updateSettingsMutation.isPending}
+                  className="gap-1.5"
+                >
+                  {updateSettingsMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  <span>حفظ المسار المحلي</span>
+                </Button>
+              </div>
+            )}
           </form>
         </Card>
 
@@ -367,6 +381,7 @@ export function BackupsPage() {
                 type="text"
                 placeholder="02:00"
                 value={scheduleTimeInput}
+                disabled={!canManageBackups}
                 onChange={(e) => setScheduleTimeInput(e.target.value)}
               />
               <Input
@@ -375,6 +390,7 @@ export function BackupsPage() {
                 min={1}
                 max={365}
                 value={retentionInput}
+                disabled={!canManageBackups}
                 onChange={(e) => setRetentionInput(Number(e.target.value))}
               />
             </div>
@@ -383,21 +399,24 @@ export function BackupsPage() {
                 <input
                   type="checkbox"
                   checked={autoBackupEnabled}
+                  disabled={!canManageBackups}
                   onChange={(e) => setAutoBackupEnabled(e.target.checked)}
                   className="rounded border-border"
                 />
                 <span>تفعيل النسخ اليومي التلقائي في الخلفية</span>
               </label>
-              <Button
-                type="submit"
-                size="sm"
-                variant="outline"
-                disabled={updateSettingsMutation.isPending}
-                className="gap-1.5"
-              >
-                <Save className="h-4 w-4" />
-                <span>تحديث الجدولة</span>
-              </Button>
+              {canManageBackups && (
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="outline"
+                  disabled={updateSettingsMutation.isPending}
+                  className="gap-1.5"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>تحديث الجدولة</span>
+                </Button>
+              )}
             </div>
           </form>
         </Card>

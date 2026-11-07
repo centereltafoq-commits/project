@@ -10,7 +10,10 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@edu-center/shared';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
-import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import {
+  RequireAnyPermissions,
+  RequirePermissions,
+} from '../../common/decorators/permissions.decorator';
 import { AttendanceService } from './attendance.service';
 import { RecordSessionAttendanceDto } from './dto/attendance-record.dto';
 import { CreateMakeupDto, MakeupQueryDto, UpdateMakeupDto } from './dto/makeup.dto';
@@ -35,7 +38,7 @@ export class AttendanceController {
   }
 
   @Get('sessions')
-  @RequirePermissions(PERMISSIONS.ATTENDANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.ATTENDANCE_VIEW, PERMISSIONS.SESSIONS_VIEW)
   async listSessions(@Query() query: SessionQueryDto) {
     return this.attendanceService.listSessions(query);
   }
@@ -59,7 +62,7 @@ export class AttendanceController {
   }
 
   @Get('sessions/:sessionId/sheet')
-  @RequirePermissions(PERMISSIONS.ATTENDANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.ATTENDANCE_VIEW, PERMISSIONS.SESSIONS_VIEW)
   async getSessionSheet(@Param('sessionId', ParseUUIDPipe) sessionId: string) {
     return this.attendanceService.getSessionSheet(sessionId);
   }

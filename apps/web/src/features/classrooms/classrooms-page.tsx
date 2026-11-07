@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarRange, Edit3, Eye, Plus, RotateCcw, Search, Wrench } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
+import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
   Button,
@@ -10,6 +10,7 @@ import {
   ServerDataTable,
   TableColumn,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { AvailableClassroomsModal } from './available-classrooms-modal';
@@ -24,6 +25,8 @@ import {
 } from './classrooms.types';
 
 export function ClassroomsPage() {
+  const { hasPermission } = useAuth();
+  const canManageClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_MANAGE);
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = React.useState('');
@@ -145,18 +148,20 @@ export function ClassroomsPage() {
             <CalendarRange className="h-3.5 w-3.5 text-primary" />
             الجدول
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setEditingRoom(row);
-              setFormOpen(true);
-            }}
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            تعديل
-          </Button>
+          {canManageClassrooms && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setEditingRoom(row);
+                setFormOpen(true);
+              }}
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              تعديل
+            </Button>
+          )}
         </div>
       ),
     },
@@ -173,16 +178,18 @@ export function ClassroomsPage() {
               <Search className="h-4 w-4" />
               فحص القاعات المتاحة
             </Button>
-            <Button
-              onClick={() => {
-                setEditingRoom(null);
-                setFormOpen(true);
-              }}
-              className="gap-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              إضافة قاعة جديدة
-            </Button>
+            {canManageClassrooms && (
+              <Button
+                onClick={() => {
+                  setEditingRoom(null);
+                  setFormOpen(true);
+                }}
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                إضافة قاعة جديدة
+              </Button>
+            )}
           </div>
         }
       />

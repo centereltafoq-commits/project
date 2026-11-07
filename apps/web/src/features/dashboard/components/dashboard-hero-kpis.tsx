@@ -4,7 +4,9 @@ import {
   CalendarClock,
   GraduationCap,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { StatCard } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatCurrency } from '@/lib/formatters';
 import { DashboardSummaryData } from '../dashboard.types';
 
@@ -13,6 +15,9 @@ interface DashboardHeroKpisProps {
 }
 
 export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
+  const { hasPermission } = useAuth();
+  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+
   // حساب نسبة التحصيل
   const collectionRate =
     data.totalRevenue > 0
@@ -26,7 +31,7 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
     data.todayAttendance.makeup;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${canViewFinance ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
       <StatCard
         title="الطلاب والنشاط الأكاديمي"
         value={data.activeStudents}
@@ -47,13 +52,15 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
         tone="warning"
       />
 
-      <StatCard
-        title="التحصيل المالي الفعلي"
-        value={formatCurrency(data.totalCollectedPayments)}
-        subtitle={`نسبة التحصيل: ${collectionRate}% من المستهدف (${formatCurrency(data.totalRevenue)})`}
-        icon={Banknote}
-        tone="success"
-      />
+      {canViewFinance && (
+        <StatCard
+          title="التحصيل المالي الفعلي"
+          value={formatCurrency(data.totalCollectedPayments)}
+          subtitle={`نسبة التحصيل: ${collectionRate}% من المستهدف (${formatCurrency(data.totalRevenue)})`}
+          icon={Banknote}
+          tone="success"
+        />
+      )}
 
       <StatCard
         title="القاعات الشاغرة الآن"

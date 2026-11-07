@@ -10,7 +10,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { PERMISSIONS } from '@edu-center/shared';
-import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import {
+  RequireAnyPermissions,
+  RequirePermissions,
+} from '../../common/decorators/permissions.decorator';
 import {
   CreateGradeLevelDto,
   GradeLevelQueryDto,
@@ -23,11 +26,13 @@ export class GradeLevelsController {
   constructor(private readonly gradeLevelsService: GradeLevelsService) {}
 
   @Get()
+  @RequireAnyPermissions(PERMISSIONS.GROUPS_VIEW, PERMISSIONS.STUDENTS_VIEW)
   async list(@Query() query: GradeLevelQueryDto) {
     return this.gradeLevelsService.list(query);
   }
 
   @Get(':id')
+  @RequireAnyPermissions(PERMISSIONS.GROUPS_VIEW, PERMISSIONS.STUDENTS_VIEW)
   async getById(@Param('id', ParseUUIDPipe) id: string) {
     return this.gradeLevelsService.getById(id);
   }

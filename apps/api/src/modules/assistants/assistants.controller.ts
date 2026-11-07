@@ -34,8 +34,9 @@ export class AssistantsController {
   async getProfile(
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: AssistantProfileQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.assistantsService.getProfile(id, query.yearMonth);
+    return this.assistantsService.getProfile(id, query.yearMonth, actor);
   }
 
   @Get(':id')

@@ -25,6 +25,7 @@ interface BookingQuickViewModalProps {
   onOpenChange: (open: boolean) => void;
   onReview: (booking: BookingRow) => void;
   onComplete?: (id: string) => void;
+  canApprove?: boolean;
 }
 
 export function BookingQuickViewModal({
@@ -33,6 +34,7 @@ export function BookingQuickViewModal({
   onOpenChange,
   onReview,
   onComplete,
+  canApprove,
 }: BookingQuickViewModalProps) {
   if (!booking) return null;
 
@@ -82,7 +84,7 @@ export function BookingQuickViewModal({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {isPending && (
+            {canApprove && isPending && (
               <Button
                 size="sm"
                 onClick={() => {
@@ -95,7 +97,7 @@ export function BookingQuickViewModal({
                 مراجعة واعتماد
               </Button>
             )}
-            {isConfirmed && onComplete && (
+            {canApprove && isConfirmed && onComplete && (
               <Button
                 size="sm"
                 variant="success"

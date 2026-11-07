@@ -9,6 +9,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
   Button,
@@ -19,6 +20,7 @@ import {
   PageHeader,
   StatCard,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { apiClient } from '@/lib/api-client';
 import { ARABIC_DAYS, formatCurrency, formatTimeRangeAr } from '@/lib/formatters';
 import { SPLIT_METHOD_LABELS } from '../teachers/teachers.types';
@@ -29,6 +31,9 @@ import { FULL_ABSENCE_POLICY_LABELS, GroupDetailData } from './groups.types';
 export function GroupDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageGroups = hasPermission(PERMISSIONS.GROUPS_MANAGE);
+  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
   const [editOpen, setEditOpen] = React.useState(false);
 
   const { data: group, isLoading } = useQuery<GroupDetailData>({
@@ -59,10 +64,12 @@ export function GroupDetailsPage() {
         description={`المادة: ${group.subject} • الصف: ${group.gradeLevel} • القاعة: ${group.defaultClassroomName || 'غير محددة'}`}
         actions={
           <>
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
-              <Edit3 className="h-4 w-4" />
-              تعديل الإعدادات والسياسة المالية
-            </Button>
+            {canManageGroups && (
+              <Button variant="outline" onClick={() => setEditOpen(true)}>
+                <Edit3 className="h-4 w-4" />
+                تعديل الإعدادات والسياسة المالية
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => navigate('/groups')}>
               <ArrowRight className="h-4 w-4" />
               كل المجموعات
@@ -71,7 +78,7 @@ export function GroupDetailsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${canViewFinance ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         <StatCard
           title="الطلاب النشطون بالمجموعة"
           value={`${group.activeStudentsCount} / ${group.maxStudents}`}
@@ -93,22 +100,24 @@ export function GroupDetailsPage() {
           icon={Calculator}
           tone="success"
         />
-        <StatCard
-          title="تقسيم العائد (مدرس / سنتر)"
-          value={
-            pol?.revenueSplitMethod === 'CUSTOM_PERCENTAGE'
-              ? `${Number(pol.teacherPercentage)}% للمدرس`
-              : `${formatCurrency(pol?.teacherSharePerStudent)} / ${formatCurrency(pol?.centerSharePerStudent)}`
-          }
-          subtitle={
-            pol ? SPLIT_METHOD_LABELS[pol.revenueSplitMethod] : 'لم تحدد سياسة'
-          }
-          icon={Calendar}
-          tone="warning"
-        />
+        {canViewFinance && (
+          <StatCard
+            title="تقسيم العائد (مدرس / سنتر)"
+            value={
+              pol?.revenueSplitMethod === 'CUSTOM_PERCENTAGE'
+                ? `${Number(pol.teacherPercentage)}% للمدرس`
+                : `${formatCurrency(pol?.teacherSharePerStudent)} / ${formatCurrency(pol?.centerSharePerStudent)}`
+            }
+            subtitle={
+              pol ? SPLIT_METHOD_LABELS[pol.revenueSplitMethod] : 'لم تحدد سياسة'
+            }
+            icon={Calendar}
+            tone="warning"
+          />
+        )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-4 ${canViewFinance ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <Card>
           <CardHeader>
             <CardTitle>المدرسون والمساعدون</CardTitle>
@@ -140,33 +149,35 @@ export function GroupDetailsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>قواعد الغياب والمحاسبة</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div>
-              <span className="text-muted-foreground">غياب الشهر كاملاً: </span>
-              <strong>
-                {pol
-                  ? FULL_ABSENCE_POLICY_LABELS[pol.fullMonthAbsencePolicy]
-                  : 'إعفاء كامل'}
-              </strong>
-            </div>
-            {pol?.fullMonthAbsencePolicy === 'CHARGE_FIXED_RESERVATION_FEE' && (
+        {canViewFinance && (
+          <Card>
+            <CardHeader>
+              <CardTitle>قواعد الغياب والمحاسبة</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
               <div>
-                <span className="text-muted-foreground">رسوم حجز المقعد: </span>
-                <strong>{formatCurrency(pol.fullAbsenceFixedFee)}</strong>
+                <span className="text-muted-foreground">غياب الشهر كاملاً: </span>
+                <strong>
+                  {pol
+                    ? FULL_ABSENCE_POLICY_LABELS[pol.fullMonthAbsencePolicy]
+                    : 'إعفاء كامل'}
+                </strong>
               </div>
-            )}
-            <div>
-              <span className="text-muted-foreground">الغياب بعذر مقبول: </span>
-              <Badge variant={pol?.chargeExcusedAbsence ? 'warning' : 'success'}>
-                {pol?.chargeExcusedAbsence ? 'يُحتسب على الطالب' : 'معفى من الرسوم'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
+              {pol?.fullMonthAbsencePolicy === 'CHARGE_FIXED_RESERVATION_FEE' && (
+                <div>
+                  <span className="text-muted-foreground">رسوم حجز المقعد: </span>
+                  <strong>{formatCurrency(pol.fullAbsenceFixedFee)}</strong>
+                </div>
+              )}
+              <div>
+                <span className="text-muted-foreground">الغياب بعذر مقبول: </span>
+                <Badge variant={pol?.chargeExcusedAbsence ? 'warning' : 'success'}>
+                  {pol?.chargeExcusedAbsence ? 'يُحتسب على الطالب' : 'معفى من الرسوم'}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

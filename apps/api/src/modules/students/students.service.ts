@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { StudentStatus } from '@edu-center/shared';
+import { PERMISSIONS, StudentStatus, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -89,11 +89,29 @@ export class StudentsService {
     return this.update(id, { status: StudentStatus.ARCHIVED }, actor);
   }
 
-  async getProfile(id: string, requestedYearMonth?: string) {
+  async getProfile(id: string, requestedYearMonth?: string, actor?: AuthenticatedUser) {
     const student = await this.getById(id);
     const yearMonth = requestedYearMonth || this.getCurrentYearMonth();
     const bundle = await this.profileRepository.fetchProfileBundle(id, yearMonth);
-    const { breakdown, monthTotals } = computeStudentMonthlyBreakdown(yearMonth, bundle);
+    const canViewFinance =
+      !actor ||
+      actor.roleCode === SystemRole.OWNER ||
+      Boolean(actor.permissions?.includes(PERMISSIONS.FINANCE_VIEW));
+
+    const { breakdown, monthTotals } = canViewFinance
+      ? computeStudentMonthlyBreakdown(yearMonth, bundle)
+      : {
+          breakdown: [],
+          monthTotals: {
+            totalDue: 0,
+            totalPaid: 0,
+            balance: 0,
+            attendanceCount: 0,
+            absenceCount: 0,
+            excusedCount: 0,
+            makeupCount: 0,
+          },
+        };
 
     return {
       student,
@@ -102,7 +120,7 @@ export class StudentsService {
       attendanceRecords: bundle.monthAttendance,
       monthlyBreakdown: breakdown,
       monthTotals,
-      payments: bundle.studentPayments,
+      payments: canViewFinance ? bundle.studentPayments : [],
       bookings: bundle.studentBookings,
       makeupSessions: bundle.studentMakeups,
     };

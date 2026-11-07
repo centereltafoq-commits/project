@@ -31,6 +31,8 @@ import {
   formatYearMonthAr,
   getCurrentYearMonth,
 } from '@/lib/formatters';
+import { PERMISSIONS } from '@edu-center/shared';
+import { useAuth } from '@/features/auth/auth-context';
 import { TeacherFormModal } from './teacher-form-modal';
 import { TeacherAvailabilityTab } from './teacher-availability-tab';
 import {
@@ -44,6 +46,10 @@ import { TEACHER_STATUS_META, TeacherProfileData } from './teachers.types';
 export function TeacherProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageTeachers = hasPermission(PERMISSIONS.TEACHERS_MANAGE);
+  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+
   const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
   const [editOpen, setEditOpen] = React.useState(false);
 
@@ -89,10 +95,12 @@ export function TeacherProfilePage() {
               value={yearMonth}
               onChange={setYearMonth}
             />
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
-              <Edit3 className="h-4 w-4" />
-              تعديل البيانات
-            </Button>
+            {canManageTeachers && (
+              <Button variant="outline" onClick={() => setEditOpen(true)}>
+                <Edit3 className="h-4 w-4" />
+                تعديل البيانات
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => navigate('/teachers')}>
               <ArrowRight className="h-4 w-4" />
               قائمة المدرسين
@@ -132,35 +140,58 @@ export function TeacherProfilePage() {
           icon={BookOpen}
           tone="primary"
         />
-        <StatCard
-          title="إجمالي مستحقات الشهر"
-          value={formatCurrency(totals.totalDues)}
-          subtitle={`شهر ${formatYearMonthAr(yearMonth)}`}
-          icon={Wallet}
-          tone="purple"
-        />
-        <StatCard
-          title="إجمالي المنصرف للمدرس"
-          value={formatCurrency(totals.totalPayouts)}
-          subtitle="دفعات مسجلة بالخزينة"
-          icon={CreditCard}
-          tone="success"
-        />
-        <StatCard
-          title="الرصيد المتبقي للمدرس"
-          value={formatCurrency(totals.remainingBalance)}
-          subtitle={totals.remainingBalance > 0 ? 'مستحق الصرف' : 'تمت التصفية'}
-          icon={Wallet}
-          tone={totals.remainingBalance > 0 ? 'warning' : 'success'}
-        />
+        {canViewFinance ? (
+          <>
+            <StatCard
+              title="إجمالي مستحقات الشهر"
+              value={formatCurrency(totals.totalDues)}
+              subtitle={`شهر ${formatYearMonthAr(yearMonth)}`}
+              icon={Wallet}
+              tone="purple"
+            />
+            <StatCard
+              title="إجمالي المنصرف للمدرس"
+              value={formatCurrency(totals.totalPayouts)}
+              subtitle="دفعات مسجلة بالخزينة"
+              icon={CreditCard}
+              tone="success"
+            />
+            <StatCard
+              title="الرصيد المتبقي للمدرس"
+              value={formatCurrency(totals.remainingBalance)}
+              subtitle={totals.remainingBalance > 0 ? 'مستحق الصرف' : 'تمت التصفية'}
+              icon={Wallet}
+              tone={totals.remainingBalance > 0 ? 'warning' : 'success'}
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="أوقات الإتاحة الأسبوعية"
+              value={`${data.availability.length} فترات`}
+              subtitle="فترات أسبوعية متاحة للحجز"
+              icon={Clock}
+              tone="purple"
+            />
+            <StatCard
+              title="الحجوزات والمواعيد"
+              value={`${data.bookings.length} حجز`}
+              subtitle="مواعيد وقاعات مخصصة"
+              icon={CalendarClock}
+              tone="warning"
+            />
+          </>
+        )}
       </div>
 
-      <Tabs defaultValue="summary">
+      <Tabs defaultValue={canViewFinance ? 'summary' : 'groups'}>
         <TabsList>
-          <TabsTrigger value="summary">
-            <Wallet className="h-4 w-4" />
-            الملخص الشهري والمستحقات
-          </TabsTrigger>
+          {canViewFinance && (
+            <TabsTrigger value="summary">
+              <Wallet className="h-4 w-4" />
+              الملخص الشهري والمستحقات
+            </TabsTrigger>
+          )}
           <TabsTrigger value="groups">
             <BookOpen className="h-4 w-4" />
             المجموعات والجدول ({data.assignedGroups.length})
@@ -169,28 +200,34 @@ export function TeacherProfilePage() {
             <Clock className="h-4 w-4" />
             أوقات الإتاحة ({data.availability.length})
           </TabsTrigger>
-          <TabsTrigger value="payouts">
-            <CreditCard className="h-4 w-4" />
-            عمليات الصرف ({data.payouts.length})
-          </TabsTrigger>
+          {canViewFinance && (
+            <TabsTrigger value="payouts">
+              <CreditCard className="h-4 w-4" />
+              عمليات الصرف ({data.payouts.length})
+            </TabsTrigger>
+          )}
           <TabsTrigger value="bookings">
             <CalendarClock className="h-4 w-4" />
             الحجوزات ({data.bookings.length})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="summary">
-          <TeacherMonthlySummaryTab data={data} />
-        </TabsContent>
+        {canViewFinance && (
+          <TabsContent value="summary">
+            <TeacherMonthlySummaryTab data={data} />
+          </TabsContent>
+        )}
         <TabsContent value="groups">
           <TeacherGroupsAndScheduleTab data={data} />
         </TabsContent>
         <TabsContent value="availability">
           <TeacherAvailabilityTab teacherId={teacher.id} initialSlots={data.availability} />
         </TabsContent>
-        <TabsContent value="payouts">
-          <TeacherPayoutsTab data={data} />
-        </TabsContent>
+        {canViewFinance && (
+          <TabsContent value="payouts">
+            <TeacherPayoutsTab data={data} />
+          </TabsContent>
+        )}
         <TabsContent value="bookings">
           <TeacherBookingsTab data={data} />
         </TabsContent>

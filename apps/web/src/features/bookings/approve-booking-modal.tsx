@@ -23,6 +23,7 @@ export function ApproveBookingModal({ booking, onClose }: ApproveBookingModalPro
 
   const isAdminApprover = hasPermission(PERMISSIONS.BOOKINGS_APPROVE_ADMIN);
   const canReview = isAdminApprover || hasPermission(PERMISSIONS.BOOKINGS_APPROVE_TEACHER);
+  const canCancel = hasPermission(PERMISSIONS.BOOKINGS_CREATE) || canReview;
 
   const [requestedDate, setRequestedDate] = React.useState('');
   const [startTime, setStartTime] = React.useState('');
@@ -216,7 +217,7 @@ export function ApproveBookingModal({ booking, onClose }: ApproveBookingModalPro
           />
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-            {booking.status !== BookingStatus.CANCELLED && (
+            {canCancel && booking.status !== BookingStatus.CANCELLED && (
               <Button
                 type="button"
                 variant="outline"

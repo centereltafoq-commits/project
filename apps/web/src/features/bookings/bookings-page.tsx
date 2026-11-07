@@ -24,6 +24,9 @@ export function BookingsPage() {
   const { notify } = useToast();
   const { hasPermission } = useAuth();
   const canCreate = hasPermission(PERMISSIONS.BOOKINGS_CREATE);
+  const canApprove =
+    hasPermission(PERMISSIONS.BOOKINGS_APPROVE_ADMIN) ||
+    hasPermission(PERMISSIONS.BOOKINGS_APPROVE_TEACHER);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -88,6 +91,7 @@ export function BookingsPage() {
   const columns = React.useMemo(
     () =>
       buildBookingColumns({
+        canApprove,
         onReview: setSelectedBooking,
         onComplete: (id) => completeMutation.mutate(id),
         onQuickView: (row) => {
@@ -95,7 +99,7 @@ export function BookingsPage() {
           setQuickViewOpen(true);
         },
       }),
-    [completeMutation],
+    [completeMutation, canApprove],
   );
 
   const hasActiveFilters = Boolean(
@@ -194,6 +198,7 @@ export function BookingsPage() {
         open={quickViewOpen}
         onOpenChange={setQuickViewOpen}
         booking={quickViewBooking}
+        canApprove={canApprove}
         onReview={(b) => setSelectedBooking(b)}
         onComplete={(id) => completeMutation.mutate(id)}
       />

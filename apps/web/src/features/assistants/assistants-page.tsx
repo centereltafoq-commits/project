@@ -6,6 +6,7 @@ import {
   AssistantCalculationMethod,
   DEFAULT_PAGE_SIZE,
   PaginatedResult,
+  PERMISSIONS,
 } from '@edu-center/shared';
 import {
   Badge,
@@ -15,6 +16,7 @@ import {
   ServerDataTable,
   TableColumn,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
@@ -29,6 +31,8 @@ import {
 
 export function AssistantsPage() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageAssistants = hasPermission(PERMISSIONS.ASSISTANTS_MANAGE);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -138,18 +142,20 @@ export function AssistantsPage() {
             <Eye className="h-3.5 w-3.5 text-primary" />
             تفاصيل
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setEditingAssistant(row);
-              setModalOpen(true);
-            }}
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            تعديل
-          </Button>
+          {canManageAssistants && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setEditingAssistant(row);
+                setModalOpen(true);
+              }}
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              تعديل
+            </Button>
+          )}
         </div>
       ),
     },
@@ -161,15 +167,17 @@ export function AssistantsPage() {
         title="إدارة المساعدين ونظام المستحقات المرن"
         description="متابعة المساعدين والمجموعات المرتبطة بهم وطرق احتساب مستحقاتهم الـ 6 المختلفة"
         actions={
-          <Button
-            onClick={() => {
-              setEditingAssistant(null);
-              setModalOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            إضافة مساعد جديد
-          </Button>
+          canManageAssistants ? (
+            <Button
+              onClick={() => {
+                setEditingAssistant(null);
+                setModalOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              إضافة مساعد جديد
+            </Button>
+          ) : null
         }
       />
 

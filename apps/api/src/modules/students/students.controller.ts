@@ -34,8 +34,9 @@ export class StudentsController {
   async getProfile(
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: StudentProfileQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.studentsService.getProfile(id, query.yearMonth);
+    return this.studentsService.getProfile(id, query.yearMonth, actor);
   }
 
   @Get(':id')

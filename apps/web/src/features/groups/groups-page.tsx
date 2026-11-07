@@ -5,6 +5,7 @@ import { Calendar, Edit3, Eye, GraduationCap, Plus, RotateCcw, Users } from 'luc
 import {
   DEFAULT_PAGE_SIZE,
   PaginatedResult,
+  PERMISSIONS,
 } from '@edu-center/shared';
 import {
   Badge,
@@ -14,6 +15,7 @@ import {
   ServerDataTable,
   TableColumn,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { ARABIC_DAYS, formatCurrency } from '@/lib/formatters';
@@ -26,6 +28,8 @@ import { GroupDetailData, GroupRow } from './groups.types';
 
 export function GroupsPage() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageGroups = hasPermission(PERMISSIONS.GROUPS_MANAGE);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -187,18 +191,20 @@ export function GroupsPage() {
             <Users className="h-3.5 w-3.5 text-primary" />
             الطلاب
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setEditingGroupId(row.id);
-              setModalOpen(true);
-            }}
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            تعديل
-          </Button>
+          {canManageGroups && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setEditingGroupId(row.id);
+                setModalOpen(true);
+              }}
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              تعديل
+            </Button>
+          )}
         </div>
       ),
     },
@@ -210,26 +216,28 @@ export function GroupsPage() {
         title="المجموعات الدراسية والاشتراكات والسياسات المالية"
         description="إدارة المجموعات، تسعير الحصص التلقائي، قواعد تقسيم العائد، واشتراكات الطلاب المرنة"
         actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setGradeLevelsModalOpen(true)}
-              className="gap-1.5"
-            >
-              <GraduationCap className="h-4 w-4" />
-              إدارة الصفوف الدراسية
-            </Button>
-            <Button
-              onClick={() => {
-                setEditingGroupId(null);
-                setModalOpen(true);
-              }}
-              className="gap-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              إنشاء مجموعة جديدة
-            </Button>
-          </div>
+          canManageGroups ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setGradeLevelsModalOpen(true)}
+                className="gap-1.5"
+              >
+                <GraduationCap className="h-4 w-4" />
+                إدارة الصفوف الدراسية
+              </Button>
+              <Button
+                onClick={() => {
+                  setEditingGroupId(null);
+                  setModalOpen(true);
+                }}
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                إنشاء مجموعة جديدة
+              </Button>
+            </div>
+          ) : undefined
         }
       />
 

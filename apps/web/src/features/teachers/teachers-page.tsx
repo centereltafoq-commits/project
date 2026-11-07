@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Edit3, Eye, Plus, RotateCcw } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
+import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
   Button,
@@ -12,6 +12,7 @@ import {
   ServerDataTable,
   TableColumn,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatDateAr } from '@/lib/formatters';
@@ -25,6 +26,8 @@ import {
 
 export function TeachersPage() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageTeachers = hasPermission(PERMISSIONS.TEACHERS_MANAGE);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -125,18 +128,20 @@ export function TeachersPage() {
             <Eye className="h-3.5 w-3.5 text-primary" />
             تفاصيل
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setEditingTeacher(row);
-              setModalOpen(true);
-            }}
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            تعديل
-          </Button>
+          {canManageTeachers && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setEditingTeacher(row);
+                setModalOpen(true);
+              }}
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              تعديل
+            </Button>
+          )}
         </div>
       ),
     },
@@ -148,15 +153,17 @@ export function TeachersPage() {
         title="إدارة المدرسين والمستحقات الشهرية"
         description="ملفات المدرسين، المجموعات المسندة، أوقات الإتاحة الأسبوعية، وحسابات المستحقات والصرف"
         actions={
-          <Button
-            onClick={() => {
-              setEditingTeacher(null);
-              setModalOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            إضافة مدرس جديد
-          </Button>
+          canManageTeachers ? (
+            <Button
+              onClick={() => {
+                setEditingTeacher(null);
+                setModalOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              إضافة مدرس جديد
+            </Button>
+          ) : null
         }
       />
 

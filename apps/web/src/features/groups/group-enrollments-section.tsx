@@ -6,6 +6,7 @@ import {
   DEFAULT_PAGE_SIZE,
   EnrollmentStatus,
   PaginatedResult,
+  PERMISSIONS,
 } from '@edu-center/shared';
 import {
   Badge,
@@ -15,6 +16,7 @@ import {
   TableColumn,
   useToast,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatCurrency, formatDateAr } from '@/lib/formatters';
@@ -39,6 +41,8 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { notify } = useToast();
+  const { hasPermission } = useAuth();
+  const canManageEnrollments = hasPermission(PERMISSIONS.ENROLLMENTS_MANAGE);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -140,72 +144,78 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
         return <Badge variant={meta.variant} className="text-xs">{meta.label}</Badge>;
       },
     },
-    {
-      key: 'actions',
-      header: 'إدارة الاشتراك',
-      className: 'whitespace-nowrap text-left pl-4',
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {row.status === EnrollmentStatus.ACTIVE ? (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 gap-1 px-2.5 text-xs font-semibold"
-                onClick={() =>
-                  statusMutation.mutate({
-                    enrollmentId: row.id,
-                    status: EnrollmentStatus.PAUSED,
-                  })
-                }
-              >
-                <PauseCircle className="h-3.5 w-3.5" />
-                إيقاف مؤقت
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                className="h-8 gap-1 px-2.5 text-xs font-semibold"
-                onClick={() =>
-                  statusMutation.mutate({
-                    enrollmentId: row.id,
-                    status: EnrollmentStatus.CANCELLED,
-                  })
-                }
-              >
-                <Ban className="h-3.5 w-3.5" />
-                إنهاء
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              variant="success"
-              className="h-8 gap-1 px-2.5 text-xs font-semibold"
-              onClick={() =>
-                statusMutation.mutate({
-                  enrollmentId: row.id,
-                  status: EnrollmentStatus.ACTIVE,
-                })
-              }
-            >
-              <PlayCircle className="h-3.5 w-3.5" />
-              استئناف
-            </Button>
-          )}
-        </div>
-      ),
-    },
+    ...(canManageEnrollments
+      ? [
+          {
+            key: 'actions',
+            header: 'إدارة الاشتراك',
+            className: 'whitespace-nowrap text-left pl-4',
+            render: (row: EnrollmentRow) => (
+              <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                {row.status === EnrollmentStatus.ACTIVE ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1 px-2.5 text-xs font-semibold"
+                      onClick={() =>
+                        statusMutation.mutate({
+                          enrollmentId: row.id,
+                          status: EnrollmentStatus.PAUSED,
+                        })
+                      }
+                    >
+                      <PauseCircle className="h-3.5 w-3.5" />
+                      إيقاف مؤقت
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      className="h-8 gap-1 px-2.5 text-xs font-semibold"
+                      onClick={() =>
+                        statusMutation.mutate({
+                          enrollmentId: row.id,
+                          status: EnrollmentStatus.CANCELLED,
+                        })
+                      }
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                      إنهاء
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="success"
+                    className="h-8 gap-1 px-2.5 text-xs font-semibold"
+                    onClick={() =>
+                      statusMutation.mutate({
+                        enrollmentId: row.id,
+                        status: EnrollmentStatus.ACTIVE,
+                      })
+                    }
+                  >
+                    <PlayCircle className="h-3.5 w-3.5" />
+                    استئناف
+                  </Button>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-extrabold">سجل اشتراكات الطلاب بالمجموعة</h3>
-        <Button onClick={() => setSubscribeOpen(true)} className="gap-1.5">
-          <UserPlus className="h-4 w-4" />
-          تسجيل اشتراك طالب
-        </Button>
+        {canManageEnrollments && (
+          <Button onClick={() => setSubscribeOpen(true)} className="gap-1.5">
+            <UserPlus className="h-4 w-4" />
+            تسجيل اشتراك طالب
+          </Button>
+        )}
       </div>
 
       <ServerDataTable

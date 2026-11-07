@@ -1,0 +1,163 @@
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { describe, expect, it, vi } from 'vitest';
+import { PERMISSIONS, SystemRole } from '@edu-center/shared';
+import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { ReportsService } from './reports.service';
+
+describe('ReportsService - Access Control and Permissions Enforcement', () => {
+  const mockAcademicRepo = {
+    getFilterOptions: vi.fn(),
+    getStudentsReport: vi.fn(),
+    getAttendanceReport: vi.fn(),
+  };
+  const mockOperationsRepo = {
+    getBookingsReport: vi.fn(),
+    getClassroomsReport: vi.fn(),
+  };
+  const mockFinanceStatementsRepo = {
+    getStudentStatementReport: vi.fn(),
+    getGroupsRevenueReport: vi.fn(),
+  };
+  const mockStaffStatementsRepo = {
+    getTeacherStatementReport: vi.fn(),
+    getAssistantStatementReport: vi.fn(),
+  };
+  const mockCashflowRepo = {
+    getCollectionsReport: vi.fn(),
+    getExpensesReport: vi.fn(),
+  };
+  const mockFinancialSummaryRepo = {
+    getFinancialSummaryReport: vi.fn(),
+  };
+  const mockCache = {
+    get: vi.fn(),
+    set: vi.fn(),
+  };
+
+  const service = new ReportsService(
+    mockAcademicRepo as any,
+    mockOperationsRepo as any,
+    mockFinanceStatementsRepo as any,
+    mockStaffStatementsRepo as any,
+    mockCashflowRepo as any,
+    mockFinancialSummaryRepo as any,
+    mockCache as any,
+  );
+
+  it('rejects unknown report types with BadRequestException', async () => {
+    const actor: AuthenticatedUser = {
+      id: 'user-1',
+      email: 'user@test.com',
+      fullName: 'User',
+      roleCode: SystemRole.MANAGER,
+      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.FINANCE_VIEW],
+    };
+
+    await expect(service.generateReport('non-existent-report', {}, actor)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('blocks users lacking FINANCE_VIEW from financial reports', async () => {
+    const actorWithoutFinance: AuthenticatedUser = {
+      id: 'employee-1',
+      email: 'emp@test.com',
+      fullName: 'Employee',
+      roleCode: SystemRole.ATTENDANCE_EMPLOYEE,
+      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.STUDENTS_VIEW, PERMISSIONS.ATTENDANCE_VIEW],
+    };
+
+    // Financial summary
+    await expect(
+      service.generateReport('financial-summary', {}, actorWithoutFinance),
+    ).rejects.toThrow(ForbiddenException);
+
+    // Groups revenue
+    await expect(
+      service.generateReport('groups-revenue', {}, actorWithoutFinance),
+    ).rejects.toThrow(ForbiddenException);
+
+    // Collections
+    await expect(
+      service.generateReport('collections', {}, actorWithoutFinance),
+    ).rejects.toThrow(ForbiddenException);
+
+    // Expenses
+    await expect(
+      service.generateReport('expenses', {}, actorWithoutFinance),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('blocks users lacking ATTENDANCE_VIEW from attendance report', async () => {
+    const actorWithoutAttendance: AuthenticatedUser = {
+      id: 'acc-1',
+      email: 'acc@test.com',
+      fullName: 'Accountant',
+      roleCode: SystemRole.ACCOUNTANT,
+      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.FINANCE_VIEW],
+    };
+
+    await expect(
+      service.generateReport('attendance', {}, actorWithoutAttendance),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('blocks users lacking CLASSROOMS_VIEW from classrooms report', async () => {
+    const actorWithoutClassrooms: AuthenticatedUser = {
+      id: 'acc-1',
+      email: 'acc@test.com',
+      fullName: 'Accountant',
+      roleCode: SystemRole.ACCOUNTANT,
+      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.FINANCE_VIEW],
+    };
+
+    await expect(
+      service.generateReport('classrooms', {}, actorWithoutClassrooms),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('blocks users lacking BOOKINGS_VIEW from bookings report', async () => {
+    const actorWithoutBookings: AuthenticatedUser = {
+      id: 'acc-1',
+      email: 'acc@test.com',
+      fullName: 'Accountant',
+      roleCode: SystemRole.ACCOUNTANT,
+      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.FINANCE_VIEW],
+    };
+
+    await expect(
+      service.generateReport('bookings', {}, actorWithoutBookings),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('blocks exportAll if user lacks REPORTS_EXPORT', async () => {
+    const actorWithoutExport: AuthenticatedUser = {
+      id: 'sec-1',
+      email: 'sec@test.com',
+      fullName: 'Secretary',
+      roleCode: SystemRole.SECRETARY,
+      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.STUDENTS_VIEW],
+    };
+
+    await expect(
+      service.generateReport('students', { exportAll: 'true' }, actorWithoutExport),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('allows OWNER to access any report without explicit permissions', async () => {
+    mockFinancialSummaryRepo.getFinancialSummaryReport.mockResolvedValueOnce({
+      totalRevenue: 1000,
+    });
+
+    const owner: AuthenticatedUser = {
+      id: 'owner-1',
+      email: 'owner@test.com',
+      fullName: 'Owner',
+      roleCode: SystemRole.OWNER,
+      permissions: [],
+    };
+
+    const result = await service.generateReport('financial-summary', {}, owner);
+    expect(result.reportType).toBe('financial-summary');
+  });
+});

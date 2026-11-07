@@ -57,6 +57,9 @@ export const PERMISSIONS = {
   CALENDAR_VIEW: 'calendar.view',
   REPORTS_VIEW: 'reports.view',
   REPORTS_EXPORT: 'reports.export',
+
+  BACKUPS_VIEW: 'backups.view',
+  BACKUPS_MANAGE: 'backups.manage',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

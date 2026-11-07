@@ -47,6 +47,7 @@ export class ReportsService {
     actor: AuthenticatedUser,
   ): Promise<ReportPayload> {
     const reportType = this.validateReportType(rawReportType);
+    this.assertReportAccess(reportType, actor);
     const isExport = query.exportAll === 'true';
 
     if (
@@ -93,6 +94,33 @@ export class ReportsService {
       return raw as ReportType;
     }
     throw new BadRequestException(`نوع التقرير غير معروف: ${raw}`);
+  }
+
+  private assertReportAccess(reportType: ReportType, actor: AuthenticatedUser): void {
+    if (actor.roleCode === SystemRole.OWNER) {
+      return;
+    }
+
+    const permissionMap: Record<ReportType, string> = {
+      students: PERMISSIONS.STUDENTS_VIEW,
+      attendance: PERMISSIONS.ATTENDANCE_VIEW,
+      'student-statement': PERMISSIONS.FINANCE_VIEW,
+      'groups-revenue': PERMISSIONS.FINANCE_VIEW,
+      'teacher-statement': PERMISSIONS.FINANCE_VIEW,
+      'assistant-statement': PERMISSIONS.FINANCE_VIEW,
+      collections: PERMISSIONS.FINANCE_VIEW,
+      expenses: PERMISSIONS.FINANCE_VIEW,
+      bookings: PERMISSIONS.BOOKINGS_VIEW,
+      classrooms: PERMISSIONS.CLASSROOMS_VIEW,
+      'financial-summary': PERMISSIONS.FINANCE_VIEW,
+    };
+
+    const required = permissionMap[reportType];
+    if (required && !actor.permissions.includes(required as any)) {
+      throw new ForbiddenException(
+        `ليس لديك صلاحية عرض تقرير ${REPORT_TITLES_AR[reportType] || reportType}`,
+      );
+    }
   }
 
   private resolvePagination(query: ReportQueryDto, isExport: boolean): NormalizedReportPagination {

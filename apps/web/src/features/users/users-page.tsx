@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, Plus, Power, RotateCcw, ShieldCheck, Users } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
+import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
   Button,
@@ -17,6 +17,7 @@ import {
   TabsTrigger,
   useToast,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatDateTimeAr } from '@/lib/formatters';
@@ -35,6 +36,9 @@ interface RoleOption {
 export function UsersPage() {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { hasPermission } = useAuth();
+  const canManageUsers = hasPermission(PERMISSIONS.USERS_MANAGE);
+  const canManageRoles = hasPermission(PERMISSIONS.ROLES_MANAGE);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -164,16 +168,18 @@ export function UsersPage() {
             <Eye className="h-3.5 w-3.5 text-primary" />
             تفاصيل
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => toggleActiveMutation.mutate(row)}
-            isLoading={toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === row.id}
-          >
-            <Power className="h-3.5 w-3.5" />
-            {row.isActive ? 'إيقاف' : 'تفعيل'}
-          </Button>
+          {canManageUsers && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => toggleActiveMutation.mutate(row)}
+              isLoading={toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === row.id}
+            >
+              <Power className="h-3.5 w-3.5" />
+              {row.isActive ? 'إيقاف' : 'تفعيل'}
+            </Button>
+          )}
         </div>
       ),
     },
@@ -187,24 +193,28 @@ export function UsersPage() {
         title="المستخدمون والصلاحيات القابلة للتخصيص"
         description="إدارة حسابات فريق السنتر وتخصيص صلاحيات الأدوار الوظيفية بدقة"
         actions={
-          <Button onClick={() => setModalOpen(true)} className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            إضافة مستخدم جديد
-          </Button>
+          canManageUsers ? (
+            <Button onClick={() => setModalOpen(true)} className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              إضافة مستخدم جديد
+            </Button>
+          ) : undefined
         }
       />
 
       <Tabs defaultValue="users">
-        <TabsList>
-          <TabsTrigger value="users">
-            <Users className="h-4 w-4" />
-            حسابات المستخدمين
-          </TabsTrigger>
-          <TabsTrigger value="roles">
-            <ShieldCheck className="h-4 w-4" />
-            الأدوار وتخصيص الصلاحيات
-          </TabsTrigger>
-        </TabsList>
+        {canManageRoles && (
+          <TabsList>
+            <TabsTrigger value="users">
+              <Users className="h-4 w-4" />
+              حسابات المستخدمين
+            </TabsTrigger>
+            <TabsTrigger value="roles">
+              <ShieldCheck className="h-4 w-4" />
+              الأدوار وتخصيص الصلاحيات
+            </TabsTrigger>
+          </TabsList>
+        )}
 
         <TabsContent value="users">
           <ServerDataTable
@@ -262,9 +272,11 @@ export function UsersPage() {
           />
         </TabsContent>
 
-        <TabsContent value="roles">
-          <RolesPermissionsTab />
-        </TabsContent>
+        {canManageRoles && (
+          <TabsContent value="roles">
+            <RolesPermissionsTab />
+          </TabsContent>
+        )}
       </Tabs>
 
       <UserQuickViewModal

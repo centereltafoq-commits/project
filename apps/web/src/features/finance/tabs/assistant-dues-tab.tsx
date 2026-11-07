@@ -1,13 +1,14 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { HandCoins, History, Lock, Plus, RotateCcw } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
+import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
   Button,
   ServerDataTable,
   TableColumn,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
@@ -25,6 +26,9 @@ interface AssistantDuesTabProps {
 }
 
 export function AssistantDuesTab({ yearMonth, lookups }: AssistantDuesTabProps) {
+  const { hasPermission } = useAuth();
+  const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS);
+
   const [viewMode, setViewMode] = React.useState<'dues' | 'payouts'>('dues');
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -54,103 +58,110 @@ export function AssistantDuesTab({ yearMonth, lookups }: AssistantDuesTabProps) 
       ).data,
   });
 
-  const duesColumns: TableColumn<AssistantMonthlyRecordRow>[] = [
-    {
-      key: 'assistant',
-      header: 'المساعد',
-      className: 'whitespace-nowrap',
-      render: (r) => (
-        <div>
-          <div className="font-bold text-foreground text-xs">{r.assistantName}</div>
-          <div className="font-mono text-[11px] text-muted-foreground">
-            {r.assistantCode} • {r.assistantPhone}
+  const duesColumns = React.useMemo<TableColumn<AssistantMonthlyRecordRow>[]>(() => {
+    const cols: TableColumn<AssistantMonthlyRecordRow>[] = [
+      {
+        key: 'assistant',
+        header: 'المساعد',
+        className: 'whitespace-nowrap',
+        render: (r) => (
+          <div>
+            <div className="font-bold text-foreground text-xs">{r.assistantName}</div>
+            <div className="font-mono text-[11px] text-muted-foreground">
+              {r.assistantCode} • {r.assistantPhone}
+            </div>
           </div>
-        </div>
-      ),
-    },
-    {
-      key: 'method',
-      header: 'طريقة الاحتساب',
-      className: 'whitespace-nowrap',
-      render: (r) => (
-        <Badge variant="info" className="text-xs">
-          {ASSISTANT_METHOD_LABELS[r.calculationMethodSnapshot] ??
-            r.calculationMethodSnapshot}
-        </Badge>
-      ),
-    },
-    {
-      key: 'details',
-      header: 'تفصيل المعادلة',
-      render: (r) => (
-        <span className="text-xs text-muted-foreground line-clamp-2 max-w-xs">
-          {r.detailsNote || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'totalDues',
-      header: 'إجمالي المستحق',
-      className: 'whitespace-nowrap font-bold text-xs',
-      render: (r) => formatCurrency(r.totalDues),
-    },
-    {
-      key: 'paidOut',
-      header: 'تم صرفه',
-      className: 'whitespace-nowrap font-semibold text-emerald-600 dark:text-emerald-400 text-xs',
-      render: (r) => formatCurrency(r.totalPaidOut),
-    },
-    {
-      key: 'remaining',
-      header: 'المتبقي للصرف',
-      className: 'whitespace-nowrap',
-      render: (r) =>
-        r.remainingBalance > 0 ? (
-          <Badge variant="warning">{formatCurrency(r.remainingBalance)}</Badge>
-        ) : (
-          <Badge variant="success">تمت التصفية</Badge>
         ),
-    },
-    {
-      key: 'state',
-      header: 'الإغلاق',
-      className: 'whitespace-nowrap',
-      render: (r) =>
-        r.isClosed ? (
-          <Badge variant="purple">
-            <Lock className="h-3 w-3" />
-            مغلق
+      },
+      {
+        key: 'method',
+        header: 'طريقة الاحتساب',
+        className: 'whitespace-nowrap',
+        render: (r) => (
+          <Badge variant="info" className="text-xs">
+            {ASSISTANT_METHOD_LABELS[r.calculationMethodSnapshot] ??
+              r.calculationMethodSnapshot}
           </Badge>
-        ) : (
-          <Badge variant="neutral">مفتوح</Badge>
         ),
-    },
-    {
-      key: 'actions',
-      header: 'إجراءات',
-      className: 'whitespace-nowrap text-left pl-4',
-      render: (r) => (
-        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
-          <Button
-            size="sm"
-            className="h-8 gap-1 px-2.5 text-xs font-semibold"
-            onClick={() => {
-              setPreset({
-                id: r.assistantId,
-                name: r.assistantName,
-                code: r.assistantCode,
-                remainingBalance: r.remainingBalance,
-              });
-              setPayoutOpen(true);
-            }}
-          >
-            <HandCoins className="h-3.5 w-3.5" />
-            صرف دفعة
-          </Button>
-        </div>
-      ),
-    },
-  ];
+      },
+      {
+        key: 'details',
+        header: 'تفصيل المعادلة',
+        render: (r) => (
+          <span className="text-xs text-muted-foreground line-clamp-2 max-w-xs">
+            {r.detailsNote || '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'totalDues',
+        header: 'إجمالي المستحق',
+        className: 'whitespace-nowrap font-bold text-xs',
+        render: (r) => formatCurrency(r.totalDues),
+      },
+      {
+        key: 'paidOut',
+        header: 'تم صرفه',
+        className: 'whitespace-nowrap font-semibold text-emerald-600 dark:text-emerald-400 text-xs',
+        render: (r) => formatCurrency(r.totalPaidOut),
+      },
+      {
+        key: 'remaining',
+        header: 'المتبقي للصرف',
+        className: 'whitespace-nowrap',
+        render: (r) =>
+          r.remainingBalance > 0 ? (
+            <Badge variant="warning">{formatCurrency(r.remainingBalance)}</Badge>
+          ) : (
+            <Badge variant="success">تمت التصفية</Badge>
+          ),
+      },
+      {
+        key: 'state',
+        header: 'الإغلاق',
+        className: 'whitespace-nowrap',
+        render: (r) =>
+          r.isClosed ? (
+            <Badge variant="purple">
+              <Lock className="h-3 w-3" />
+              مغلق
+            </Badge>
+          ) : (
+            <Badge variant="neutral">مفتوح</Badge>
+          ),
+      },
+    ];
+
+    if (canPayout) {
+      cols.push({
+        key: 'actions',
+        header: 'إجراءات',
+        className: 'whitespace-nowrap text-left pl-4',
+        render: (r) => (
+          <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="sm"
+              className="h-8 gap-1 px-2.5 text-xs font-semibold"
+              onClick={() => {
+                setPreset({
+                  id: r.assistantId,
+                  name: r.assistantName,
+                  code: r.assistantCode,
+                  remainingBalance: r.remainingBalance,
+                });
+                setPayoutOpen(true);
+              }}
+            >
+              <HandCoins className="h-3.5 w-3.5" />
+              صرف دفعة
+            </Button>
+          </div>
+        ),
+      });
+    }
+
+    return cols;
+  }, [canPayout]);
 
   const toolbarFilters = (
     <div className="flex flex-wrap items-center gap-2">
@@ -180,7 +191,7 @@ export function AssistantDuesTab({ yearMonth, lookups }: AssistantDuesTabProps) 
     </div>
   );
 
-  const toolbarActions = (
+  const toolbarActions = canPayout ? (
     <Button
       size="sm"
       className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-sm"
@@ -192,7 +203,7 @@ export function AssistantDuesTab({ yearMonth, lookups }: AssistantDuesTabProps) 
       <Plus className="h-4 w-4" />
       صرف دفعة للمساعد
     </Button>
-  );
+  ) : null;
 
   return (
     <div className="space-y-4">
@@ -203,15 +214,19 @@ export function AssistantDuesTab({ yearMonth, lookups }: AssistantDuesTabProps) 
           meta={duesQuery.data?.meta}
           isLoading={duesQuery.isLoading}
           rowKey={(r) => r.id}
-          onRowClick={(r) => {
-            setPreset({
-              id: r.assistantId,
-              name: r.assistantName,
-              code: r.assistantCode,
-              remainingBalance: r.remainingBalance,
-            });
-            setPayoutOpen(true);
-          }}
+          onRowClick={
+            canPayout
+              ? (r) => {
+                  setPreset({
+                    id: r.assistantId,
+                    name: r.assistantName,
+                    code: r.assistantCode,
+                    remainingBalance: r.remainingBalance,
+                  });
+                  setPayoutOpen(true);
+                }
+              : undefined
+          }
           searchPlaceholder="ابحث باسم المساعد أو الكود أو الهاتف..."
           searchValue={search}
           onSearchChange={(val) => {

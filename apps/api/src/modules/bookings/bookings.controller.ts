@@ -9,7 +9,10 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@edu-center/shared';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
-import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import {
+  RequireAnyPermissions,
+  RequirePermissions,
+} from '../../common/decorators/permissions.decorator';
 import { BookingsReviewService } from './bookings-review.service';
 import { BookingsService } from './bookings.service';
 import {
@@ -68,7 +71,10 @@ export class BookingsController {
   }
 
   @Post(':id/review')
-  @RequirePermissions(PERMISSIONS.BOOKINGS_VIEW)
+  @RequireAnyPermissions(
+    PERMISSIONS.BOOKINGS_APPROVE_ADMIN,
+    PERMISSIONS.BOOKINGS_APPROVE_TEACHER,
+  )
   async review(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReviewBookingDto,
@@ -78,7 +84,11 @@ export class BookingsController {
   }
 
   @Post(':id/cancel')
-  @RequirePermissions(PERMISSIONS.BOOKINGS_CREATE)
+  @RequireAnyPermissions(
+    PERMISSIONS.BOOKINGS_CREATE,
+    PERMISSIONS.BOOKINGS_APPROVE_ADMIN,
+    PERMISSIONS.BOOKINGS_APPROVE_TEACHER,
+  )
   async cancelSingle(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CancelBookingDto,
@@ -88,7 +98,10 @@ export class BookingsController {
   }
 
   @Post(':id/complete')
-  @RequirePermissions(PERMISSIONS.BOOKINGS_VIEW)
+  @RequireAnyPermissions(
+    PERMISSIONS.BOOKINGS_APPROVE_ADMIN,
+    PERMISSIONS.BOOKINGS_APPROVE_TEACHER,
+  )
   async complete(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() actor: AuthenticatedUser,

@@ -1,5 +1,7 @@
+import * as React from 'react';
 import { RotateCcw } from 'lucide-react';
 import { Button, Card, MonthPicker, Select } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { cn } from '@/lib/cn';
 import { formatDateAr, formatYearMonthAr } from '@/lib/formatters';
 import {
@@ -42,9 +44,18 @@ export function ReportsToolbar({
   onResetFilters,
   filterOptions,
 }: ReportsToolbarProps) {
+  const { hasPermission } = useAuth();
   const selectedGroupLabel = filterOptions?.groups.find((g) => g.id === groupId)?.label;
   const selectedTeacherLabel = filterOptions?.teachers.find((t) => t.id === teacherId)?.label;
   const selectedStudentLabel = filterOptions?.students.find((s) => s.id === studentId)?.label;
+
+  const permittedReports = React.useMemo(
+    () =>
+      ALL_REPORTS_DEFINITIONS.filter(
+        (rep) => !rep.requiredPermission || hasPermission(rep.requiredPermission as any),
+      ),
+    [hasPermission],
+  );
 
   return (
     <div className="space-y-4">
@@ -68,10 +79,10 @@ export function ReportsToolbar({
         </div>
       </div>
 
-      {/* شريط اختيار التقارير الـ 11 */}
+      {/* شريط اختيار التقارير المصرح بها */}
       <Card className="p-3 no-print">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-          {ALL_REPORTS_DEFINITIONS.map((rep) => {
+          {permittedReports.map((rep) => {
             const Icon = rep.icon;
             const isSelected = rep.slug === activeReport;
             return (

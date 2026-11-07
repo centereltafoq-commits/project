@@ -22,12 +22,18 @@ export interface NavItem {
   to: string;
   icon: LucideIcon;
   permission?: string;
+  anyPermissions?: string[];
 }
 
 export const SIDEBAR_NAV_ITEMS: NavItem[] = [
   { label: 'لوحة التحكم', to: '/', icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_VIEW },
   { label: 'إدارة الطلاب', to: '/students', icon: GraduationCap, permission: PERMISSIONS.STUDENTS_VIEW },
-  { label: 'إدارة المدرسين', to: '/teachers', icon: UserCheck, permission: PERMISSIONS.TEACHERS_VIEW },
+  {
+    label: 'إدارة المدرسين',
+    to: '/teachers',
+    icon: UserCheck,
+    anyPermissions: [PERMISSIONS.TEACHERS_VIEW, PERMISSIONS.TEACHERS_VIEW_OWN],
+  },
   { label: 'إدارة المساعدين', to: '/assistants', icon: Users, permission: PERMISSIONS.ASSISTANTS_VIEW },
   { label: 'المجموعات والاشتراكات', to: '/groups', icon: BookOpen, permission: PERMISSIONS.GROUPS_VIEW },
   { label: 'الحضور والتعويضات', to: '/attendance', icon: ClipboardCheck, permission: PERMISSIONS.ATTENDANCE_VIEW },
@@ -38,6 +44,6 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
   { label: 'التقارير التفصيلية', to: '/reports', icon: BarChart3, permission: PERMISSIONS.REPORTS_VIEW },
   { label: 'المستخدمون والصلاحيات', to: '/users', icon: ShieldCheck, permission: PERMISSIONS.USERS_VIEW },
   { label: 'سجل العمليات (Audit)', to: '/audit-logs', icon: ScrollText, permission: PERMISSIONS.AUDIT_VIEW },
-  { label: 'النسخ الاحتياطي والأمان', to: '/backups', icon: Database, permission: PERMISSIONS.USERS_VIEW },
+  { label: 'النسخ الاحتياطي والأمان', to: '/backups', icon: Database, permission: PERMISSIONS.BACKUPS_VIEW },
 ];
 

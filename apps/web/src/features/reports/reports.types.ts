@@ -12,7 +12,7 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react';
-import { PaginatedResult } from '@edu-center/shared';
+import { PaginatedResult, PERMISSIONS, PermissionCode } from '@edu-center/shared';
 
 export type ReportTypeSlug =
   | 'students'
@@ -64,6 +64,7 @@ export interface ReportDefinition {
   usesGroup: boolean;
   usesTeacher: boolean;
   usesStudent: boolean;
+  requiredPermission?: PermissionCode | string;
 }
 
 export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
@@ -76,6 +77,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
+    requiredPermission: PERMISSIONS.STUDENTS_VIEW,
   },
   {
     slug: 'attendance',
@@ -86,6 +88,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
+    requiredPermission: PERMISSIONS.ATTENDANCE_VIEW,
   },
   {
     slug: 'student-statement',
@@ -96,6 +99,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
+    requiredPermission: PERMISSIONS.FINANCE_VIEW,
   },
   {
     slug: 'groups-revenue',
@@ -106,6 +110,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: true,
     usesTeacher: true,
     usesStudent: false,
+    requiredPermission: PERMISSIONS.FINANCE_VIEW,
   },
   {
     slug: 'teacher-statement',
@@ -116,6 +121,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: true,
     usesTeacher: true,
     usesStudent: false,
+    requiredPermission: PERMISSIONS.FINANCE_VIEW,
   },
   {
     slug: 'assistant-statement',
@@ -126,6 +132,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: false,
     usesTeacher: false,
     usesStudent: false,
+    requiredPermission: PERMISSIONS.FINANCE_VIEW,
   },
   {
     slug: 'collections',
@@ -136,6 +143,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
+    requiredPermission: PERMISSIONS.FINANCE_VIEW,
   },
   {
     slug: 'expenses',
@@ -146,6 +154,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: false,
     usesTeacher: false,
     usesStudent: false,
+    requiredPermission: PERMISSIONS.FINANCE_VIEW,
   },
   {
     slug: 'bookings',
@@ -156,6 +165,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: false,
     usesTeacher: true,
     usesStudent: true,
+    requiredPermission: PERMISSIONS.BOOKINGS_VIEW,
   },
   {
     slug: 'classrooms',
@@ -166,6 +176,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: false,
     usesTeacher: false,
     usesStudent: false,
+    requiredPermission: PERMISSIONS.CLASSROOMS_VIEW,
   },
   {
     slug: 'financial-summary',
@@ -176,5 +187,6 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: false,
     usesTeacher: false,
     usesStudent: false,
+    requiredPermission: PERMISSIONS.FINANCE_VIEW,
   },
 ];

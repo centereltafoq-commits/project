@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Button, Input, Modal, useToast } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatDateTimeAr } from '@/lib/formatters';
 import { ClassroomMaintenanceItem, ClassroomRow } from './classrooms.types';
@@ -19,6 +21,8 @@ export function ClassroomMaintenanceModal({
 }: ClassroomMaintenanceModalProps) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { hasPermission } = useAuth();
+  const canManageClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_MANAGE);
 
   const [startAt, setStartAt] = React.useState('');
   const [endAt, setEndAt] = React.useState('');
@@ -71,44 +75,46 @@ export function ClassroomMaintenanceModal({
       description="تمنع فترات الصيانة المجدولة حجز القاعة تلقائياً خلال الوقت المحدد"
     >
       <div className="space-y-5">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            addMutation.mutate();
-          }}
-          className="space-y-3 rounded-xl border border-border bg-muted/25 p-4"
-        >
-          <p className="text-sm font-bold">إضافة نافذة صيانة جديدة</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {canManageClassrooms && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              addMutation.mutate();
+            }}
+            className="space-y-3 rounded-xl border border-border bg-muted/25 p-4"
+          >
+            <p className="text-sm font-bold">إضافة نافذة صيانة جديدة</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Input
+                label="بداية الصيانة"
+                type="datetime-local"
+                required
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+              />
+              <Input
+                label="نهاية الصيانة"
+                type="datetime-local"
+                required
+                value={endAt}
+                onChange={(e) => setEndAt(e.target.value)}
+              />
+            </div>
             <Input
-              label="بداية الصيانة"
-              type="datetime-local"
+              label="سبب الصيانة"
               required
-              value={startAt}
-              onChange={(e) => setStartAt(e.target.value)}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="مثال: صيانة التكييف أو تحديث الشاشة التفاعلية"
             />
-            <Input
-              label="نهاية الصيانة"
-              type="datetime-local"
-              required
-              value={endAt}
-              onChange={(e) => setEndAt(e.target.value)}
-            />
-          </div>
-          <Input
-            label="سبب الصيانة"
-            required
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="مثال: صيانة التكييف أو تحديث الشاشة التفاعلية"
-          />
-          <div className="flex justify-end">
-            <Button type="submit" size="sm" isLoading={addMutation.isPending}>
-              <Plus className="h-4 w-4" />
-              تسجيل الصيانة
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end">
+              <Button type="submit" size="sm" isLoading={addMutation.isPending}>
+                <Plus className="h-4 w-4" />
+                تسجيل الصيانة
+              </Button>
+            </div>
+          </form>
+        )}
 
         <div className="space-y-2">
           <p className="text-sm font-bold">سجل الصيانات المسجلة ({maintenances.length})</p>
@@ -130,14 +136,16 @@ export function ClassroomMaintenanceModal({
                     من {formatDateTimeAr(m.startAt)} إلى {formatDateTimeAr(m.endAt)}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => deleteMutation.mutate(m.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  حذف
-                </Button>
+                {canManageClassrooms && (
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => deleteMutation.mutate(m.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    حذف
+                  </Button>
+                )}
               </div>
             ))
           )}

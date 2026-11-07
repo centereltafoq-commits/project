@@ -1,7 +1,10 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SystemRole } from '@edu-center/shared';
-import { REQUIRED_PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import {
+  REQUIRED_PERMISSIONS_KEY,
+  REQUIRE_ANY_PERMISSIONS_KEY,
+} from '../decorators/permissions.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthenticatedUser } from '../decorators/current-user.decorator';
 
@@ -20,7 +23,15 @@ export class PermissionsGuard implements CanActivate {
       REQUIRED_PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
-    if (!requiredPermissions || requiredPermissions.length === 0) {
+    const requireAnyPermissions = this.reflector.getAllAndOverride<string[]>(
+      REQUIRE_ANY_PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    const hasRequired = Boolean(requiredPermissions && requiredPermissions.length > 0);
+    const hasRequireAny = Boolean(requireAnyPermissions && requireAnyPermissions.length > 0);
+
+    if (!hasRequired && !hasRequireAny) {
       return true;
     }
 
@@ -35,10 +46,21 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const userPermissionSet = new Set(user.permissions || []);
-    const hasAll = requiredPermissions.every((perm) => userPermissionSet.has(perm));
-    if (!hasAll) {
-      throw new ForbiddenException('ليس لديك الصلاحية الكافية لتنفيذ هذه العملية');
+
+    if (hasRequired) {
+      const hasAll = requiredPermissions!.every((perm) => userPermissionSet.has(perm));
+      if (!hasAll) {
+        throw new ForbiddenException('ليس لديك الصلاحية الكافية لتنفيذ هذه العملية');
+      }
     }
+
+    if (hasRequireAny) {
+      const hasAny = requireAnyPermissions!.some((perm) => userPermissionSet.has(perm));
+      if (!hasAny) {
+        throw new ForbiddenException('ليس لديك الصلاحية الكافية لتنفيذ هذه العملية');
+      }
+    }
+
     return true;
   }
 }

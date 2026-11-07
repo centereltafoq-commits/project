@@ -57,6 +57,9 @@ const PERMISSION_META_MAP: Record<PermissionCode, { module: string; nameAr: stri
   [PERMISSIONS.CALENDAR_VIEW]: { module: 'CALENDAR', nameAr: 'عرض التقويم الموحد للسنتر' },
   [PERMISSIONS.REPORTS_VIEW]: { module: 'REPORTS', nameAr: 'عرض التقارير التشغيلية والمالية' },
   [PERMISSIONS.REPORTS_EXPORT]: { module: 'REPORTS', nameAr: 'تصدير وطباعة التقارير بصيغة CSV/Excel' },
+
+  [PERMISSIONS.BACKUPS_VIEW]: { module: 'BACKUPS', nameAr: 'عرض سجلات النسخ الاحتياطي والأمان' },
+  [PERMISSIONS.BACKUPS_MANAGE]: { module: 'BACKUPS', nameAr: 'إجراء واستعادة وتنزيل النسخ الاحتياطية' },
 };
 
 export function buildSeedPermissionsList() {

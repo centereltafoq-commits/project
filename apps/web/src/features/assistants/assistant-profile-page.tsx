@@ -18,6 +18,8 @@ import {
 } from '@/design-system';
 import { apiClient } from '@/lib/api-client';
 import { formatCurrency, formatYearMonthAr, getCurrentYearMonth } from '@/lib/formatters';
+import { PERMISSIONS } from '@edu-center/shared';
+import { useAuth } from '@/features/auth/auth-context';
 import { AssistantFormModal } from './assistant-form-modal';
 import {
   AssistantLinkedGroupsTab,
@@ -29,6 +31,10 @@ import { ASSISTANT_CALC_METHOD_LABELS, AssistantProfileData } from './assistants
 export function AssistantProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageAssistants = hasPermission(PERMISSIONS.ASSISTANTS_MANAGE);
+  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+
   const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
   const [editOpen, setEditOpen] = React.useState(false);
 
@@ -71,10 +77,12 @@ export function AssistantProfilePage() {
               value={yearMonth}
               onChange={setYearMonth}
             />
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
-              <Edit3 className="h-4 w-4" />
-              تعديل البيانات
-            </Button>
+            {canManageAssistants && (
+              <Button variant="outline" onClick={() => setEditOpen(true)}>
+                <Edit3 className="h-4 w-4" />
+                تعديل البيانات
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => navigate('/assistants')}>
               <ArrowRight className="h-4 w-4" />
               قائمة المساعدين
@@ -115,54 +123,74 @@ export function AssistantProfilePage() {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          title="مستحقات الشهر"
-          value={formatCurrency(monthlyBreakdown.totalDues)}
-          subtitle={`عن ${formatYearMonthAr(yearMonth)}`}
-          icon={Wallet}
-          tone="purple"
-        />
-        <StatCard
-          title="المنصرف في الشهر"
-          value={formatCurrency(monthlyBreakdown.totalPayouts)}
-          subtitle="دفعات مسجلة"
-          icon={CreditCard}
-          tone="success"
-        />
-        <StatCard
-          title="الرصيد المتبقي"
-          value={formatCurrency(monthlyBreakdown.remainingBalance)}
-          subtitle={monthlyBreakdown.remainingBalance > 0 ? 'مستحق الصرف' : 'تمت التصفية'}
-          icon={Wallet}
-          tone={monthlyBreakdown.remainingBalance > 0 ? 'warning' : 'success'}
-        />
+        {canViewFinance ? (
+          <>
+            <StatCard
+              title="مستحقات الشهر"
+              value={formatCurrency(monthlyBreakdown.totalDues)}
+              subtitle={`عن ${formatYearMonthAr(yearMonth)}`}
+              icon={Wallet}
+              tone="purple"
+            />
+            <StatCard
+              title="المنصرف في الشهر"
+              value={formatCurrency(monthlyBreakdown.totalPayouts)}
+              subtitle="دفعات مسجلة"
+              icon={CreditCard}
+              tone="success"
+            />
+            <StatCard
+              title="الرصيد المتبقي"
+              value={formatCurrency(monthlyBreakdown.remainingBalance)}
+              subtitle={monthlyBreakdown.remainingBalance > 0 ? 'مستحق الصرف' : 'تمت التصفية'}
+              icon={Wallet}
+              tone={monthlyBreakdown.remainingBalance > 0 ? 'warning' : 'success'}
+            />
+          </>
+        ) : (
+          <StatCard
+            title="المجموعات المرتبطة"
+            value={data.linkedGroups.length}
+            subtitle="مجموعات مسندة للمساعد"
+            icon={BookOpen}
+            tone="primary"
+          />
+        )}
       </div>
 
-      <Tabs defaultValue="dues">
+      <Tabs defaultValue={canViewFinance ? 'dues' : 'groups'}>
         <TabsList>
-          <TabsTrigger value="dues">
-            <Wallet className="h-4 w-4" />
-            تفاصيل المستحقات الشهرية
-          </TabsTrigger>
+          {canViewFinance && (
+            <TabsTrigger value="dues">
+              <Wallet className="h-4 w-4" />
+              تفاصيل المستحقات الشهرية
+            </TabsTrigger>
+          )}
           <TabsTrigger value="groups">
             <BookOpen className="h-4 w-4" />
             المجموعات المرتبطة ({data.linkedGroups.length})
           </TabsTrigger>
-          <TabsTrigger value="payouts">
-            <CreditCard className="h-4 w-4" />
-            عمليات الصرف ({data.payouts.length})
-          </TabsTrigger>
+          {canViewFinance && (
+            <TabsTrigger value="payouts">
+              <CreditCard className="h-4 w-4" />
+              عمليات الصرف ({data.payouts.length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="dues">
-          <AssistantMonthlyDuesTab data={data} />
-        </TabsContent>
+        {canViewFinance && (
+          <TabsContent value="dues">
+            <AssistantMonthlyDuesTab data={data} />
+          </TabsContent>
+        )}
         <TabsContent value="groups">
           <AssistantLinkedGroupsTab data={data} />
         </TabsContent>
-        <TabsContent value="payouts">
-          <AssistantPayoutsTab data={data} />
-        </TabsContent>
+        {canViewFinance && (
+          <TabsContent value="payouts">
+            <AssistantPayoutsTab data={data} />
+          </TabsContent>
+        )}
       </Tabs>
 
       <AssistantFormModal open={editOpen} onOpenChange={setEditOpen} assistant={assistant} />

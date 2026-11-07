@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TeacherEmploymentStatus } from '@edu-center/shared';
+import { PERMISSIONS, SystemRole, TeacherEmploymentStatus } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -124,11 +124,24 @@ export class TeachersService {
     return updatedSlots;
   }
 
-  async getProfile(id: string, requestedYearMonth?: string) {
+  async getProfile(id: string, requestedYearMonth?: string, actor?: AuthenticatedUser) {
     const teacher = await this.getById(id);
     const yearMonth = requestedYearMonth || this.getCurrentYearMonth();
     const bundle = await this.profileRepository.fetchProfileBundle(id, yearMonth);
-    const monthlyBreakdown = computeTeacherMonthlySummary(yearMonth, bundle);
+    const isOwner = actor?.roleCode === SystemRole.OWNER;
+    const isOwnTeacher = Boolean(actor?.id && teacher.userId === actor.id);
+    const hasFinanceView = Boolean(actor?.permissions?.includes(PERMISSIONS.FINANCE_VIEW));
+    const canViewFinance = !actor || isOwner || isOwnTeacher || hasFinanceView;
+
+    const monthlyBreakdown = canViewFinance
+      ? computeTeacherMonthlySummary(yearMonth, bundle)
+      : {
+          yearMonth,
+          groupBreakdowns: [],
+          totalShareEarned: 0,
+          totalPayoutsPaid: 0,
+          netBalanceDue: 0,
+        };
 
     const scheduleSlots = bundle.assignedGroups
       .filter((g) => g.isActive)
@@ -151,7 +164,7 @@ export class TeachersService {
       scheduleSlots,
       availability: bundle.availability,
       monthlyBreakdown,
-      payouts: bundle.payouts,
+      payouts: canViewFinance ? bundle.payouts : [],
       bookings: bundle.bookings,
     };
   }
@@ -161,7 +174,7 @@ export class TeachersService {
     if (!teacher) {
       throw new NotFoundException('لا يوجد ملف مدرس مرتبط بحسابك الحالي');
     }
-    return this.getProfile(teacher.id, requestedYearMonth);
+    return this.getProfile(teacher.id, requestedYearMonth, { id: userId } as AuthenticatedUser);
   }
 
   private async generateUniqueTeacherCode(): Promise<string> {

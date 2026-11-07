@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { AssistantCalculationMethod } from '@edu-center/shared';
+import { AssistantCalculationMethod, PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -85,10 +85,31 @@ export class AssistantsService {
     return updated;
   }
 
-  async getProfile(id: string, requestedYearMonth?: string) {
+  async getProfile(id: string, requestedYearMonth?: string, actor?: AuthenticatedUser) {
     const assistant = await this.getById(id);
     const yearMonth = requestedYearMonth || this.getCurrentYearMonth();
     const bundle = await this.profileRepository.fetchProfileBundle(id, yearMonth);
+    const canViewFinance =
+      !actor ||
+      actor.roleCode === SystemRole.OWNER ||
+      Boolean(actor.permissions?.includes(PERMISSIONS.FINANCE_VIEW));
+
+    if (!canViewFinance) {
+      return {
+        assistant,
+        yearMonth,
+        linkedGroups: bundle.linkedGroups,
+        monthlyBreakdown: {
+          groupDues: [],
+          baseGlobalDue: 0,
+          totalDues: 0,
+          totalPayouts: 0,
+          remainingBalance: 0,
+          isClosed: false,
+        },
+        payouts: [],
+      };
+    }
 
     const execByGroup = new Map(
       bundle.sessionCounts.map((s) => [s.groupId, Number(s.executedCount || 0)]),

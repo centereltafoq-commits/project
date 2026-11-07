@@ -4,6 +4,7 @@ import { BarChart3, Download, Printer } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PERMISSIONS } from '@edu-center/shared';
 import { Button, PageHeader, ServerDataTable, StatCard, useToast } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
+import { ForbiddenPage } from '@/components/forbidden-page';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getCurrentYearMonth } from '@/lib/formatters';
@@ -21,7 +22,26 @@ export function ReportsPage() {
   const { notify } = useToast();
   const canExport = hasPermission(PERMISSIONS.REPORTS_EXPORT);
 
-  const [activeReport, setActiveReport] = React.useState<ReportTypeSlug>('students');
+  const permittedReports = React.useMemo(
+    () =>
+      ALL_REPORTS_DEFINITIONS.filter(
+        (rep) => !rep.requiredPermission || hasPermission(rep.requiredPermission as any),
+      ),
+    [hasPermission],
+  );
+
+  const [activeReport, setActiveReport] = React.useState<ReportTypeSlug>(() => {
+    return ALL_REPORTS_DEFINITIONS.find(
+      (rep) => !rep.requiredPermission || hasPermission(rep.requiredPermission as any),
+    )?.slug ?? 'students';
+  });
+
+  React.useEffect(() => {
+    if (permittedReports.length > 0 && !permittedReports.some((r) => r.slug === activeReport)) {
+      setActiveReport(permittedReports[0].slug);
+    }
+  }, [permittedReports, activeReport]);
+
   const [yearMonth, setYearMonth] = React.useState<string>(() => getCurrentYearMonth());
   const [groupId, setGroupId] = React.useState('');
   const [teacherId, setTeacherId] = React.useState('');
@@ -34,8 +54,8 @@ export function ReportsPage() {
   const [printAllRows, setPrintAllRows] = React.useState<Record<string, unknown>[] | null>(null);
 
   const activeDefinition = React.useMemo(
-    () => ALL_REPORTS_DEFINITIONS.find((d) => d.slug === activeReport) ?? ALL_REPORTS_DEFINITIONS[0],
-    [activeReport],
+    () => permittedReports.find((d) => d.slug === activeReport) ?? permittedReports[0],
+    [permittedReports, activeReport],
   );
 
   const { data: filterOptions } = useQuery<ReportFilterOptionsData>({
@@ -122,10 +142,16 @@ export function ReportsPage() {
   const displayRows = printAllRows ?? data?.data ?? [];
   const isSummaryOnly = activeReport === 'financial-summary';
 
+  if (!activeDefinition || permittedReports.length === 0) {
+    return (
+      <ForbiddenPage message="لا تملك صلاحيات لعرض أي من تقارير النظام. يرجى مراجعة مسؤول النظام." />
+    );
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
-        title="مركز التقارير الشاملة والتصدير (11 تقريراً)"
+        title={`مركز التقارير الشاملة والتصدير (${permittedReports.length} تقارير متاحة)`}
         description={activeDefinition.fullTitle}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -135,10 +161,12 @@ export function ReportsPage() {
                 تصدير Excel / CSV (UTF-8 BOM للعربية)
               </Button>
             )}
-            <Button variant="primary" size="md" onClick={handlePrint}>
-              <Printer className="h-4 w-4" />
-              طباعة التقرير
-            </Button>
+            {canExport && (
+              <Button variant="primary" size="md" onClick={handlePrint}>
+                <Printer className="h-4 w-4" />
+                طباعة التقرير
+              </Button>
+            )}
           </div>
         }
       />

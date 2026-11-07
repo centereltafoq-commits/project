@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Banknote, Lock, Plus, RotateCcw } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
+import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
   Button,
@@ -9,6 +9,7 @@ import {
   ServerDataTable,
   TableColumn,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
@@ -30,6 +31,9 @@ export function StudentBillingTab({
   lookups,
   onShowReceipt,
 }: StudentBillingTabProps) {
+  const { hasPermission } = useAuth();
+  const canCollect = hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
+
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = React.useState('');
@@ -62,120 +66,127 @@ export function StudentBillingTab({
       ).data,
   });
 
-  const columns: TableColumn<StudentMonthlyRecordRow>[] = [
-    {
-      key: 'student',
-      header: 'الطالب',
-      render: (r) => (
-        <div>
-          <div className="font-bold text-foreground text-xs">{r.studentName}</div>
-          <div className="font-mono text-[11px] text-muted-foreground">
-            {r.studentCode} • {r.studentPhone}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'group',
-      header: 'المجموعة',
-      render: (r) => (
-        <div className="max-w-[200px]">
-          <div className="font-semibold text-foreground text-xs truncate" title={r.groupName}>
-            {r.groupName}
-          </div>
-          <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
-            {r.groupCode}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'attendance',
-      header: 'الحضور / المؤهل',
-      render: (r) => (
-        <div className="text-xs space-y-0.5">
-          <span className="font-bold text-foreground">
-            حضر {r.presentCount + r.makeupAttendedCount} من {r.eligibleSessions} حصة
-          </span>
-          <div className="text-[11px] text-muted-foreground">
-            غياب: {r.absentCount} | إذن: {r.excusedCount} {r.makeupAttendedCount > 0 && `| تعويض: ${r.makeupAttendedCount}`}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'sessionPrice',
-      header: 'سعر الحصة',
-      render: (r) => (
-        <div>
-          <span className="font-medium text-xs">{formatCurrency(r.sessionPriceSnapshot)}</span>
-          {r.extraMakeupFees > 0 && (
-            <div className="text-[10px] text-amber-600 font-medium">
-              + تعويضي {formatCurrency(r.extraMakeupFees)}
+  const columns = React.useMemo<TableColumn<StudentMonthlyRecordRow>[]>(() => {
+    const cols: TableColumn<StudentMonthlyRecordRow>[] = [
+      {
+        key: 'student',
+        header: 'الطالب',
+        render: (r) => (
+          <div>
+            <div className="font-bold text-foreground text-xs">{r.studentName}</div>
+            <div className="font-mono text-[11px] text-muted-foreground">
+              {r.studentCode} • {r.studentPhone}
             </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'totalDue',
-      header: 'المستحق',
-      className: 'font-bold text-xs',
-      render: (r) => formatCurrency(r.totalDue),
-    },
-    {
-      key: 'totalPaid',
-      header: 'المدفوع',
-      className: 'font-semibold text-emerald-600 dark:text-emerald-400 text-xs',
-      render: (r) => formatCurrency(r.totalPaid),
-    },
-    {
-      key: 'remaining',
-      header: 'المتبقي',
-      render: (r) =>
-        r.remainingBalance > 0 ? (
-          <Badge variant="danger" className="font-bold">
-            {formatCurrency(r.remainingBalance)}
-          </Badge>
-        ) : (
-          <Badge variant="success">خالص</Badge>
+          </div>
         ),
-    },
-    {
-      key: 'state',
-      header: 'الحالة',
-      render: (r) =>
-        r.isClosed ? (
-          <Badge variant="purple" className="gap-1">
-            <Lock className="h-3 w-3" />
-            مغلق
-          </Badge>
-        ) : (
-          <Badge variant="neutral">مفتوح</Badge>
+      },
+      {
+        key: 'group',
+        header: 'المجموعة',
+        render: (r) => (
+          <div className="max-w-[200px]">
+            <div className="font-semibold text-foreground text-xs truncate" title={r.groupName}>
+              {r.groupName}
+            </div>
+            <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
+              {r.groupCode}
+            </span>
+          </div>
         ),
-    },
-    {
-      key: 'actions',
-      header: 'إجراءات',
-      className: 'text-left pl-3',
-      render: (r) => (
-        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
-          <Button
-            size="sm"
-            variant={r.remainingBalance > 0 ? 'primary' : 'outline'}
-            className="h-8 gap-1 px-3 text-xs font-semibold"
-            onClick={() => {
-              setSelectedRecord(r);
-              setCollectOpen(true);
-            }}
-          >
-            <Banknote className="h-3.5 w-3.5" />
-            تحصيل
-          </Button>
-        </div>
-      ),
-    },
-  ];
+      },
+      {
+        key: 'attendance',
+        header: 'الحضور / المؤهل',
+        render: (r) => (
+          <div className="text-xs space-y-0.5">
+            <span className="font-bold text-foreground">
+              حضر {r.presentCount + r.makeupAttendedCount} من {r.eligibleSessions} حصة
+            </span>
+            <div className="text-[11px] text-muted-foreground">
+              غياب: {r.absentCount} | إذن: {r.excusedCount} {r.makeupAttendedCount > 0 && `| تعويض: ${r.makeupAttendedCount}`}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'sessionPrice',
+        header: 'سعر الحصة',
+        render: (r) => (
+          <div>
+            <span className="font-medium text-xs">{formatCurrency(r.sessionPriceSnapshot)}</span>
+            {r.extraMakeupFees > 0 && (
+              <div className="text-[10px] text-amber-600 font-medium">
+                + تعويضي {formatCurrency(r.extraMakeupFees)}
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'totalDue',
+        header: 'المستحق',
+        className: 'font-bold text-xs',
+        render: (r) => formatCurrency(r.totalDue),
+      },
+      {
+        key: 'totalPaid',
+        header: 'المدفوع',
+        className: 'font-semibold text-emerald-600 dark:text-emerald-400 text-xs',
+        render: (r) => formatCurrency(r.totalPaid),
+      },
+      {
+        key: 'remaining',
+        header: 'المتبقي',
+        render: (r) =>
+          r.remainingBalance > 0 ? (
+            <Badge variant="danger" className="font-bold">
+              {formatCurrency(r.remainingBalance)}
+            </Badge>
+          ) : (
+            <Badge variant="success">خالص</Badge>
+          ),
+      },
+      {
+        key: 'state',
+        header: 'الحالة',
+        render: (r) =>
+          r.isClosed ? (
+            <Badge variant="purple" className="gap-1">
+              <Lock className="h-3 w-3" />
+              مغلق
+            </Badge>
+          ) : (
+            <Badge variant="neutral">مفتوح</Badge>
+          ),
+      },
+    ];
+
+    if (canCollect) {
+      cols.push({
+        key: 'actions',
+        header: 'إجراءات',
+        className: 'text-left pl-3',
+        render: (r) => (
+          <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="sm"
+              variant={r.remainingBalance > 0 ? 'primary' : 'outline'}
+              className="h-8 gap-1 px-3 text-xs font-semibold"
+              onClick={() => {
+                setSelectedRecord(r);
+                setCollectOpen(true);
+              }}
+            >
+              <Banknote className="h-3.5 w-3.5" />
+              تحصيل
+            </Button>
+          </div>
+        ),
+      });
+    }
+
+    return cols;
+  }, [canCollect]);
 
   return (
     <div className="space-y-4">
@@ -185,10 +196,14 @@ export function StudentBillingTab({
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
-        onRowClick={(r) => {
-          setSelectedRecord(r);
-          setCollectOpen(true);
-        }}
+        onRowClick={
+          canCollect
+            ? (r) => {
+                setSelectedRecord(r);
+                setCollectOpen(true);
+              }
+            : undefined
+        }
         searchPlaceholder="ابحث باسم الطالب أو الكود أو الهاتف أو اسم المجموعة..."
         searchValue={search}
         onSearchChange={(val) => {

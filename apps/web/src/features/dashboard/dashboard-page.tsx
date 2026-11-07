@@ -6,6 +6,7 @@ import {
   GraduationCap,
   RefreshCw,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import {
   Button,
   Card,
@@ -16,6 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatYearMonthAr, getCurrentYearMonth } from '@/lib/formatters';
 import { DashboardAcademicTab } from './components/dashboard-academic-tab';
@@ -26,6 +28,8 @@ import { DashboardOperationsTab } from './components/dashboard-operations-tab';
 import { DashboardSummaryData } from './dashboard.types';
 
 export function DashboardPage() {
+  const { hasPermission } = useAuth();
+  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
   const [yearMonth, setYearMonth] = React.useState<string>(() => getCurrentYearMonth());
 
   const { data, isLoading, isError, error, refetch, isFetching } =
@@ -108,7 +112,7 @@ export function DashboardPage() {
 
           {/* 3. التبويبات التنفيذية المنظمة */}
           <Tabs defaultValue="operations" className="space-y-5">
-            <TabsList className="grid w-full grid-cols-3 sm:w-auto">
+            <TabsList className={`grid w-full ${canViewFinance ? 'grid-cols-3' : 'grid-cols-2'} sm:w-auto`}>
               <TabsTrigger value="operations" className="gap-2 font-bold">
                 <Activity className="h-4 w-4 text-primary" />
                 <span>غرفة العمليات اليومية</span>
@@ -119,10 +123,12 @@ export function DashboardPage() {
                 )}
               </TabsTrigger>
 
-              <TabsTrigger value="finance" className="gap-2 font-bold">
-                <Banknote className="h-4 w-4 text-emerald-600" />
-                <span>التحليل المالي للشهر</span>
-              </TabsTrigger>
+              {canViewFinance && (
+                <TabsTrigger value="finance" className="gap-2 font-bold">
+                  <Banknote className="h-4 w-4 text-emerald-600" />
+                  <span>التحليل المالي للشهر</span>
+                </TabsTrigger>
+              )}
 
               <TabsTrigger value="academic" className="gap-2 font-bold">
                 <GraduationCap className="h-4 w-4 text-purple-600" />
@@ -134,9 +140,11 @@ export function DashboardPage() {
               <DashboardOperationsTab data={data} />
             </TabsContent>
 
-            <TabsContent value="finance">
-              <DashboardFinanceTab data={data} />
-            </TabsContent>
+            {canViewFinance && (
+              <TabsContent value="finance">
+                <DashboardFinanceTab data={data} />
+              </TabsContent>
+            )}
 
             <TabsContent value="academic">
               <DashboardAcademicTab data={data} />

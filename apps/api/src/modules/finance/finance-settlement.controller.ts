@@ -33,7 +33,7 @@ export class FinanceSettlementController {
   }
 
   @Post('recalculate-month')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  @RequirePermissions(PERMISSIONS.FINANCE_CLOSE_MONTH)
   async recalculateMonth(
     @Body() dto: YearMonthBodyDto,
     @CurrentUser() actor: AuthenticatedUser,

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { CacheService } from '../../common/cache/cache.module';
+import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { DashboardRepository } from './dashboard.repository';
 import { DashboardSummaryResponse } from './dashboard.types';
 
@@ -12,7 +14,7 @@ export class DashboardService {
     private readonly cache: CacheService,
   ) {}
 
-  async getSummary(yearMonth?: string): Promise<DashboardSummaryResponse> {
+  async getSummary(yearMonth?: string, actor?: AuthenticatedUser): Promise<DashboardSummaryResponse> {
     const now = new Date();
     const effectiveMonth = yearMonth || this.formatYearMonth(now);
     const todayDate = this.formatIsoDate(now);
@@ -20,18 +22,33 @@ export class DashboardService {
     const timeMinuteBucket = currentTime; // cached for 30s per month
 
     const cacheKey = `dashboard:summary:${effectiveMonth}:${todayDate}:${timeMinuteBucket.slice(0, 4)}`;
-    const cached = await this.cache.get<DashboardSummaryResponse>(cacheKey);
-    if (cached) {
-      return cached;
+    let summary = await this.cache.get<DashboardSummaryResponse>(cacheKey);
+    if (!summary) {
+      summary = await this.dashboardRepo.fetchExecutiveSummary(
+        effectiveMonth,
+        todayDate,
+        currentTime,
+      );
+      await this.cache.set(cacheKey, summary, DASHBOARD_CACHE_TTL_SECONDS);
     }
 
-    const summary = await this.dashboardRepo.fetchExecutiveSummary(
-      effectiveMonth,
-      todayDate,
-      currentTime,
-    );
+    if (
+      actor &&
+      actor.roleCode !== SystemRole.OWNER &&
+      !actor.permissions?.includes(PERMISSIONS.FINANCE_VIEW)
+    ) {
+      return {
+        ...summary,
+        totalRevenue: 0,
+        totalCollectedPayments: 0,
+        totalReceivables: 0,
+        totalTeacherDues: 0,
+        totalAssistantDues: 0,
+        totalExpenses: 0,
+        netCenterResult: 0,
+      };
+    }
 
-    await this.cache.set(cacheKey, summary, DASHBOARD_CACHE_TTL_SECONDS);
     return summary;
   }
 

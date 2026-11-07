@@ -23,6 +23,8 @@ import {
   TabsTrigger,
   useToast,
 } from '@/design-system';
+import { PERMISSIONS } from '@edu-center/shared';
+import { useAuth } from '@/features/auth/auth-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import {
   formatCurrency,
@@ -45,6 +47,8 @@ import { TeacherDuesTab } from './tabs/teacher-dues-tab';
 export function FinancePage() {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { hasPermission } = useAuth();
+  const canCloseMonth = hasPermission(PERMISSIONS.FINANCE_CLOSE_MONTH);
 
   const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
   const [closeConfirmOpen, setCloseConfirmOpen] = React.useState(false);
@@ -112,25 +116,29 @@ export function FinancePage() {
               )}
             </div>
 
-            <Button
-              variant="outline"
-              isLoading={recalculateMutation.isPending}
-              onClick={() => recalculateMutation.mutate()}
-              className="gap-1.5"
-            >
-              <Calculator className="h-4 w-4" />
-              إعادة احتساب الشهر
-            </Button>
+            {canCloseMonth && (
+              <>
+                <Button
+                  variant="outline"
+                  isLoading={recalculateMutation.isPending}
+                  onClick={() => recalculateMutation.mutate()}
+                  className="gap-1.5"
+                >
+                  <Calculator className="h-4 w-4" />
+                  إعادة احتساب الشهر
+                </Button>
 
-            <Button
-              variant="danger"
-              disabled={summary?.isMonthClosed}
-              onClick={() => setCloseConfirmOpen(true)}
-              className="gap-1.5"
-            >
-              <Lock className="h-4 w-4" />
-              إغلاق الشهر مالياً
-            </Button>
+                <Button
+                  variant="danger"
+                  disabled={summary?.isMonthClosed}
+                  onClick={() => setCloseConfirmOpen(true)}
+                  className="gap-1.5"
+                >
+                  <Lock className="h-4 w-4" />
+                  إغلاق الشهر مالياً
+                </Button>
+              </>
+            )}
           </div>
         }
       />

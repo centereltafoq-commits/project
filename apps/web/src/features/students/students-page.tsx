@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Edit3, Eye, GraduationCap, Plus, RotateCcw } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
+import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
   Button,
@@ -11,6 +11,7 @@ import {
   ServerDataTable,
   TableColumn,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatDateAr } from '@/lib/formatters';
@@ -27,6 +28,10 @@ import {
 
 export function StudentsPage() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission(PERMISSIONS.STUDENTS_CREATE);
+  const canUpdate = hasPermission(PERMISSIONS.STUDENTS_UPDATE);
+  const canManageGradeLevels = hasPermission(PERMISSIONS.GROUPS_MANAGE);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -129,18 +134,20 @@ export function StudentsPage() {
             <Eye className="h-3.5 w-3.5 text-primary" />
             تفاصيل
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setEditingStudent(row);
-              setModalOpen(true);
-            }}
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            تعديل
-          </Button>
+          {canUpdate && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setEditingStudent(row);
+                setModalOpen(true);
+              }}
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              تعديل
+            </Button>
+          )}
         </div>
       ),
     },
@@ -153,23 +160,27 @@ export function StudentsPage() {
         description="متابعة بيانات الطلاب، الاشتراكات، السجل الشهري المالي، وسجل الحضور التراكمي"
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setGradeLevelsModalOpen(true)}
-              className="gap-1.5"
-            >
-              <GraduationCap className="h-4 w-4" />
-              إدارة الصفوف الدراسية
-            </Button>
-            <Button
-              onClick={() => {
-                setEditingStudent(null);
-                setModalOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              تسجيل طالب جديد
-            </Button>
+            {canManageGradeLevels && (
+              <Button
+                variant="outline"
+                onClick={() => setGradeLevelsModalOpen(true)}
+                className="gap-1.5"
+              >
+                <GraduationCap className="h-4 w-4" />
+                إدارة الصفوف الدراسية
+              </Button>
+            )}
+            {canCreate && (
+              <Button
+                onClick={() => {
+                  setEditingStudent(null);
+                  setModalOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                تسجيل طالب جديد
+              </Button>
+            )}
           </div>
         }
       />

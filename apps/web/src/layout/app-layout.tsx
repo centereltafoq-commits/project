@@ -28,9 +28,11 @@ export function AppLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  const visibleNav = SIDEBAR_NAV_ITEMS.filter(
-    (item) => !item.permission || hasPermission(item.permission),
-  );
+  const visibleNav = SIDEBAR_NAV_ITEMS.filter((item) => {
+    if (item.permission && !hasPermission(item.permission as any)) return false;
+    if (item.anyPermissions && !item.anyPermissions.some((p) => hasPermission(p as any))) return false;
+    return true;
+  });
 
   return (
     <div className="flex min-h-screen bg-background text-foreground" dir="rtl">

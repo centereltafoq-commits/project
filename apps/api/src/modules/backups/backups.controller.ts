@@ -24,31 +24,35 @@ import {
 } from './dto/backup.dto';
 
 @Controller('backups')
-@RequirePermissions(PERMISSIONS.USERS_MANAGE)
 export class BackupsController {
   constructor(private readonly backupsService: BackupsService) {}
 
   @Get('settings')
+  @RequirePermissions(PERMISSIONS.BACKUPS_VIEW)
   async getSettings() {
     return this.backupsService.getSettings();
   }
 
   @Patch('settings')
+  @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
   async updateSettings(@Body() dto: UpdateBackupSettingsDto) {
     return this.backupsService.updateSettings(dto);
   }
 
   @Get()
+  @RequirePermissions(PERMISSIONS.BACKUPS_VIEW)
   async list(@Query() query: BackupQueryDto) {
     return this.backupsService.listRecords(query);
   }
 
   @Post('trigger')
+  @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
   async triggerManualBackup() {
     return this.backupsService.createBackup('MANUAL');
   }
 
   @Get(':id/download')
+  @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
   async downloadFile(
     @Param('id', ParseUUIDPipe) id: string,
     @Res() res: Response,
@@ -78,6 +82,7 @@ export class BackupsController {
   }
 
   @Post(':id/restore')
+  @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
   async restoreBackup(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RestoreBackupDto,
@@ -87,6 +92,7 @@ export class BackupsController {
   }
 
   @Delete('google/disconnect')
+  @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
   async disconnectGoogle() {
     return this.backupsService.disconnectGoogle();
   }
