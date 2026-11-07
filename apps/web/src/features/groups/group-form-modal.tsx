@@ -8,6 +8,7 @@ import {
 } from '@edu-center/shared';
 import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
+import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { GRADE_LEVEL_OPTIONS } from '../students/students.types';
 import {
   GroupFinancialPolicyFields,
@@ -41,6 +42,8 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const isEdit = Boolean(group);
+  const { options: dynamicGradeOptions } = useGradeLevels(true);
+  const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
 
   const [form, setForm] = React.useState({
     groupCode: '',
@@ -178,7 +181,7 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Input label="اسم المجموعة" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="المادة الدراسية" required value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-          <Select label="الصف الدراسي" value={form.gradeLevel} onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })} options={GRADE_LEVEL_OPTIONS} />
+          <Select label="الصف الدراسي" value={form.gradeLevel} onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })} options={gradeOptions} />
           <Select
             label="المدرس الأساسي"
             required

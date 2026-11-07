@@ -4,6 +4,7 @@ import { StudentStatus } from '@edu-center/shared';
 import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getTodayIsoDate } from '@/lib/formatters';
+import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { GRADE_LEVEL_OPTIONS, STUDENT_STATUS_OPTIONS, StudentRow } from './students.types';
 
 interface StudentFormModalProps {
@@ -16,13 +17,15 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const isEdit = Boolean(student);
+  const { options: dynamicGradeOptions } = useGradeLevels(true);
+  const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
 
   const [form, setForm] = React.useState({
     studentCode: '',
     fullName: '',
     phone: '',
     guardianPhone: '',
-    gradeLevel: 'الثالث الثانوي',
+    gradeLevel: 'الصف الأول الثانوي',
     registrationDate: getTodayIsoDate(),
     status: StudentStatus.ACTIVE,
     notes: '',
@@ -46,13 +49,13 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
         fullName: '',
         phone: '',
         guardianPhone: '',
-        gradeLevel: 'الثالث الثانوي',
+        gradeLevel: gradeOptions[0]?.value || 'الصف الأول الثانوي',
         registrationDate: getTodayIsoDate(),
         status: StudentStatus.ACTIVE,
         notes: '',
       });
     }
-  }, [student, open]);
+  }, [student, open, gradeOptions]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -125,7 +128,7 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
             required
             value={form.gradeLevel}
             onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
-            options={GRADE_LEVEL_OPTIONS}
+            options={gradeOptions}
           />
           <DatePicker
             label="تاريخ التسجيل"

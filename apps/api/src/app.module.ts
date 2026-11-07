@@ -25,6 +25,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { GradeLevelsModule } from './modules/grade-levels/grade-levels.module';
 
 @Controller('health')
 class HealthController {
@@ -68,6 +69,7 @@ class HealthController {
     FinanceModule,
     DashboardModule,
     ReportsModule,
+    GradeLevelsModule,
   ],
   controllers: [HealthController],
   providers: [

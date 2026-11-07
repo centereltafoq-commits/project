@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Edit3, Eye, Plus } from 'lucide-react';
+import { Edit3, Eye, GraduationCap, Plus } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import {
   Badge,
@@ -14,6 +14,8 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatDateAr } from '@/lib/formatters';
+import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
+import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { StudentFormModal } from './student-form-modal';
 import {
   GRADE_LEVEL_OPTIONS,
@@ -34,6 +36,9 @@ export function StudentsPage() {
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingStudent, setEditingStudent] = React.useState<StudentRow | null>(null);
+  const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
+  const { options: dynamicGradeOptions } = useGradeLevels(true);
+  const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
 
   const { data, isLoading } = useQuery<PaginatedResult<StudentRow>>({
     queryKey: ['students', page, limit, debouncedSearch, statusFilter, gradeFilter],
@@ -140,15 +145,25 @@ export function StudentsPage() {
         title="إدارة ملفات الطلاب الدائمة"
         description="متابعة بيانات الطلاب، الاشتراكات، السجل الشهري المالي، وسجل الحضور التراكمي"
         actions={
-          <Button
-            onClick={() => {
-              setEditingStudent(null);
-              setModalOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            تسجيل طالب جديد
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setGradeLevelsModalOpen(true)}
+              className="gap-1.5"
+            >
+              <GraduationCap className="h-4 w-4" />
+              إدارة الصفوف الدراسية
+            </Button>
+            <Button
+              onClick={() => {
+                setEditingStudent(null);
+                setModalOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              تسجيل طالب جديد
+            </Button>
+          </div>
         }
       />
 
@@ -181,7 +196,7 @@ export function StudentsPage() {
                 setGradeFilter(e.target.value);
                 setPage(1);
               }}
-              options={GRADE_LEVEL_OPTIONS}
+              options={gradeOptions}
               className="w-44"
             />
             <Select
@@ -202,6 +217,11 @@ export function StudentsPage() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         student={editingStudent}
+      />
+
+      <GradeLevelsModal
+        open={gradeLevelsModalOpen}
+        onOpenChange={setGradeLevelsModalOpen}
       />
     </div>
   );

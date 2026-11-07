@@ -3,6 +3,7 @@ import {
   assistants,
   classrooms,
   financialPolicies,
+  gradeLevels,
   groupAssistants,
   groups,
   groupTeachers,
@@ -44,6 +45,21 @@ export async function seedCatalogEntities(
       })
       .returning({ id: classrooms.id });
     classroomsByCode.set(c.roomNumber, row.id);
+  }
+
+  const defaultGrades = [
+    { name: 'الصف الأول الثانوي', code: 'SEC-1', orderIndex: 1 },
+    { name: 'الصف الثاني الثانوي', code: 'SEC-2', orderIndex: 2 },
+    { name: 'الصف الثالث الثانوي', code: 'SEC-3', orderIndex: 3 },
+  ];
+  for (const g of defaultGrades) {
+    await db
+      .insert(gradeLevels)
+      .values(g)
+      .onConflictDoUpdate({
+        target: gradeLevels.name,
+        set: { code: g.code, orderIndex: g.orderIndex, isActive: true },
+      });
   }
 
   const teachersByCode = new Map<string, string>();

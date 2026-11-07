@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Edit3, Eye, Plus } from 'lucide-react';
+import { Edit3, Eye, GraduationCap, Plus } from 'lucide-react';
 import {
   DEFAULT_PAGE_SIZE,
   GroupRevenueSplitMethod,
@@ -18,6 +18,8 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/formatters';
+import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
+import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { GRADE_LEVEL_OPTIONS } from '../students/students.types';
 import { GroupFormModal } from './group-form-modal';
 import { GroupDetailData, GroupRow } from './groups.types';
@@ -34,6 +36,10 @@ export function GroupsPage() {
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingGroupId, setEditingGroupId] = React.useState<string | null>(null);
+  const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
+
+  const { options: dynamicGradeOptions } = useGradeLevels(true);
+  const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
 
   const { data, isLoading } = useQuery<PaginatedResult<GroupRow>>({
     queryKey: ['groups', page, limit, debouncedSearch, gradeFilter, activeFilter],
@@ -155,15 +161,26 @@ export function GroupsPage() {
         title="المجموعات الدراسية والاشتراكات والسياسات المالية"
         description="إدارة المجموعات، تسعير الحصص التلقائي، قواعد تقسيم العائد، واشتراكات الطلاب المرنة"
         actions={
-          <Button
-            onClick={() => {
-              setEditingGroupId(null);
-              setModalOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            إنشاء مجموعة جديدة
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setGradeLevelsModalOpen(true)}
+              className="gap-1.5"
+            >
+              <GraduationCap className="h-4 w-4" />
+              إدارة الصفوف الدراسية
+            </Button>
+            <Button
+              onClick={() => {
+                setEditingGroupId(null);
+                setModalOpen(true);
+              }}
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              إنشاء مجموعة جديدة
+            </Button>
+          </div>
         }
       />
 
@@ -196,7 +213,7 @@ export function GroupsPage() {
                 setGradeFilter(e.target.value);
                 setPage(1);
               }}
-              options={GRADE_LEVEL_OPTIONS}
+              options={gradeOptions}
               className="w-44"
             />
             <Select
@@ -223,6 +240,11 @@ export function GroupsPage() {
           if (!o) setEditingGroupId(null);
         }}
         group={editingGroupId ? editingDetail ?? null : null}
+      />
+
+      <GradeLevelsModal
+        open={gradeLevelsModalOpen}
+        onOpenChange={setGradeLevelsModalOpen}
       />
     </div>
   );
