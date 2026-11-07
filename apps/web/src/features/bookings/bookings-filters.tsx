@@ -1,5 +1,6 @@
+import { RotateCcw } from 'lucide-react';
 import { BookingRequestType, BookingStatus } from '@edu-center/shared';
-import { DatePicker, Select } from '@/design-system';
+import { Button, DatePicker, Select } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { BookingLookups } from './bookings.types';
 
@@ -50,6 +51,8 @@ interface BookingsFiltersProps {
   toDate: string;
   onToDateChange: (v: string) => void;
   lookups?: BookingLookups;
+  onReset?: () => void;
+  hasActiveFilters?: boolean;
 }
 
 export function BookingsFilters({
@@ -64,9 +67,11 @@ export function BookingsFilters({
   toDate,
   onToDateChange,
   lookups,
+  onReset,
+  hasActiveFilters,
 }: BookingsFiltersProps) {
   return (
-    <>
+    <div className="flex flex-wrap items-center gap-2">
       <Select
         placeholder="كل الحالات"
         value={statusFilter}
@@ -109,6 +114,17 @@ export function BookingsFilters({
         onChange={onToDateChange}
         className="w-36"
       />
-    </>
+      {hasActiveFilters && onReset && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReset}
+          className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          مسح الفلاتر
+        </Button>
+      )}
+    </div>
   );
 }

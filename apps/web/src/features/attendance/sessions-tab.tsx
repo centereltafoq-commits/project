@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarPlus, ClipboardList, Sparkles } from 'lucide-react';
+import { CalendarPlus, ClipboardList, RotateCcw, Sparkles } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS, SessionStatus } from '@edu-center/shared';
 import {
   Badge,
@@ -76,15 +76,16 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'date',
       header: 'التاريخ والوقت',
+      className: 'whitespace-nowrap',
       render: (row) => {
         const d = new Date(`${row.sessionDate}T00:00:00`);
         const dayName = Number.isNaN(d.getTime()) ? '' : ARABIC_DAYS[d.getDay()];
         return (
           <div>
-            <div className="font-bold text-foreground">
+            <div className="font-bold text-foreground text-xs hover:text-primary transition-colors cursor-pointer">
               {dayName} — {formatDateAr(row.sessionDate)}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-[11px] text-muted-foreground font-mono">
               {formatTimeRangeAr(row.startTime, row.endTime)}
             </div>
           </div>
@@ -94,11 +95,12 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'group',
       header: 'المجموعة والمادة',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="font-bold text-foreground">{row.groupName}</div>
-          <div className="text-xs text-muted-foreground">
-            {row.groupCode} • {row.subject}
+          <div className="font-bold text-foreground text-xs">{row.groupName}</div>
+          <div className="text-[11px] text-muted-foreground">
+            <span className="font-mono">{row.groupCode}</span> • {row.subject}
           </div>
         </div>
       ),
@@ -106,11 +108,12 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'teacher',
       header: 'المدرس / القاعة',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="font-medium text-foreground">{row.teacherName}</div>
-          <div className="text-xs text-muted-foreground">
-            {row.classroomName ? `${row.classroomName} (${row.roomNumber})` : 'بدون قاعة محددة'}
+          <div className="font-medium text-foreground text-xs">{row.teacherName}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {row.classroomName ? `${row.classroomName} (${row.roomNumber})` : 'بدون قاعة'}
           </div>
         </div>
       ),
@@ -118,9 +121,10 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'attendanceCount',
       header: 'ملخص الرصد',
+      className: 'whitespace-nowrap',
       render: (row) =>
         row.recordedCount > 0 ? (
-          <Badge variant="purple">
+          <Badge variant="purple" className="text-xs">
             حضور {row.presentCount} من {row.recordedCount}
           </Badge>
         ) : (
@@ -129,7 +133,8 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     },
     {
       key: 'status',
-      header: 'حالة الحصة',
+      header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) => {
         const meta = SESSION_STATUS_META[row.status] ?? {
           label: row.status,
@@ -140,29 +145,35 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     },
     {
       key: 'actions',
-      header: 'كشف الحضور',
+      header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
-        <Button
-          size="sm"
-          variant="primary"
-          onClick={() => setActiveSheetSessionId(row.id)}
-        >
-          <ClipboardList className="h-3.5 w-3.5" />
-          فتح كشف الحضور
-        </Button>
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 px-3 text-xs font-bold"
+            onClick={() => setActiveSheetSessionId(row.id)}
+          >
+            <ClipboardList className="h-3.5 w-3.5 text-primary" />
+            كشف الحضور
+          </Button>
+        </div>
       ),
     },
   ];
+
+  const hasActiveFilters = Boolean(sessionDate || groupId || statusFilter || search);
 
   return (
     <div className="space-y-4">
       {canManageSessions && (
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant="secondary" onClick={() => setGenerateOpen(true)}>
+          <Button variant="secondary" onClick={() => setGenerateOpen(true)} className="gap-1.5">
             <Sparkles className="h-4 w-4" />
             توليد حصص الشهر تلقائياً
           </Button>
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
             <CalendarPlus className="h-4 w-4" />
             إنشاء حصة مفردة
           </Button>
@@ -175,6 +186,7 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
+        onRowClick={(r) => setActiveSheetSessionId(r.id)}
         searchPlaceholder="ابحث بالمجموعة أو الكود أو اسم المدرس أو عنوان الدرس..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -189,7 +201,7 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
           setPage(1);
         }}
         filters={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <DatePicker
               placeholder="تصفية بيوم محدد"
               value={sessionDate}
@@ -235,7 +247,24 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
               ]}
               className="w-36"
             />
-          </>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSessionDate('');
+                  setGroupId('');
+                  setStatusFilter('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 

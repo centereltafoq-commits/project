@@ -1,4 +1,4 @@
-import { Check, Repeat, Settings2 } from 'lucide-react';
+import { Check, Eye, Repeat, Settings2 } from 'lucide-react';
 import { BookingRequestType, BookingStatus } from '@edu-center/shared';
 import { Badge, Button, TableColumn } from '@/design-system';
 import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
@@ -11,11 +11,13 @@ import {
 export function buildBookingColumns(params: {
   onReview: (row: BookingRow) => void;
   onComplete: (id: string) => void;
+  onQuickView: (row: BookingRow) => void;
 }): TableColumn<BookingRow>[] {
   return [
     {
       key: 'type',
       header: 'نوع الطلب',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div className="space-y-1">
           <Badge
@@ -36,26 +38,30 @@ export function buildBookingColumns(params: {
     },
     {
       key: 'participants',
-      header: 'المدرس / الطالب',
+      header: 'المدرس / الطرف الآخر',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="font-bold text-foreground">{row.teacherName}</div>
-          <div className="text-xs text-muted-foreground">
+          <div className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer text-xs">
+            {row.teacherName}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
             {row.studentName
-              ? `الطالب: ${row.studentName} (${row.studentCode})`
-              : `حضور متوقع: ${row.expectedAttendees} فرد`}
+              ? `الطالب: ${row.studentName}`
+              : `حضور: ${row.expectedAttendees} فرد`}
           </div>
         </div>
       ),
     },
     {
       key: 'schedule',
-      header: 'الموعد والمدة',
+      header: 'الموعد والوقت',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="font-semibold text-foreground">{formatDateAr(row.requestedDate)}</div>
-          <div className="text-xs text-muted-foreground">
-            {formatTimeRangeAr(row.startTime, row.endTime)} ({row.durationMinutes} دقيقة)
+          <div className="font-semibold text-foreground text-xs">{formatDateAr(row.requestedDate)}</div>
+          <div className="text-[11px] text-muted-foreground font-mono">
+            {formatTimeRangeAr(row.startTime, row.endTime)}
           </div>
         </div>
       ),
@@ -63,15 +69,18 @@ export function buildBookingColumns(params: {
     {
       key: 'purpose',
       header: 'الغرض والقاعة',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="font-medium text-foreground">{row.purpose}</div>
-          <div className="text-xs text-muted-foreground">
-            {row.assignedClassroomName
-              ? `قاعة مخصصة: ${row.assignedClassroomName} (${row.assignedRoomNumber})`
-              : row.requestedClassroomName
-                ? `قاعة مقترحة: ${row.requestedClassroomName}`
-                : 'لم تُخصص قاعة بعد'}
+          <div className="font-medium text-foreground text-xs">{row.purpose}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {row.assignedClassroomName ? (
+              <span className="text-emerald-600 font-medium">قاعة #{row.assignedRoomNumber}</span>
+            ) : row.requestedClassroomName ? (
+              <span className="text-amber-600 font-medium">مقترحة: #{row.requestedRoomNumber}</span>
+            ) : (
+              'بدون قاعة'
+            )}
           </div>
         </div>
       ),
@@ -79,6 +88,7 @@ export function buildBookingColumns(params: {
     {
       key: 'status',
       header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) => {
         const meta = BOOKING_STATUS_META[row.status] ?? {
           label: row.status,
@@ -89,17 +99,37 @@ export function buildBookingColumns(params: {
     },
     {
       key: 'actions',
-      header: 'إجراءات المراجعة',
+      header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => params.onReview(row)}>
-            <Settings2 className="h-3.5 w-3.5" />
-            مراجعة / قاعة
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 px-2.5 text-xs font-bold"
+            onClick={() => params.onQuickView(row)}
+          >
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            تفاصيل
           </Button>
+
+          {row.status === BookingStatus.PENDING && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => params.onReview(row)}
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              مراجعة
+            </Button>
+          )}
+
           {row.status === BookingStatus.CONFIRMED && (
             <Button
               size="sm"
               variant="success"
+              className="h-8 gap-1 px-2.5 text-xs font-bold"
               onClick={() => params.onComplete(row.id)}
             >
               <Check className="h-3.5 w-3.5" />

@@ -22,30 +22,47 @@ import {
 export function resolveReportColumns(
   slug: ReportTypeSlug,
 ): TableColumn<Record<string, unknown>>[] {
+  let cols: TableColumn<Record<string, unknown>>[];
   switch (slug) {
     case 'students':
-      return getStudentsColumns();
+      cols = getStudentsColumns();
+      break;
     case 'attendance':
-      return getAttendanceColumns();
+      cols = getAttendanceColumns();
+      break;
     case 'student-statement':
-      return getStudentStatementColumns();
+      cols = getStudentStatementColumns();
+      break;
     case 'groups-revenue':
-      return getGroupsRevenueColumns();
+      cols = getGroupsRevenueColumns();
+      break;
     case 'teacher-statement':
-      return getTeacherStatementColumns();
+      cols = getTeacherStatementColumns();
+      break;
     case 'assistant-statement':
-      return getAssistantStatementColumns();
+      cols = getAssistantStatementColumns();
+      break;
     case 'collections':
-      return getCollectionsColumns();
+      cols = getCollectionsColumns();
+      break;
     case 'expenses':
-      return getExpensesColumns();
+      cols = getExpensesColumns();
+      break;
     case 'bookings':
-      return getBookingsColumns();
+      cols = getBookingsColumns();
+      break;
     case 'classrooms':
-      return getClassroomsColumns();
+      cols = getClassroomsColumns();
+      break;
     case 'financial-summary':
-      return getFinancialSummaryColumns();
+      cols = getFinancialSummaryColumns();
+      break;
   }
+
+  return cols.map((col) => ({
+    ...col,
+    className: col.className ? `${col.className} whitespace-nowrap` : 'whitespace-nowrap',
+  }));
 }
 
 export function formatReportKpiValue(item: ReportSummaryKpiItem): string | number {

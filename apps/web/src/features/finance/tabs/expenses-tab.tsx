@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit3, Plus, Trash2 } from 'lucide-react';
+import { Edit3, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import {
   Badge,
@@ -80,8 +80,9 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
     {
       key: 'category',
       header: 'بند المصروف',
+      className: 'whitespace-nowrap',
       render: (r) => (
-        <Badge variant="warning">
+        <Badge variant="warning" className="text-xs">
           {EXPENSE_CATEGORY_LABELS[r.category] ?? r.category}
         </Badge>
       ),
@@ -89,45 +90,48 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
     {
       key: 'title',
       header: 'البيان / الوصف',
+      className: 'whitespace-nowrap',
       render: (r) => (
         <div>
-          <div className="font-bold text-foreground">{r.title}</div>
-          {r.notes && <div className="text-xs text-muted-foreground">{r.notes}</div>}
+          <div className="font-bold text-foreground text-xs">{r.title}</div>
+          {r.notes && <div className="text-[11px] text-muted-foreground">{r.notes}</div>}
         </div>
       ),
     },
     {
       key: 'amount',
       header: 'القيمة',
-      render: (r) => (
-        <span className="font-extrabold text-rose-600 dark:text-rose-400">
-          {formatCurrency(r.amount)}
-        </span>
-      ),
+      className: 'whitespace-nowrap font-extrabold text-rose-600 dark:text-rose-400 text-xs',
+      render: (r) => formatCurrency(r.amount),
     },
     {
       key: 'method',
       header: 'وسيلة السداد',
+      className: 'whitespace-nowrap text-xs',
       render: (r) => PAYMENT_METHOD_LABELS[r.paymentMethod] ?? r.paymentMethod,
     },
     {
       key: 'date',
       header: 'التاريخ',
+      className: 'whitespace-nowrap text-xs text-muted-foreground',
       render: (r) => formatDateAr(r.expenseDate),
     },
     {
       key: 'by',
       header: 'المسجِّل',
+      className: 'whitespace-nowrap text-xs',
       render: (r) => r.recordedByName || '—',
     },
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (r) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           <Button
             size="sm"
             variant="outline"
+            className="h-8 gap-1 px-2.5 text-xs font-semibold"
             onClick={() => {
               setEditing(r);
               setModalOpen(true);
@@ -138,7 +142,8 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
           </Button>
           <Button
             size="sm"
-            variant="danger"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-600"
             onClick={() => {
               if (window.confirm(`هل أنت متأكد من حذف المصروف «${r.title}»؟`)) {
                 deleteMutation.mutate(r.id);
@@ -166,7 +171,7 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(data.summary.byCategory).map(([cat, sum]) => (
-              <Badge key={cat} variant="neutral">
+              <Badge key={cat} variant="neutral" className="text-xs">
                 {EXPENSE_CATEGORY_LABELS[cat] ?? cat}: {formatCurrency(sum)}
               </Badge>
             ))}
@@ -180,6 +185,10 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
+        onRowClick={(r) => {
+          setEditing(r);
+          setModalOpen(true);
+        }}
         searchPlaceholder="ابحث في بيان المصروف أو الملاحظات..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -194,7 +203,7 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
           setPage(1);
         }}
         filters={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               placeholder="كل بنود المصروفات"
               value={categoryFilter}
@@ -207,6 +216,7 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
             />
             <Button
               size="sm"
+              className="h-9 gap-1 text-xs"
               onClick={() => {
                 setEditing(null);
                 setModalOpen(true);
@@ -215,7 +225,22 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
               <Plus className="h-4 w-4" />
               تسجيل مصروف جديد
             </Button>
-          </>
+            {(categoryFilter || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCategoryFilter('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 

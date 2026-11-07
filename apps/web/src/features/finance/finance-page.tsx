@@ -105,7 +105,7 @@ export function FinancePage() {
                 onChange={setYearMonth}
               />
               {summary?.isMonthClosed && (
-                <Badge variant="purple">
+                <Badge variant="purple" className="gap-1 whitespace-nowrap">
                   <Lock className="h-3 w-3" />
                   مغلق
                 </Badge>
@@ -116,6 +116,7 @@ export function FinancePage() {
               variant="outline"
               isLoading={recalculateMutation.isPending}
               onClick={() => recalculateMutation.mutate()}
+              className="gap-1.5"
             >
               <Calculator className="h-4 w-4" />
               إعادة احتساب الشهر
@@ -125,9 +126,10 @@ export function FinancePage() {
               variant="danger"
               disabled={summary?.isMonthClosed}
               onClick={() => setCloseConfirmOpen(true)}
+              className="gap-1.5"
             >
               <Lock className="h-4 w-4" />
-              إغلاق الشهر مالياً (تجميد الأسعار التاريخية)
+              إغلاق الشهر مالياً
             </Button>
           </div>
         }

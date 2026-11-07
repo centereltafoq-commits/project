@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Banknote, Lock, Plus } from 'lucide-react';
+import { Banknote, Lock, Plus, RotateCcw } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import {
   Badge,
@@ -66,10 +66,11 @@ export function StudentBillingTab({
     {
       key: 'student',
       header: 'الطالب',
+      className: 'whitespace-nowrap',
       render: (r) => (
         <div>
-          <div className="font-bold text-foreground">{r.studentName}</div>
-          <div className="text-xs text-muted-foreground">
+          <div className="font-bold text-foreground text-xs">{r.studentName}</div>
+          <div className="font-mono text-[11px] text-muted-foreground">
             {r.studentCode} • {r.studentPhone}
           </div>
         </div>
@@ -78,23 +79,27 @@ export function StudentBillingTab({
     {
       key: 'group',
       header: 'المجموعة',
+      className: 'whitespace-nowrap',
       render: (r) => (
         <div>
-          <div className="font-semibold text-foreground">{r.groupName}</div>
-          <div className="text-xs text-muted-foreground">{r.groupCode}</div>
+          <div className="font-semibold text-foreground text-xs">{r.groupName}</div>
+          <span className="inline-block rounded bg-primary/10 px-1.5 py-0.2 font-mono text-[10px] font-bold text-primary">
+            {r.groupCode}
+          </span>
         </div>
       ),
     },
     {
       key: 'attendance',
       header: 'الحضور / المؤهل',
+      className: 'whitespace-nowrap',
       render: (r) => (
         <div className="text-xs space-y-0.5">
           <span className="font-bold text-foreground">
             حضر {r.presentCount + r.makeupAttendedCount} من {r.eligibleSessions} حصة
           </span>
-          <div className="text-muted-foreground">
-            غياب: {r.absentCount} | إذن: {r.excusedCount} | تعويض: {r.makeupAttendedCount}
+          <div className="text-[11px] text-muted-foreground">
+            غياب: {r.absentCount} | إذن: {r.excusedCount} {r.makeupAttendedCount > 0 && `| تعويض: ${r.makeupAttendedCount}`}
           </div>
         </div>
       ),
@@ -102,11 +107,12 @@ export function StudentBillingTab({
     {
       key: 'sessionPrice',
       header: 'سعر الحصة',
+      className: 'whitespace-nowrap',
       render: (r) => (
         <div>
-          <span className="font-semibold">{formatCurrency(r.sessionPriceSnapshot)}</span>
+          <span className="font-semibold text-xs">{formatCurrency(r.sessionPriceSnapshot)}</span>
           {r.extraMakeupFees > 0 && (
-            <div className="text-xs text-amber-600">
+            <div className="text-[11px] text-amber-600 font-medium">
               + تعويضي {formatCurrency(r.extraMakeupFees)}
             </div>
           )}
@@ -116,20 +122,19 @@ export function StudentBillingTab({
     {
       key: 'totalDue',
       header: 'المستحق',
-      render: (r) => <span className="font-bold">{formatCurrency(r.totalDue)}</span>,
+      className: 'whitespace-nowrap font-bold text-xs',
+      render: (r) => formatCurrency(r.totalDue),
     },
     {
       key: 'totalPaid',
       header: 'المدفوع',
-      render: (r) => (
-        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-          {formatCurrency(r.totalPaid)}
-        </span>
-      ),
+      className: 'whitespace-nowrap font-semibold text-emerald-600 dark:text-emerald-400 text-xs',
+      render: (r) => formatCurrency(r.totalPaid),
     },
     {
       key: 'remaining',
       header: 'المتبقي',
+      className: 'whitespace-nowrap',
       render: (r) =>
         r.remainingBalance > 0 ? (
           <Badge variant="danger">{formatCurrency(r.remainingBalance)}</Badge>
@@ -140,6 +145,7 @@ export function StudentBillingTab({
     {
       key: 'state',
       header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (r) =>
         r.isClosed ? (
           <Badge variant="purple">
@@ -153,18 +159,22 @@ export function StudentBillingTab({
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (r) => (
-        <Button
-          size="sm"
-          variant={r.remainingBalance > 0 ? 'primary' : 'outline'}
-          onClick={() => {
-            setSelectedRecord(r);
-            setCollectOpen(true);
-          }}
-        >
-          <Banknote className="h-3.5 w-3.5" />
-          تحصيل / إيصال
-        </Button>
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant={r.remainingBalance > 0 ? 'primary' : 'outline'}
+            className="h-8 gap-1 px-2.5 text-xs font-semibold"
+            onClick={() => {
+              setSelectedRecord(r);
+              setCollectOpen(true);
+            }}
+          >
+            <Banknote className="h-3.5 w-3.5" />
+            تحصيل
+          </Button>
+        </div>
       ),
     },
   ];
@@ -177,6 +187,10 @@ export function StudentBillingTab({
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
+        onRowClick={(r) => {
+          setSelectedRecord(r);
+          setCollectOpen(true);
+        }}
         searchPlaceholder="ابحث باسم الطالب أو الكود أو الهاتف أو اسم المجموعة..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -193,7 +207,7 @@ export function StudentBillingTab({
         emptyTitle="لا توجد سجلات مستحقات طلاب لهذا الشهر"
         emptyDescription="اضغط «إعادة احتساب الشهر» لتوليد وتحديث مستحقات الطلاب حسب الحضور الفعلي."
         filters={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               placeholder="كل المجموعات الدراسية"
               value={groupId}
@@ -210,6 +224,7 @@ export function StudentBillingTab({
             <Button
               size="sm"
               variant={onlyUnpaid ? 'danger' : 'outline'}
+              className="h-9 px-3 text-xs"
               onClick={() => {
                 setOnlyUnpaid((prev) => !prev);
                 setPage(1);
@@ -220,6 +235,7 @@ export function StudentBillingTab({
             <Button
               size="sm"
               variant="success"
+              className="h-9 gap-1 px-3 text-xs"
               onClick={() => {
                 setSelectedRecord(null);
                 setCollectOpen(true);
@@ -228,7 +244,23 @@ export function StudentBillingTab({
               <Plus className="h-4 w-4" />
               تسجيل دفعة / إيصال
             </Button>
-          </>
+            {(groupId || onlyUnpaid || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setGroupId('');
+                  setOnlyUnpaid(false);
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Power, ShieldCheck, Users } from 'lucide-react';
+import { Eye, Plus, Power, RotateCcw, ShieldCheck, Users } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import {
   Badge,
@@ -19,21 +19,12 @@ import {
 } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { formatDateAr, formatDateTimeAr } from '@/lib/formatters';
+import { formatDateTimeAr } from '@/lib/formatters';
 import { RolesPermissionsTab } from './roles-permissions-tab';
-
-interface UserRow {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string | null;
-  roleId: string;
-  roleCode: string;
-  roleNameAr: string;
-  isActive: boolean;
-  lastLoginAt: string | null;
-  createdAt: string;
-}
+import {
+  UserQuickViewModal,
+  UserRow,
+} from './components/user-quick-view-modal';
 
 interface RoleOption {
   id: string;
@@ -52,6 +43,9 @@ export function UsersPage() {
   const [roleFilter, setRoleFilter] = React.useState('');
 
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [quickViewUser, setQuickViewUser] = React.useState<UserRow | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = React.useState(false);
+
   const [form, setForm] = React.useState({
     fullName: '',
     email: '',
@@ -94,8 +88,11 @@ export function UsersPage() {
   const toggleActiveMutation = useMutation({
     mutationFn: async (u: UserRow) =>
       apiClient.patch(`/users/${u.id}`, { isActive: !u.isActive }),
-    onSuccess: () => {
+    onSuccess: (_, u) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      if (quickViewUser && quickViewUser.id === u.id) {
+        setQuickViewUser({ ...quickViewUser, isActive: !quickViewUser.isActive });
+      }
       notify('تم تحديث حالة حساب المستخدم', 'success');
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),
@@ -105,54 +102,84 @@ export function UsersPage() {
     {
       key: 'fullName',
       header: 'الاسم الكامل',
-      render: (row) => <span className="font-bold text-foreground">{row.fullName}</span>,
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <span className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer text-xs">
+          {row.fullName}
+        </span>
+      ),
     },
     {
-      key: 'email',
-      header: 'البريد الإلكتروني',
-      render: (row) => <span className="text-muted-foreground">{row.email}</span>,
-    },
-    {
-      key: 'phone',
-      header: 'الهاتف',
-      render: (row) => row.phone || '—',
+      key: 'contact',
+      header: 'البريد والهاتف',
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <div>
+          <div className="text-xs text-foreground font-medium">{row.email}</div>
+          <div className="font-mono text-[11px] text-muted-foreground" dir="ltr">
+            {row.phone || '—'}
+          </div>
+        </div>
+      ),
     },
     {
       key: 'role',
       header: 'الدور الوظيفي',
-      render: (row) => <Badge variant="purple">{row.roleNameAr}</Badge>,
+      className: 'whitespace-nowrap',
+      render: (row) => <Badge variant="purple" className="text-xs">{row.roleNameAr}</Badge>,
     },
     {
       key: 'status',
       header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) =>
         row.isActive ? (
-          <Badge variant="success">نشط</Badge>
+          <Badge variant="success" className="text-xs">نشط</Badge>
         ) : (
-          <Badge variant="danger">متوقف</Badge>
+          <Badge variant="danger" className="text-xs">متوقف</Badge>
         ),
     },
     {
       key: 'lastLogin',
       header: 'آخر دخول',
+      className: 'whitespace-nowrap font-mono text-xs text-muted-foreground',
       render: (row) =>
         row.lastLoginAt ? formatDateTimeAr(row.lastLoginAt) : 'لم يسجل دخول بعد',
     },
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => toggleActiveMutation.mutate(row)}
-        >
-          <Power className="h-3.5 w-3.5" />
-          {row.isActive ? 'إيقاف' : 'تفعيل'}
-        </Button>
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 px-2.5 text-xs font-bold"
+            onClick={() => {
+              setQuickViewUser(row);
+              setQuickViewOpen(true);
+            }}
+          >
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            تفاصيل
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => toggleActiveMutation.mutate(row)}
+            isLoading={toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === row.id}
+          >
+            <Power className="h-3.5 w-3.5" />
+            {row.isActive ? 'إيقاف' : 'تفعيل'}
+          </Button>
+        </div>
       ),
     },
   ];
+
+  const hasActiveFilters = Boolean(roleFilter || search);
 
   return (
     <div>
@@ -160,7 +187,7 @@ export function UsersPage() {
         title="المستخدمون والصلاحيات القابلة للتخصيص"
         description="إدارة حسابات فريق السنتر وتخصيص صلاحيات الأدوار الوظيفية بدقة"
         actions={
-          <Button onClick={() => setModalOpen(true)}>
+          <Button onClick={() => setModalOpen(true)} className="gap-1.5">
             <Plus className="h-4 w-4" />
             إضافة مستخدم جديد
           </Button>
@@ -186,6 +213,10 @@ export function UsersPage() {
             meta={data?.meta}
             isLoading={isLoading}
             rowKey={(r) => r.id}
+            onRowClick={(r) => {
+              setQuickViewUser(r);
+              setQuickViewOpen(true);
+            }}
             searchPlaceholder="ابحث بالاسم أو البريد أو الهاتف..."
             searchValue={search}
             onSearchChange={(val) => {
@@ -200,16 +231,33 @@ export function UsersPage() {
               setPage(1);
             }}
             filters={
-              <Select
-                placeholder="كل الأدوار الوظيفية"
-                value={roleFilter}
-                onChange={(e) => {
-                  setRoleFilter(e.target.value);
-                  setPage(1);
-                }}
-                options={roles.map((r) => ({ value: r.id, label: r.nameAr }))}
-                className="w-48"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  placeholder="كل الأدوار الوظيفية"
+                  value={roleFilter}
+                  onChange={(e) => {
+                    setRoleFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  options={roles.map((r) => ({ value: r.id, label: r.nameAr }))}
+                  className="w-48"
+                />
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setRoleFilter('');
+                      setSearch('');
+                      setPage(1);
+                    }}
+                    className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    مسح الفلاتر
+                  </Button>
+                )}
+              </div>
             }
           />
         </TabsContent>
@@ -218,6 +266,14 @@ export function UsersPage() {
           <RolesPermissionsTab />
         </TabsContent>
       </Tabs>
+
+      <UserQuickViewModal
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        user={quickViewUser}
+        onToggleActive={(u) => toggleActiveMutation.mutate(u)}
+        isToggling={toggleActiveMutation.isPending}
+      />
 
       <Modal
         open={modalOpen}
@@ -279,4 +335,3 @@ export function UsersPage() {
     </div>
   );
 }
-

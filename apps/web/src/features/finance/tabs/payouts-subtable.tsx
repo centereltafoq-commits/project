@@ -59,35 +59,54 @@ export function PayoutsSubtable({ mode, yearMonth, filters }: PayoutsSubtablePro
     {
       key: 'ref',
       header: 'رقم المرجع',
-      render: (r) => <Badge variant="info">{r.referenceNumber}</Badge>,
+      className: 'whitespace-nowrap font-mono',
+      render: (r) => (
+        <span className="inline-block rounded bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+          {r.referenceNumber}
+        </span>
+      ),
     },
     {
       key: 'recipient',
       header: isTeacher ? 'المدرس' : 'المساعد',
+      className: 'whitespace-nowrap',
       render: (r) => (
-        <span className="font-bold">
-          {r.teacherName ?? r.assistantName} ({r.teacherCode ?? r.assistantCode})
-        </span>
+        <div>
+          <span className="font-bold text-foreground text-xs">
+            {r.teacherName ?? r.assistantName}
+          </span>
+          <span className="font-mono text-[11px] text-muted-foreground mr-1.5">
+            ({r.teacherCode ?? r.assistantCode})
+          </span>
+        </div>
       ),
     },
     {
       key: 'amount',
       header: 'المبلغ المصروف',
-      render: (r) => <span className="font-extrabold">{formatCurrency(r.amount)}</span>,
+      className: 'whitespace-nowrap font-extrabold text-foreground text-xs',
+      render: (r) => formatCurrency(r.amount),
     },
     {
       key: 'method',
       header: 'وسيلة الصرف',
-      render: (r) => PAYMENT_METHOD_LABELS[r.paymentMethod] ?? r.paymentMethod,
+      className: 'whitespace-nowrap',
+      render: (r) => (
+        <Badge variant="purple" className="text-xs">
+          {PAYMENT_METHOD_LABELS[r.paymentMethod] ?? r.paymentMethod}
+        </Badge>
+      ),
     },
     {
       key: 'date',
       header: 'تاريخ ووقت الصرف',
+      className: 'whitespace-nowrap text-xs text-muted-foreground',
       render: (r) => formatDateTimeAr(r.payoutDate),
     },
     {
       key: 'paidBy',
       header: 'بواسطة',
+      className: 'whitespace-nowrap text-xs',
       render: (r) => r.paidByName || '—',
     },
   ];

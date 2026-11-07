@@ -6,6 +6,7 @@ import {
   Cloud,
   Database,
   Download,
+  Eye,
   FolderSync,
   HardDrive,
   Loader2,
@@ -22,6 +23,7 @@ import { Button } from '@/design-system/components/button';
 import { Card } from '@/design-system/components/card';
 import { Input } from '@/design-system/components/input';
 import { PageHeader } from '@/design-system/components/page-header';
+import { Select } from '@/design-system/components/select';
 import {
   ServerDataTable,
   TableColumn,
@@ -30,6 +32,7 @@ import { useToast } from '@/design-system/components/toast';
 import { formatDateTimeAr, formatTimeAr } from '@/lib/formatters';
 import { backupsApi } from './backups-api';
 import { BackupRecord } from './backups.types';
+import { BackupQuickViewModal } from './components/backup-quick-view-modal';
 import { BackupRestoreModal } from './backup-restore-modal';
 import { useBackupMutations, useBackups, useBackupSettings } from './use-backups';
 
@@ -38,8 +41,15 @@ export function BackupsPage() {
   const [limit, setLimit] = useState(25);
   const [selectedRecordForRestore, setSelectedRecordForRestore] = useState<BackupRecord | null>(null);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [quickViewRecord, setQuickViewRecord] = useState<BackupRecord | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
 
-  const { data: recordsData, isLoading: isRecordsLoading } = useBackups({ page, limit });
+  const { data: recordsData, isLoading: isRecordsLoading } = useBackups({
+    page,
+    limit,
+    status: statusFilter || undefined,
+  });
   const { data: settings, isLoading: isSettingsLoading } = useBackupSettings();
   const { triggerMutation, updateSettingsMutation } = useBackupMutations();
   const { notify } = useToast();
@@ -95,10 +105,11 @@ export function BackupsPage() {
     {
       key: 'fileName',
       header: 'اسم الملف',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div className="flex items-center gap-2">
           <Database className="h-4 w-4 text-primary shrink-0" />
-          <span className="font-mono text-xs font-bold text-foreground" dir="ltr">
+          <span className="font-mono text-xs font-bold text-foreground hover:text-primary transition-colors cursor-pointer" dir="ltr">
             {row.fileName}
           </span>
         </div>
@@ -107,6 +118,7 @@ export function BackupsPage() {
     {
       key: 'fileSizeBytes',
       header: 'الحجم',
+      className: 'whitespace-nowrap font-mono text-xs',
       render: (row) => (
         <span className="font-mono text-xs text-muted-foreground" dir="ltr">
           {row.fileSizeBytes ? `${(row.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB` : '-'}
@@ -116,8 +128,9 @@ export function BackupsPage() {
     {
       key: 'triggerType',
       header: 'النوع',
+      className: 'whitespace-nowrap',
       render: (row) => (
-        <Badge variant={row.triggerType === 'SCHEDULED' ? 'info' : 'neutral'}>
+        <Badge variant={row.triggerType === 'SCHEDULED' ? 'info' : 'neutral'} className="text-xs">
           {row.triggerType === 'SCHEDULED' ? 'تلقائي مجدول' : 'يدوي فوري'}
         </Badge>
       ),
@@ -125,17 +138,18 @@ export function BackupsPage() {
     {
       key: 'destinations',
       header: 'الوجهات المكتملة',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div className="flex flex-wrap gap-1">
           {row.destinations?.map((d) => (
             <span
               key={d}
-              className="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-foreground"
+              className="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-foreground whitespace-nowrap"
             >
               {d === 'SERVER_STORAGE' && <HardDrive className="h-2.5 w-2.5 text-primary" />}
               {d === 'LOCAL' && <Usb className="h-2.5 w-2.5 text-emerald-500" />}
               {d === 'GOOGLE_DRIVE' && <Cloud className="h-2.5 w-2.5 text-blue-500" />}
-              <span>{d === 'LOCAL' ? 'المسار المحلي/فلاشة' : d === 'GOOGLE_DRIVE' ? 'Google Drive' : 'التخزين السحابي'}</span>
+              <span>{d === 'LOCAL' ? 'محلي/فلاشة' : d === 'GOOGLE_DRIVE' ? 'Google Drive' : 'السيرفر'}</span>
             </span>
           ))}
         </div>
@@ -144,11 +158,13 @@ export function BackupsPage() {
     {
       key: 'status',
       header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <Badge
           variant={
             row.status === 'SUCCESS' ? 'success' : row.status === 'FAILED' ? 'danger' : 'warning'
           }
+          className="text-xs"
         >
           {row.status === 'SUCCESS' ? 'ناجحة' : row.status === 'FAILED' ? 'فشلت' : 'قيد الإنشاء'}
         </Badge>
@@ -157,6 +173,7 @@ export function BackupsPage() {
     {
       key: 'createdAt',
       header: 'التاريخ والتوقيت',
+      className: 'whitespace-nowrap font-mono text-xs text-muted-foreground',
       render: (row) => (
         <span className="text-xs text-muted-foreground font-mono">
           {formatDateTimeAr(row.createdAt)}
@@ -164,10 +181,23 @@ export function BackupsPage() {
       ),
     },
     {
-      key: 'id',
+      key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 px-2.5 text-xs font-bold"
+            onClick={() => {
+              setQuickViewRecord(row);
+              setQuickViewOpen(true);
+            }}
+          >
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            تفاصيل
+          </Button>
           <a
             href={backupsApi.downloadUrl(row.id)}
             download={row.fileName}
@@ -179,12 +209,12 @@ export function BackupsPage() {
           </a>
           <Button
             size="sm"
-            variant="outline"
+            variant="ghost"
             onClick={() => {
               setSelectedRecordForRestore(row);
               setRestoreModalOpen(true);
             }}
-            className="h-8 gap-1 text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400"
+            className="h-8 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
             title="استعادة قاعدة البيانات من هذه النسخة"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -380,12 +410,58 @@ export function BackupsPage() {
           meta={recordsData?.meta}
           isLoading={isRecordsLoading}
           rowKey={(r) => r.id}
+          onRowClick={(r) => {
+            setQuickViewRecord(r);
+            setQuickViewOpen(true);
+          }}
           page={page}
           onPageChange={setPage}
           limit={limit}
           onLimitChange={setLimit}
+          filters={
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                placeholder="كل الحالات"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+                options={[
+                  { value: 'SUCCESS', label: 'ناجحة' },
+                  { value: 'FAILED', label: 'فشلت' },
+                  { value: 'PENDING', label: 'قيد الإنشاء' },
+                ]}
+                className="w-36"
+              />
+              {statusFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter('');
+                    setPage(1);
+                  }}
+                  className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  مسح الفلاتر
+                </Button>
+              )}
+            </div>
+          }
         />
       </div>
+
+      <BackupQuickViewModal
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        record={quickViewRecord}
+        onRestore={(rec) => {
+          setSelectedRecordForRestore(rec);
+          setRestoreModalOpen(true);
+        }}
+      />
 
       <BackupRestoreModal
         open={restoreModalOpen}

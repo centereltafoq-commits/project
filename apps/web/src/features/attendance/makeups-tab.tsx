@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Edit3, Plus } from 'lucide-react';
+import { CheckCircle2, Edit3, Plus, RotateCcw } from 'lucide-react';
 import {
   DEFAULT_PAGE_SIZE,
   MakeupStatus,
@@ -77,20 +77,22 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
     {
       key: 'student',
       header: 'الطالب',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="font-bold text-foreground">{row.studentName}</div>
-          <div className="text-xs text-muted-foreground">{row.studentCode}</div>
+          <div className="font-bold text-foreground text-xs">{row.studentName}</div>
+          <div className="font-mono text-[11px] text-muted-foreground">{row.studentCode}</div>
         </div>
       ),
     },
     {
       key: 'original',
       header: 'الحصة الأصلية وتاريخ الغياب',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="font-semibold text-foreground">{row.groupName}</div>
-          <div className="text-xs text-muted-foreground">
+          <div className="font-semibold text-foreground text-xs">{row.groupName}</div>
+          <div className="text-[11px] text-muted-foreground">
             غياب بتاريخ: {formatDateAr(row.absenceDate)}
           </div>
         </div>
@@ -99,12 +101,13 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
     {
       key: 'scheduledAt',
       header: 'موعد التعويض والقاعة',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="font-medium text-foreground">
+          <div className="font-medium text-foreground text-xs">
             {row.scheduledAt ? formatDateTimeAr(row.scheduledAt) : 'غير محدد بعد'}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-[11px] text-muted-foreground">
             {row.classroomName ? `${row.classroomName} (${row.roomNumber})` : 'بدون قاعة'}
           </div>
         </div>
@@ -113,16 +116,18 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
     {
       key: 'fee',
       header: 'التكلفة',
+      className: 'whitespace-nowrap',
       render: (row) =>
         row.isFree ? (
-          <Badge variant="success">مجاني</Badge>
+          <Badge variant="success" className="text-xs">مجاني</Badge>
         ) : (
-          <Badge variant="warning">{formatCurrency(row.extraFee)}</Badge>
+          <Badge variant="warning" className="text-xs">{formatCurrency(row.extraFee)}</Badge>
         ),
     },
     {
       key: 'status',
       header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) => {
         const meta = MAKEUP_STATUS_META[row.status] ?? {
           label: row.status,
@@ -134,13 +139,15 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) =>
         canManageMakeup ? (
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
             {row.status !== MakeupStatus.COMPLETED && row.status !== MakeupStatus.CANCELLED && (
               <Button
                 size="sm"
                 variant="success"
+                className="h-8 gap-1 px-2.5 text-xs font-semibold"
                 onClick={() => completeMutation.mutate(row.id)}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -150,6 +157,7 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
             <Button
               size="sm"
               variant="outline"
+              className="h-8 gap-1 px-2.5 text-xs font-semibold"
               onClick={() => {
                 setEditingRow(row);
                 setModalOpen(true);
@@ -165,6 +173,8 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
     },
   ];
 
+  const hasActiveFilters = Boolean(studentFilter || statusFilter || search);
+
   return (
     <div className="space-y-4">
       {canManageMakeup && (
@@ -174,6 +184,7 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
               setEditingRow(null);
               setModalOpen(true);
             }}
+            className="gap-1.5"
           >
             <Plus className="h-4 w-4" />
             جدولة حصة تعويضية
@@ -187,6 +198,14 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
+        onRowClick={
+          canManageMakeup
+            ? (r) => {
+                setEditingRow(r);
+                setModalOpen(true);
+              }
+            : undefined
+        }
         searchPlaceholder="ابحث باسم الطالب أو الكود أو اسم المجموعة..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -201,7 +220,7 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
           setPage(1);
         }}
         filters={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               placeholder="كل الطلاب"
               value={studentFilter}
@@ -230,7 +249,23 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
               ]}
               className="w-40"
             />
-          </>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStudentFilter('');
+                  setStatusFilter('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 

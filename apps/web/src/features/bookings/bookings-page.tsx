@@ -16,6 +16,7 @@ import { ApproveBookingModal } from './approve-booking-modal';
 import { buildBookingColumns } from './bookings-columns';
 import { BookingsFilters } from './bookings-filters';
 import { BookingLookups, BookingRow } from './bookings.types';
+import { BookingQuickViewModal } from './components/booking-quick-view-modal';
 import { CreateBookingModal } from './create-booking-modal';
 
 export function BookingsPage() {
@@ -37,6 +38,8 @@ export function BookingsPage() {
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [selectedBooking, setSelectedBooking] = React.useState<BookingRow | null>(null);
+  const [quickViewBooking, setQuickViewBooking] = React.useState<BookingRow | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = React.useState(false);
 
   const { data: lookups } = useQuery<BookingLookups>({
     queryKey: ['bookings-lookups'],
@@ -87,9 +90,27 @@ export function BookingsPage() {
       buildBookingColumns({
         onReview: setSelectedBooking,
         onComplete: (id) => completeMutation.mutate(id),
+        onQuickView: (row) => {
+          setQuickViewBooking(row);
+          setQuickViewOpen(true);
+        },
       }),
     [completeMutation],
   );
+
+  const hasActiveFilters = Boolean(
+    statusFilter || typeFilter || teacherFilter || fromDate || toDate || search,
+  );
+
+  const handleResetFilters = () => {
+    setStatusFilter('');
+    setTypeFilter('');
+    setTeacherFilter('');
+    setFromDate('');
+    setToDate('');
+    setSearch('');
+    setPage(1);
+  };
 
   return (
     <div>
@@ -103,7 +124,7 @@ export function BookingsPage() {
               تنظيمي فقط (لا يُنشئ مطالبات مالية)
             </Badge>
             {canCreate && (
-              <Button onClick={() => setCreateOpen(true)}>
+              <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
                 <Plus className="h-4 w-4" />
                 طلب حجز جديد
               </Button>
@@ -118,6 +139,10 @@ export function BookingsPage() {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
+        onRowClick={(r) => {
+          setQuickViewBooking(r);
+          setQuickViewOpen(true);
+        }}
         searchPlaceholder="ابحث بالغرض أو اسم المدرس أو الطالب..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -159,8 +184,18 @@ export function BookingsPage() {
               setPage(1);
             }}
             lookups={lookups}
+            hasActiveFilters={hasActiveFilters}
+            onReset={handleResetFilters}
           />
         }
+      />
+
+      <BookingQuickViewModal
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        booking={quickViewBooking}
+        onReview={(b) => setSelectedBooking(b)}
+        onComplete={(id) => completeMutation.mutate(id)}
       />
 
       <CreateBookingModal open={createOpen} onOpenChange={setCreateOpen} lookups={lookups} />

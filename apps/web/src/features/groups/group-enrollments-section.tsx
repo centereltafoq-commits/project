@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ban, PauseCircle, PlayCircle, UserPlus } from 'lucide-react';
 import {
@@ -37,6 +37,7 @@ const STATUS_BADGE: Record<
 
 export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { notify } = useToast();
 
   const [page, setPage] = React.useState(1);
@@ -82,46 +83,47 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
     {
       key: 'student',
       header: 'الطالب',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <Link
-            to={`/students/${row.studentId}`}
-            className="font-bold text-primary hover:underline"
-          >
+          <span className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer text-xs">
             {row.studentName}
-          </Link>
-          <p className="font-mono text-xs text-muted-foreground">{row.studentCode}</p>
+          </span>
+          <p className="font-mono text-[11px] text-muted-foreground">{row.studentCode}</p>
         </div>
       ),
     },
     {
       key: 'phones',
       header: 'هاتف الطالب / ولي الأمر',
+      className: 'whitespace-nowrap font-mono',
       render: (row) => (
         <div className="text-xs" dir="ltr">
-          <div>{row.studentPhone}</div>
-          <div className="text-muted-foreground">{row.guardianPhone}</div>
+          <div className="font-mono text-xs">{row.studentPhone}</div>
+          <div className="text-[11px] text-muted-foreground">{row.guardianPhone}</div>
         </div>
       ),
     },
     {
       key: 'dates',
       header: 'تاريخ البدء / التوقف',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div className="text-xs">
           <div>البدء: {formatDateAr(row.startDate)}</div>
-          {row.endDate && <div className="text-rose-600">التوقف: {formatDateAr(row.endDate)}</div>}
+          {row.endDate && <div className="text-rose-600 font-medium">التوقف: {formatDateAr(row.endDate)}</div>}
         </div>
       ),
     },
     {
       key: 'pricing',
       header: 'الاشتراك / سعر الحصة',
+      className: 'whitespace-nowrap',
       render: (row) => (
-        <div>
-          <span className="font-bold">{formatCurrency(row.agreedMonthlyPrice)}</span>
-          <span className="mr-1 text-xs text-muted-foreground">
-            ({formatCurrency(row.agreedSessionPrice)} للحصة)
+        <div className="text-xs">
+          <span className="font-bold text-foreground">{formatCurrency(row.agreedMonthlyPrice)}</span>
+          <span className="mr-1 text-[11px] text-emerald-600 font-medium">
+            ({formatCurrency(row.agreedSessionPrice)} / حصة)
           </span>
         </div>
       ),
@@ -129,24 +131,27 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
     {
       key: 'status',
       header: 'حالة الاشتراك',
+      className: 'whitespace-nowrap',
       render: (row) => {
         const meta = STATUS_BADGE[row.status] ?? {
           label: row.status,
           variant: 'neutral' as const,
         };
-        return <Badge variant={meta.variant}>{meta.label}</Badge>;
+        return <Badge variant={meta.variant} className="text-xs">{meta.label}</Badge>;
       },
     },
     {
       key: 'actions',
       header: 'إدارة الاشتراك',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           {row.status === EnrollmentStatus.ACTIVE ? (
             <>
               <Button
                 size="sm"
                 variant="outline"
+                className="h-8 gap-1 px-2.5 text-xs font-semibold"
                 onClick={() =>
                   statusMutation.mutate({
                     enrollmentId: row.id,
@@ -160,6 +165,7 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
               <Button
                 size="sm"
                 variant="danger"
+                className="h-8 gap-1 px-2.5 text-xs font-semibold"
                 onClick={() =>
                   statusMutation.mutate({
                     enrollmentId: row.id,
@@ -168,13 +174,14 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
                 }
               >
                 <Ban className="h-3.5 w-3.5" />
-                إنهاء الاشتراك
+                إنهاء
               </Button>
             </>
           ) : (
             <Button
               size="sm"
               variant="success"
+              className="h-8 gap-1 px-2.5 text-xs font-semibold"
               onClick={() =>
                 statusMutation.mutate({
                   enrollmentId: row.id,
@@ -183,7 +190,7 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
               }
             >
               <PlayCircle className="h-3.5 w-3.5" />
-              استئناف الاشتراك
+              استئناف
             </Button>
           )}
         </div>
@@ -195,9 +202,9 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-extrabold">سجل اشتراكات الطلاب بالمجموعة</h3>
-        <Button onClick={() => setSubscribeOpen(true)}>
+        <Button onClick={() => setSubscribeOpen(true)} className="gap-1.5">
           <UserPlus className="h-4 w-4" />
-          تسجيل اشتراك طالب (يدعم منتصف الشهر)
+          تسجيل اشتراك طالب
         </Button>
       </div>
 
@@ -207,6 +214,7 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
+        onRowClick={(row) => navigate(`/students/${row.studentId}`)}
         searchPlaceholder="ابحث باسم الطالب أو الكود أو الهاتف..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -221,16 +229,32 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
           setPage(1);
         }}
         filters={
-          <Select
-            placeholder="كل حالات الاشتراك"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            options={ENROLLMENT_STATUS_OPTIONS}
-            className="w-44"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              placeholder="كل حالات الاشتراك"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              options={ENROLLMENT_STATUS_OPTIONS}
+              className="w-44"
+            />
+            {(statusFilter || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStatusFilter('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 

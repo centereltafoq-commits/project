@@ -1,10 +1,9 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Edit3, Eye, GraduationCap, Plus } from 'lucide-react';
+import { Calendar, Edit3, Eye, GraduationCap, Plus, RotateCcw, Users } from 'lucide-react';
 import {
   DEFAULT_PAGE_SIZE,
-  GroupRevenueSplitMethod,
   PaginatedResult,
 } from '@edu-center/shared';
 import {
@@ -17,11 +16,12 @@ import {
 } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
-import { formatCurrency } from '@/lib/formatters';
+import { ARABIC_DAYS, formatCurrency } from '@/lib/formatters';
 import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { GRADE_LEVEL_OPTIONS } from '../students/students.types';
 import { GroupFormModal } from './group-form-modal';
+import { GroupQuickViewModal } from './components/group-quick-view-modal';
 import { GroupDetailData, GroupRow } from './groups.types';
 
 export function GroupsPage() {
@@ -36,6 +36,8 @@ export function GroupsPage() {
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingGroupId, setEditingGroupId] = React.useState<string | null>(null);
+  const [quickViewGroup, setQuickViewGroup] = React.useState<GroupRow | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
 
   const { options: dynamicGradeOptions } = useGradeLevels(true);
@@ -67,81 +69,128 @@ export function GroupsPage() {
     {
       key: 'name',
       header: 'المجموعة',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <p className="font-bold text-foreground">{row.name}</p>
-          <p className="font-mono text-xs text-primary">{row.groupCode}</p>
+          <p className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer">
+            {row.name}
+          </p>
+          <span className="inline-block mt-0.5 rounded bg-primary/10 px-1.5 py-0.2 font-mono text-[11px] font-bold text-primary">
+            {row.groupCode}
+          </span>
         </div>
       ),
     },
     {
       key: 'subjectGrade',
       header: 'المادة والصف',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <p className="font-semibold">{row.subject}</p>
-          <p className="text-xs text-muted-foreground">{row.gradeLevel}</p>
+          <p className="font-semibold text-foreground text-xs">{row.subject}</p>
+          <p className="text-[11px] text-muted-foreground">{row.gradeLevel}</p>
         </div>
       ),
     },
     {
       key: 'teacher',
       header: 'المدرس الأساسي',
-      render: (row) => <span className="font-semibold">{row.primaryTeacherName}</span>,
+      className: 'whitespace-nowrap',
+      render: (row) => (
+        <span className="font-semibold text-foreground text-xs">
+          {row.primaryTeacherName || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'schedule',
+      header: 'المواعيد والقاعة',
+      className: 'whitespace-nowrap',
+      render: (row) => {
+        const slotsCount = row.scheduleSlots?.length ?? 0;
+        const daysText = row.scheduleSlots?.length
+          ? row.scheduleSlots.map((s) => ARABIC_DAYS[s.dayOfWeek % 7]).slice(0, 2).join('، ')
+          : null;
+
+        return (
+          <div className="text-xs">
+            <span className="font-medium text-foreground flex items-center gap-1">
+              <Calendar className="h-3 w-3 text-primary shrink-0" />
+              {daysText ? `${daysText}${slotsCount > 2 ? ` (+${slotsCount - 2})` : ''}` : 'لم تُحدد مواعيد'}
+            </span>
+            {row.defaultClassroomName && (
+              <span className="text-[11px] text-muted-foreground block">
+                {row.defaultClassroomName}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'students',
-      header: 'المشتركون النشطون',
+      header: 'المشتركون / السعة',
+      className: 'whitespace-nowrap',
       render: (row) => (
-        <Badge variant="purple">
+        <Badge variant={row.activeStudentsCount >= row.maxStudents ? 'danger' : 'purple'}>
           {row.activeStudentsCount} / {row.maxStudents} طالب
         </Badge>
       ),
     },
     {
       key: 'monthlyPrice',
-      header: 'الاشتراك الشهري',
+      header: 'الاشتراك',
+      className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <p className="font-bold">{formatCurrency(row.monthlyPrice)}</p>
-          <p className="text-xs text-muted-foreground">{row.monthlySessionsCount} حصص شهرياً</p>
+          <p className="font-bold text-foreground text-xs">{formatCurrency(row.monthlyPrice)}</p>
+          <p className="text-[11px] text-emerald-600 font-medium">
+            {formatCurrency(row.calculatedSessionPrice)} / حصة
+          </p>
         </div>
       ),
     },
     {
-      key: 'sessionPrice',
-      header: 'سعر الحصة',
+      key: 'status',
+      header: 'الحالة',
+      className: 'whitespace-nowrap',
       render: (row) => (
-        <span className="font-semibold text-emerald-600">
-          {formatCurrency(row.calculatedSessionPrice)}
-        </span>
+        <Badge variant={row.isActive ? 'success' : 'neutral'}>
+          {row.isActive ? 'نشطة' : 'متوقفة'}
+        </Badge>
       ),
-    },
-    {
-      key: 'split',
-      header: 'تقسيم المدرس / السنتر',
-      render: (row) =>
-        row.revenueSplitMethod === GroupRevenueSplitMethod.CUSTOM_PERCENTAGE ? (
-          <Badge variant="info">نسبة المدرس: {Number(row.teacherPercentage ?? 0)}%</Badge>
-        ) : (
-          <span className="text-xs font-semibold">
-            {formatCurrency(row.teacherSharePerStudent)} /{' '}
-            {formatCurrency(row.centerSharePerStudent)}
-          </span>
-        ),
     },
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (row) => (
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button size="sm" variant="outline" onClick={() => navigate(`/groups/${row.id}`)}>
-            <Eye className="h-3.5 w-3.5" />
-            الاشتراكات والتفاصيل
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 px-2.5 text-xs font-bold"
+            onClick={() => {
+              setQuickViewGroup(row);
+              setQuickViewOpen(true);
+            }}
+          >
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            تفاصيل
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => navigate(`/groups/${row.id}`)}
+          >
+            <Users className="h-3.5 w-3.5 text-primary" />
+            الطلاب
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => {
               setEditingGroupId(row.id);
               setModalOpen(true);
@@ -190,7 +239,10 @@ export function GroupsPage() {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
-        onRowClick={(r) => navigate(`/groups/${r.id}`)}
+        onRowClick={(r) => {
+          setQuickViewGroup(r);
+          setQuickViewOpen(true);
+        }}
         searchPlaceholder="ابحث باسم المجموعة أو الكود أو المادة..."
         searchValue={search}
         onSearchChange={(val) => {
@@ -205,7 +257,7 @@ export function GroupsPage() {
           setPage(1);
         }}
         filters={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               placeholder="كل الصفوف الدراسية"
               value={gradeFilter}
@@ -229,7 +281,23 @@ export function GroupsPage() {
               ]}
               className="w-36"
             />
-          </>
+            {(gradeFilter || activeFilter || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setGradeFilter('');
+                  setActiveFilter('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                مسح الفلاتر
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -240,6 +308,16 @@ export function GroupsPage() {
           if (!o) setEditingGroupId(null);
         }}
         group={editingGroupId ? editingDetail ?? null : null}
+      />
+
+      <GroupQuickViewModal
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        group={quickViewGroup}
+        onEdit={(grp) => {
+          setEditingGroupId(grp.id);
+          setModalOpen(true);
+        }}
       />
 
       <GradeLevelsModal

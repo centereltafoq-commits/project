@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { HandCoins, History, Lock, Plus } from 'lucide-react';
+import { HandCoins, History, Lock, Plus, RotateCcw } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import {
   Badge,
@@ -54,10 +54,11 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
     {
       key: 'teacher',
       header: 'المدرس',
+      className: 'whitespace-nowrap',
       render: (r) => (
         <div>
-          <div className="font-bold text-foreground">{r.teacherName}</div>
-          <div className="text-xs text-muted-foreground">
+          <div className="font-bold text-foreground text-xs">{r.teacherName}</div>
+          <div className="font-mono text-[11px] text-muted-foreground">
             {r.teacherCode} • {r.specialization}
           </div>
         </div>
@@ -66,8 +67,9 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
     {
       key: 'activity',
       header: 'المجموعات والحصص',
+      className: 'whitespace-nowrap',
       render: (r) => (
-        <span className="text-xs font-semibold">
+        <span className="text-xs font-semibold text-foreground">
           {r.groupsCount} مجموعات • {r.executedSessionsCount} حصة منفذة
         </span>
       ),
@@ -78,7 +80,7 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
       render: (r) => (
         <div className="flex flex-wrap gap-1 max-w-xs">
           {r.groupBreakdown.map((g) => (
-            <Badge key={g.groupId} variant="neutral" title={g.calculationBreakdown ?? ''}>
+            <Badge key={g.groupId} variant="neutral" title={g.calculationBreakdown ?? ''} className="text-[11px] whitespace-nowrap">
               {g.groupName}: {formatCurrency(g.teacherAmount)}
             </Badge>
           ))}
@@ -88,20 +90,19 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
     {
       key: 'totalDues',
       header: 'إجمالي المستحق',
-      render: (r) => <span className="font-bold">{formatCurrency(r.totalDues)}</span>,
+      className: 'whitespace-nowrap font-bold text-xs',
+      render: (r) => formatCurrency(r.totalDues),
     },
     {
       key: 'paidOut',
       header: 'تم صرفه',
-      render: (r) => (
-        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-          {formatCurrency(r.totalPaidOut)}
-        </span>
-      ),
+      className: 'whitespace-nowrap font-semibold text-emerald-600 dark:text-emerald-400 text-xs',
+      render: (r) => formatCurrency(r.totalPaidOut),
     },
     {
       key: 'remaining',
       header: 'المتبقي للصرف',
+      className: 'whitespace-nowrap',
       render: (r) =>
         r.remainingBalance > 0 ? (
           <Badge variant="warning">{formatCurrency(r.remainingBalance)}</Badge>
@@ -112,6 +113,7 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
     {
       key: 'state',
       header: 'الإغلاق',
+      className: 'whitespace-nowrap',
       render: (r) =>
         r.isClosed ? (
           <Badge variant="purple">
@@ -125,31 +127,36 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
     {
       key: 'actions',
       header: 'إجراءات',
+      className: 'whitespace-nowrap text-left pl-4',
       render: (r) => (
-        <Button
-          size="sm"
-          onClick={() => {
-            setPreset({
-              id: r.teacherId,
-              name: r.teacherName,
-              code: r.teacherCode,
-              remainingBalance: r.remainingBalance,
-            });
-            setPayoutOpen(true);
-          }}
-        >
-          <HandCoins className="h-3.5 w-3.5" />
-          صرف دفعة للمدرس
-        </Button>
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            className="h-8 gap-1 px-2.5 text-xs font-semibold"
+            onClick={() => {
+              setPreset({
+                id: r.teacherId,
+                name: r.teacherName,
+                code: r.teacherCode,
+                remainingBalance: r.remainingBalance,
+              });
+              setPayoutOpen(true);
+            }}
+          >
+            <HandCoins className="h-3.5 w-3.5" />
+            صرف دفعة
+          </Button>
+        </div>
       ),
     },
   ];
 
   const toolbarFilters = (
-    <>
+    <div className="flex flex-wrap items-center gap-2">
       <Button
         size="sm"
         variant="outline"
+        className="h-9 gap-1 text-xs"
         onClick={() => setViewMode((m) => (m === 'dues' ? 'payouts' : 'dues'))}
       >
         <History className="h-3.5 w-3.5" />
@@ -157,6 +164,7 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
       </Button>
       <Button
         size="sm"
+        className="h-9 gap-1 text-xs"
         onClick={() => {
           setPreset(null);
           setPayoutOpen(true);
@@ -165,7 +173,21 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
         <Plus className="h-4 w-4" />
         صرف دفعة للمدرس
       </Button>
-    </>
+      {search && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setSearch('');
+            setPage(1);
+          }}
+          className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          مسح البحث
+        </Button>
+      )}
+    </div>
   );
 
   return (
@@ -177,6 +199,15 @@ export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
           meta={duesQuery.data?.meta}
           isLoading={duesQuery.isLoading}
           rowKey={(r) => r.id}
+          onRowClick={(r) => {
+            setPreset({
+              id: r.teacherId,
+              name: r.teacherName,
+              code: r.teacherCode,
+              remainingBalance: r.remainingBalance,
+            });
+            setPayoutOpen(true);
+          }}
           searchPlaceholder="ابحث باسم المدرس أو الكود أو التخصص..."
           searchValue={search}
           onSearchChange={(val) => {
