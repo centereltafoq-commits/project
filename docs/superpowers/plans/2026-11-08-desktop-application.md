@@ -300,7 +300,7 @@ git commit -m "feat(desktop): implement LAN IP detection and server connection t
   - `StoreManager` class with `getConfig()`, `saveConfig()`, `resetConfig()`.
   - Type: `DesktopConfig { serverMode: 'server' | 'client'; serverUrl: string; defaultThermalPrinter?: string; directPrintEnabled: boolean; windowBounds: { width: number; height: number; x?: number; y?: number } }`.
 
-- [ ] **Step 1: Write failing unit tests for StoreManager**
+- [x] **Step 1: Write failing unit tests for StoreManager**
 
 ```typescript
 // apps/desktop/src/main/store-manager.spec.ts
@@ -349,12 +349,12 @@ describe('StoreManager', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/main/store-manager.spec.ts`  
 Expected: FAIL
 
-- [ ] **Step 3: Implement `apps/desktop/src/main/store-manager.ts`**
+- [x] **Step 3: Implement `apps/desktop/src/main/store-manager.ts`**
 
 ```typescript
 import * as fs from 'fs';
@@ -437,12 +437,12 @@ export class StoreManager {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/main/store-manager.spec.ts`  
 Expected: PASS
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
 
 ```bash
 git add apps/desktop/src/main/store-manager.ts apps/desktop/src/main/store-manager.spec.ts
