@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { PERMISSIONS } from '@edu-center/shared';
+import { PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { AppLayout } from '@/layout/app-layout';
 import { SIDEBAR_NAV_ITEMS } from '@/layout/nav-items';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
@@ -82,12 +82,14 @@ function PageLoader() {
 }
 
 function RoleAwareHome() {
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   if (hasPermission(PERMISSIONS.DASHBOARD_VIEW)) {
     return <DashboardPage />;
   }
   const firstNav = SIDEBAR_NAV_ITEMS.find((item) => {
     if (item.to === '/') return false;
+    if (item.to === '/settings' && user?.roleCode !== SystemRole.OWNER) return false;
+    if (item.requiredRole && user?.roleCode !== item.requiredRole) return false;
     if (item.permission && !hasPermission(item.permission as any)) return false;
     if (item.anyPermissions && !item.anyPermissions.some((p) => hasPermission(p as any))) return false;
     return true;
@@ -261,7 +263,10 @@ export function App() {
                 <Route
                   path="settings"
                   element={
-                    <PermissionGuardRoute permission={PERMISSIONS.SETTINGS_MANAGE}>
+                    <PermissionGuardRoute
+                      requiredRole={SystemRole.OWNER}
+                      permission={PERMISSIONS.SETTINGS_MANAGE}
+                    >
                       <SettingsPage />
                     </PermissionGuardRoute>
                   }

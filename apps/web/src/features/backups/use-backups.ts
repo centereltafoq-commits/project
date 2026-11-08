@@ -27,6 +27,13 @@ export function useBackupMutations() {
     },
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => backupsApi.upload(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['backups'] });
+    },
+  });
+
   const updateSettingsMutation = useMutation({
     mutationFn: (payload: UpdateBackupSettingsPayload) =>
       backupsApi.updateSettings(payload),
@@ -52,6 +59,7 @@ export function useBackupMutations() {
 
   return {
     triggerMutation,
+    uploadMutation,
     updateSettingsMutation,
     restoreMutation,
     disconnectGoogleMutation,

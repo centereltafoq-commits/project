@@ -10,6 +10,11 @@ import {
   Calendar,
   DollarSign,
   Image as ImageIcon,
+  Upload,
+  UploadCloud,
+  Trash2,
+  Link2,
+  Loader2,
 } from 'lucide-react';
 import {
   Button,
@@ -21,6 +26,7 @@ import {
   PageHeader,
   useToast,
 } from '@/design-system';
+import { cn } from '@/lib/cn';
 import { extractErrorMessage } from '@/lib/api-client';
 import { settingsApi } from './settings-api';
 import { useCenterSettings } from './center-settings-context';
@@ -43,6 +49,11 @@ export function SettingsPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
   const [logoPreviewError, setLogoPreviewError] = React.useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = React.useState(false);
+  const [isDragOver, setIsDragOver] = React.useState(false);
+  const [showManualUrl, setShowManualUrl] = React.useState(false);
+
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (settings) {
@@ -63,6 +74,62 @@ export function SettingsPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (field === 'logoUrl') {
       setLogoPreviewError(false);
+    }
+  };
+
+  const uploadLogoFile = async (file: File) => {
+    if (!file.type.startsWith('image/') && !file.name.match(/\.(png|jpe?g|webp|svg|gif)$/i)) {
+      notify('نوع الملف غير مدعوم. يرجى اختيار ملف صورة صالح (PNG, JPG, WEBP, SVG)', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      notify('حجم ملف الصورة كبير جداً. الحد الأقصى المسموح هو 5 ميجابايت', 'error');
+      return;
+    }
+
+    try {
+      setIsUploadingLogo(true);
+      const result = await settingsApi.uploadLogo(file);
+      handleChange('logoUrl', result.logoUrl);
+      await refetch();
+      notify('تم رفع الشعار وتحديث النظام بنجاح', 'success');
+    } catch (err: any) {
+      notify(extractErrorMessage(err), 'error');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleLogoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadLogoFile(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleLogoDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      uploadLogoFile(file);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      setIsSaving(true);
+      if (settings?.logoUrl) {
+        await settingsApi.removeLogo();
+      }
+      handleChange('logoUrl', '');
+      await refetch();
+      notify('تم حذف شعار السنتر بنجاح', 'success');
+    } catch (err: any) {
+      notify(extractErrorMessage(err), 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -131,42 +198,150 @@ export function SettingsPage() {
                   />
                 </div>
 
-                {/* Logo and Live Preview */}
-                <div className="space-y-2">
-                  <Input
-                    label="رابط الشعار (Logo URL)"
-                    placeholder="https://example.com/logo.png أو مسار نسبي"
-                    value={form.logoUrl}
-                    onChange={(e) => handleChange('logoUrl', e.target.value)}
-                    disabled={isLoading || isSaving}
-                    hint="رابط صورة الشعار بصيغة PNG أو JPG أو SVG"
+                {/* Center Logo Upload and Live Preview */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-foreground">
+                      شعار السنتر (Logo)
+                    </label>
+                    {form.logoUrl.trim() !== '' && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        disabled={isUploadingLogo || isLoading || isSaving}
+                        className="flex items-center gap-1 text-xs font-semibold text-destructive hover:underline"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>إزالة الشعار</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    data-testid="logo-file-input"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                    onChange={handleLogoFileSelect}
+                    className="hidden"
                   />
-                  {form.logoUrl.trim() !== '' && (
-                    <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
+
+                  {/* Active Logo Display */}
+                  {form.logoUrl.trim() !== '' ? (
+                    <div className="flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-border bg-card p-4">
+                      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/40 shadow-sm">
                         {!logoPreviewError ? (
                           <img
                             src={form.logoUrl}
                             alt="Logo Preview"
-                            className="h-full w-full object-contain"
+                            className="h-full w-full object-contain p-1"
                             onError={() => setLogoPreviewError(true)}
                           />
                         ) : (
-                          <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
                         )}
                       </div>
-                      <div className="text-xs">
-                        <p className="font-semibold text-foreground">
-                          {logoPreviewError ? 'تعذر تحميل معاينة الصورة' : 'معاينة الشعار الحالية'}
+
+                      <div className="flex-1 space-y-1 text-center sm:text-right">
+                        <p className="text-sm font-bold text-foreground">
+                          {logoPreviewError ? 'تعذر تحميل معاينة الصورة' : 'شعار السنتر الحالي'}
                         </p>
-                        <p className="text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {logoPreviewError
-                            ? 'يرجى التأكد من صحة الرابط وامتداد الصورة'
-                            : 'سيظهر هذا الشعار أعلى الإيصالات والتقارير والشريط الجانبي'}
+                            ? 'يرجى رفع ملف صورة صالح أو التأكد من سلامة الرابط'
+                            : 'يظهر الشعار تلقائياً أعلى الإيصالات المطبوعة والتقارير والشريط الجانبي'}
                         </p>
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => logoInputRef.current?.click()}
+                            disabled={isUploadingLogo || isLoading || isSaving}
+                            className="gap-1.5 text-xs"
+                          >
+                            {isUploadingLogo ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Upload className="h-3.5 w-3.5 text-primary" />
+                            )}
+                            <span>تغيير صورة الشعار</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleRemoveLogo}
+                            disabled={isUploadingLogo || isLoading || isSaving}
+                            className="gap-1.5 text-xs text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>حذف الشعار</span>
+                          </Button>
+                        </div>
                       </div>
                     </div>
+                  ) : (
+                    /* Dropzone when no logo is set */
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragOver(true);
+                      }}
+                      onDragLeave={() => setIsDragOver(false)}
+                      onDrop={handleLogoDrop}
+                      onClick={() => logoInputRef.current?.click()}
+                      className={cn(
+                        'group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-all cursor-pointer',
+                        isDragOver
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border bg-muted/20 hover:border-primary/50 hover:bg-muted/40',
+                        isUploadingLogo && 'pointer-events-none opacity-60',
+                      )}
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-2 transition-transform group-hover:scale-110">
+                        {isUploadingLogo ? (
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        ) : (
+                          <UploadCloud className="h-6 w-6" />
+                        )}
+                      </div>
+
+                      <p className="text-sm font-bold text-foreground">
+                        {isUploadingLogo
+                          ? 'جاري رفع صورة الشعار وتحديث النظام...'
+                          : 'اسحب صورة الشعار وأفلتها هنا، أو اضغط للاختيار من الكمبيوتر'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        يدعم صيغ PNG, JPG, WEBP, SVG (أقصى حجم 5 ميجابايت)
+                      </p>
+                    </div>
                   )}
+
+                  {/* Optional Manual URL fallback */}
+                  <div className="pt-1">
+                    {!showManualUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowManualUrl(true)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        <span>أو إدخال رابط صورة يدوي (URL) بدلاً من الرفع</span>
+                      </button>
+                    ) : (
+                      <div className="space-y-1.5 rounded-lg border border-border bg-muted/20 p-3">
+                        <Input
+                          label="رابط الشعار المباشر (Logo URL)"
+                          placeholder="https://example.com/logo.png"
+                          value={form.logoUrl}
+                          onChange={(e) => handleChange('logoUrl', e.target.value)}
+                          disabled={isLoading || isSaving}
+                          hint="إذا كنت تفضل استخدام صورة مستضافة على خادم خارجي"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

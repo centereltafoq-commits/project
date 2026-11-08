@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import { Response } from 'express';
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,10 +13,14 @@ import {
   Post,
   Query,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PERMISSIONS } from '@edu-center/shared';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { UploadedMulterFile } from '../../common/types/multer.types';
 import { BackupsService } from './backups.service';
 import {
   BackupQueryDto,
@@ -49,6 +54,23 @@ export class BackupsController {
   @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
   async triggerManualBackup() {
     return this.backupsService.createBackup('MANUAL');
+  }
+
+  @Post('upload')
+  @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 300 * 1024 * 1024 },
+    }),
+  )
+  async uploadBackup(
+    @UploadedFile() file: UploadedMulterFile,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!file) {
+      throw new BadRequestException('يرجى اختيار ملف النسخة الاحتياطية لرفعه');
+    }
+    return this.backupsService.uploadBackupFile(file, user?.id);
   }
 
   @Get(':id/download')

@@ -16,7 +16,7 @@ import {
   Settings,
   LucideIcon,
 } from 'lucide-react';
-import { PERMISSIONS } from '@edu-center/shared';
+import { PERMISSIONS, SystemRole } from '@edu-center/shared';
 
 export interface NavItem {
   label: string;
@@ -24,6 +24,7 @@ export interface NavItem {
   icon: LucideIcon;
   permission?: string;
   anyPermissions?: string[];
+  requiredRole?: string;
 }
 
 export const SIDEBAR_NAV_ITEMS: NavItem[] = [
@@ -60,6 +61,12 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
   },
   { label: 'سجل العمليات (Audit)', to: '/audit-logs', icon: ScrollText, permission: PERMISSIONS.AUDIT_VIEW },
   { label: 'النسخ الاحتياطي والأمان', to: '/backups', icon: Database, permission: PERMISSIONS.BACKUPS_VIEW },
-  { label: 'إعدادات النظام', to: '/settings', icon: Settings, permission: PERMISSIONS.SETTINGS_MANAGE },
+  {
+    label: 'إعدادات النظام',
+    to: '/settings',
+    icon: Settings,
+    permission: PERMISSIONS.SETTINGS_MANAGE,
+    requiredRole: SystemRole.OWNER,
+  },
 ];
 

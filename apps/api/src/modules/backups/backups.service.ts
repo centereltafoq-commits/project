@@ -13,6 +13,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { CacheService } from '../../common/cache/cache.module';
+import { UploadedMulterFile } from '../../common/types/multer.types';
 import { UsersRepository } from '../users/users.repository';
 import { BackupsRepository } from './backups.repository';
 import { GoogleDriveDriver } from './drivers/google-drive.driver';
@@ -247,11 +248,122 @@ export class BackupsService {
     }
   }
 
+  async uploadBackupFile(
+    file: UploadedMulterFile,
+    actorUserId?: string,
+  ) {
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new BadRequestException('ملف النسخة الاحتياطية فارغ أو مفقود');
+    }
+
+    const originalName = file.originalname?.trim() || '';
+    const lowerName = originalName.toLowerCase();
+    const isGz = lowerName.endsWith('.sql.gz') || lowerName.endsWith('.gz');
+    const isSql = lowerName.endsWith('.sql');
+
+    if (!isGz && !isSql) {
+      throw new BadRequestException(
+        'نوع الملف غير صالح. يُسمح فقط بملفات قواعد البيانات بامتداد .sql أو .sql.gz',
+      );
+    }
+
+    let finalBuffer: Buffer;
+    if (isGz) {
+      if (file.buffer.length < 2 || file.buffer[0] !== 0x1f || file.buffer[1] !== 0x8b) {
+        throw new BadRequestException(
+          'ملف النسخة المضغوطة (.sql.gz) تالف أو غير صالح. الملف لا يحتوي على بيانات Gzip صحيحة',
+        );
+      }
+      try {
+        const decompressed = zlib.gunzipSync(file.buffer);
+        if (decompressed.length === 0 || decompressed.toString('utf-8').trim().length === 0) {
+          throw new BadRequestException('ملف النسخة الاحتياطية فارغ ولا يحتوي على أي بيانات');
+        }
+      } catch (err: any) {
+        if (err instanceof BadRequestException) throw err;
+        throw new BadRequestException(`فشل التحقق من سلامة الملف المضغوط (.sql.gz): ${err.message}`);
+      }
+      finalBuffer = file.buffer;
+    } else {
+      // Plain .sql file
+      if (file.buffer.length >= 2 && file.buffer[0] === 0x1f && file.buffer[1] === 0x8b) {
+        // SQL file is already gzipped
+        try {
+          const decompressed = zlib.gunzipSync(file.buffer);
+          if (decompressed.length === 0 || decompressed.toString('utf-8').trim().length === 0) {
+            throw new BadRequestException('ملف النسخة الاحتياطية فارغ ولا يحتوي على أي بيانات');
+          }
+        } catch (err: any) {
+          if (err instanceof BadRequestException) throw err;
+          throw new BadRequestException(`فشل التحقق من سلامة الملف المضغوط: ${err.message}`);
+        }
+        finalBuffer = file.buffer;
+      } else {
+        // Plain text SQL: check for null bytes to reject binary executables
+        if (file.buffer.subarray(0, 4096).includes(0x00)) {
+          throw new BadRequestException(
+            'محتوى ملف SQL غير صالح. الملف يبدو أنه ملف ثنائي تنفيذي وليس ملف نصي لأوامر SQL',
+          );
+        }
+        const text = file.buffer.toString('utf-8').trim();
+        if (text.length === 0) {
+          throw new BadRequestException('ملف SQL فارغ ولا يحتوي على أوامر قاعدة البيانات');
+        }
+        try {
+          finalBuffer = zlib.gzipSync(file.buffer, { level: 9 });
+        } catch (err: any) {
+          throw new BadRequestException(`فشل ضغط ملف SQL إلى gzip: ${err.message}`);
+        }
+      }
+    }
+
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const timestampStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const baseName =
+      path
+        .basename(originalName)
+        .replace(/\.(sql\.gz|sql|gz)$/i, '')
+        .replace(/[^\w\u0600-\u06FF-]/g, '_')
+        .slice(0, 50) || 'backup';
+    const fileName = `upload-${baseName}-${timestampStr}.sql.gz`;
+    const targetFilePath = path.join(this.storageDir, fileName);
+
+    fs.writeFileSync(targetFilePath, finalBuffer);
+
+    const hash = crypto.createHash('sha256');
+    hash.update(finalBuffer);
+    const checksum = hash.digest('hex');
+    const fileSizeBytes = finalBuffer.length;
+
+    const record = await this.repository.createRecord({
+      fileName,
+      filePath: targetFilePath,
+      fileSizeBytes,
+      triggerType: 'UPLOADED',
+      destinations: ['SERVER_STORAGE'],
+      checksum,
+      status: 'SUCCESS',
+    });
+
+    return record;
+  }
+
   async restoreBackup(id: string, passwordPlain: string, actorUserId: string) {
     await this.verifyAdminPassword(actorUserId, passwordPlain);
     const record = await this.getRecordById(id);
     if (!fs.existsSync(record.filePath)) {
       throw new NotFoundException('ملف النسخة الاحتياطية غير موجود على القرص الصلب');
+    }
+
+    if (record.checksum) {
+      const fileBuffer = fs.readFileSync(record.filePath);
+      const computed = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      if (computed !== record.checksum) {
+        throw new BadRequestException(
+          'فشل التحقق من تطابق كود التشفير (Checksum) لملف النسخة الاحتياطية. قد يكون الملف تالفاً أو تم التعديل عليه.',
+        );
+      }
     }
 
     await this.executeRestore(record.filePath);
@@ -317,8 +429,22 @@ export class BackupsService {
         if (code === 0) {
           safeResolve();
         } else {
-          this.logger.warn(`psql exited with code ${code}: ${errOutput}`);
-          safeResolve(); // psql warnings on clean drop/recreate are normal
+          const lowerErr = errOutput.toLowerCase();
+          if (
+            lowerErr.includes('fatal:') ||
+            lowerErr.includes('password authentication failed') ||
+            lowerErr.includes('connection refused') ||
+            lowerErr.includes('could not connect')
+          ) {
+            safeReject(
+              new BadRequestException(
+                `فشل الاتصال بقاعدة البيانات أثناء الاستعادة: ${errOutput.slice(0, 300)}`,
+              ),
+            );
+          } else {
+            this.logger.warn(`psql exited with code ${code}: ${errOutput}`);
+            safeResolve(); // psql warnings on clean drop/recreate are normal
+          }
         }
       });
     });

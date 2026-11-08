@@ -36,21 +36,29 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         }
       }
     } else if (exception instanceof Error) {
-      const pgCode =
-        (exception as unknown as { code?: string; cause?: { code?: string } }).code ??
-        (exception as unknown as { cause?: { code?: string } }).cause?.code;
-
-      if (pgCode === '23505') {
-        status = HttpStatus.CONFLICT;
-        message = 'هذا السجل أو الكود مسجل مسبقاً في النظام ولا يمكن تكراره';
-      } else if (pgCode === '23503') {
-        status = HttpStatus.BAD_REQUEST;
-        message = 'لا يمكن إتمام العملية لارتباط هذا السجل ببيانات أخرى نشطة في النظام';
+      if (
+        (exception as any).name === 'MulterError' ||
+        (exception as any).code === 'LIMIT_FILE_SIZE'
+      ) {
+        status = HttpStatus.PAYLOAD_TOO_LARGE;
+        message = 'حجم الملف المرفوع يتجاوز الحد الأقصى المسموح به في النظام';
       } else {
-        this.logger.error('Unhandled server exception', exception.stack, {
-          path: request.url,
-          method: request.method,
-        });
+        const pgCode =
+          (exception as unknown as { code?: string; cause?: { code?: string } }).code ??
+          (exception as unknown as { cause?: { code?: string } }).cause?.code;
+
+        if (pgCode === '23505') {
+          status = HttpStatus.CONFLICT;
+          message = 'هذا السجل أو الكود مسجل مسبقاً في النظام ولا يمكن تكراره';
+        } else if (pgCode === '23503') {
+          status = HttpStatus.BAD_REQUEST;
+          message = 'لا يمكن إتمام العملية لارتباط هذا السجل ببيانات أخرى نشطة في النظام';
+        } else {
+          this.logger.error('Unhandled server exception', exception.stack, {
+            path: request.url,
+            method: request.method,
+          });
+        }
       }
     }
 

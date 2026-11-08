@@ -3,7 +3,7 @@ export interface BackupRecord {
   fileName: string;
   filePath: string;
   fileSizeBytes: number;
-  triggerType: 'MANUAL' | 'SCHEDULED';
+  triggerType: 'MANUAL' | 'SCHEDULED' | 'UPLOADED';
   destinations: string[];
   checksum: string | null;
   status: 'SUCCESS' | 'FAILED' | 'IN_PROGRESS';

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { PERMISSIONS } from '@edu-center/shared';
+import { PERMISSIONS, SystemRole } from '@edu-center/shared';
 import * as authContextModule from '@/features/auth/auth-context';
 import { PermissionGuardRoute } from './permission-guard-route';
 
@@ -86,6 +86,69 @@ describe('PermissionGuardRoute', () => {
     );
 
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(screen.getByText('غير مصرح بالدخول إلى هذه الشاشة')).toBeInTheDocument();
+  });
+
+  it('renders children when user matches requiredRole (OWNER)', () => {
+    useAuthMock.mockReturnValue({
+      hasPermission: () => true,
+      user: { fullName: 'Center Owner', roleCode: SystemRole.OWNER },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <PermissionGuardRoute
+          requiredRole={SystemRole.OWNER}
+          permission={PERMISSIONS.SETTINGS_MANAGE}
+        >
+          <div data-testid="settings-protected-content">إعدادات النظام المحمية</div>
+        </PermissionGuardRoute>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('settings-protected-content')).toBeInTheDocument();
+    expect(screen.queryByText('غير مصرح بالدخول إلى هذه الشاشة')).not.toBeInTheDocument();
+  });
+
+  it('strictly blocks non-OWNER user (e.g. MANAGER) from accessing requiredRole=OWNER even with permissions', () => {
+    useAuthMock.mockReturnValue({
+      hasPermission: () => true,
+      user: { fullName: 'Center Manager', roleCode: SystemRole.MANAGER },
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <PermissionGuardRoute
+          requiredRole={SystemRole.OWNER}
+          permission={PERMISSIONS.SETTINGS_MANAGE}
+        >
+          <div data-testid="settings-protected-content">إعدادات النظام المحمية</div>
+        </PermissionGuardRoute>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId('settings-protected-content')).not.toBeInTheDocument();
+    expect(screen.getByText('غير مصرح بالدخول إلى هذه الشاشة')).toBeInTheDocument();
+    expect(
+      screen.getByText(/هذا القسم مخصص فقط لمالك النظام \(Owner\)/i),
+    ).toBeInTheDocument();
+  });
+
+  it('blocks access if user is null and requiredRole is set', () => {
+    useAuthMock.mockReturnValue({
+      hasPermission: () => false,
+      user: null,
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <PermissionGuardRoute requiredRole={SystemRole.OWNER}>
+          <div data-testid="settings-protected-content">إعدادات النظام</div>
+        </PermissionGuardRoute>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId('settings-protected-content')).not.toBeInTheDocument();
     expect(screen.getByText('غير مصرح بالدخول إلى هذه الشاشة')).toBeInTheDocument();
   });
 });

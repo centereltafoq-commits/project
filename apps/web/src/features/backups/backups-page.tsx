@@ -15,6 +15,7 @@ import {
   RotateCcw,
   Save,
   ShieldCheck,
+  Upload,
   Usb,
   XCircle,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ import { backupsApi } from './backups-api';
 import { BackupRecord } from './backups.types';
 import { BackupQuickViewModal } from './components/backup-quick-view-modal';
 import { BackupRestoreModal } from './backup-restore-modal';
+import { BackupUploadModal } from './components/backup-upload-modal';
 import { useBackupMutations, useBackups, useBackupSettings } from './use-backups';
 
 export function BackupsPage() {
@@ -46,6 +48,7 @@ export function BackupsPage() {
   const [limit, setLimit] = useState(25);
   const [selectedRecordForRestore, setSelectedRecordForRestore] = useState<BackupRecord | null>(null);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [quickViewRecord, setQuickViewRecord] = useState<BackupRecord | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
@@ -135,8 +138,21 @@ export function BackupsPage() {
       header: 'النوع',
       className: 'whitespace-nowrap',
       render: (row) => (
-        <Badge variant={row.triggerType === 'SCHEDULED' ? 'info' : 'neutral'} className="text-xs">
-          {row.triggerType === 'SCHEDULED' ? 'تلقائي مجدول' : 'يدوي فوري'}
+        <Badge
+          variant={
+            row.triggerType === 'SCHEDULED'
+              ? 'info'
+              : row.triggerType === 'UPLOADED'
+              ? 'purple'
+              : 'neutral'
+          }
+          className="text-xs"
+        >
+          {row.triggerType === 'SCHEDULED'
+            ? 'تلقائي مجدول'
+            : row.triggerType === 'UPLOADED'
+            ? 'مرفوع من الكمبيوتر'
+            : 'يدوي فوري'}
         </Badge>
       ),
     },
@@ -249,18 +265,28 @@ export function BackupsPage() {
         description="إدارة وتأمين بيانات السنتر محلياً وسحابياً وحفظها تلقائياً على الفلاشة أو الديسك توب أو Google Drive"
         actions={
           canManageBackups ? (
-            <Button
-              onClick={handleCreateBackup}
-              disabled={triggerMutation.isPending}
-              className="gap-2"
-            >
-              {triggerMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ShieldCheck className="h-4 w-4" />
-              )}
-              <span>إنشاء نسخة احتياطية فورية الآن</span>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setUploadModalOpen(true)}
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4 text-primary" />
+                <span>رفع نسخة احتياطية من جهازك</span>
+              </Button>
+              <Button
+                onClick={handleCreateBackup}
+                disabled={triggerMutation.isPending}
+                className="gap-2"
+              >
+                {triggerMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4" />
+                )}
+                <span>إنشاء نسخة احتياطية فورية الآن</span>
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -495,6 +521,15 @@ export function BackupsPage() {
         open={restoreModalOpen}
         onOpenChange={setRestoreModalOpen}
         record={selectedRecordForRestore}
+      />
+
+      <BackupUploadModal
+        open={uploadModalOpen}
+        onOpenChange={setUploadModalOpen}
+        onRestoreFromUploaded={(rec) => {
+          setSelectedRecordForRestore(rec);
+          setRestoreModalOpen(true);
+        }}
       />
     </div>
   );

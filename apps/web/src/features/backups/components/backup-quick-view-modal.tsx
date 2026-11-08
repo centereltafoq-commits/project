@@ -53,8 +53,20 @@ export function BackupQuickViewModal({
               >
                 {isSuccess ? 'ناجحة' : isFailed ? 'فشلت' : 'قيد الإنشاء'}
               </Badge>
-              <Badge variant={record.triggerType === 'SCHEDULED' ? 'info' : 'neutral'}>
-                {record.triggerType === 'SCHEDULED' ? 'تلقائي مجدول' : 'يدوي فوري'}
+              <Badge
+                variant={
+                  record.triggerType === 'SCHEDULED'
+                    ? 'info'
+                    : record.triggerType === 'UPLOADED'
+                    ? 'purple'
+                    : 'neutral'
+                }
+              >
+                {record.triggerType === 'SCHEDULED'
+                  ? 'تلقائي مجدول'
+                  : record.triggerType === 'UPLOADED'
+                  ? 'مرفوع من الكمبيوتر'
+                  : 'يدوي فوري'}
               </Badge>
             </div>
             <h3 className="font-mono text-sm font-bold text-foreground break-all" dir="ltr">

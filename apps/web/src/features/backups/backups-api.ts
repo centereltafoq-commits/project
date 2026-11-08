@@ -27,6 +27,17 @@ export const backupsApi = {
     return data;
   },
 
+  upload: async (file: File): Promise<BackupRecord> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await apiClient.post<BackupRecord>('/backups/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return data;
+  },
+
   restore: async (id: string, password: string): Promise<{ success: boolean; message: string }> => {
     const { data } = await apiClient.post<{ success: boolean; message: string }>(`/backups/${id}/restore`, { password });
     return data;

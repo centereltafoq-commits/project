@@ -1,11 +1,15 @@
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../common/cache/cache.module';
+import { UploadedMulterFile } from '../../common/types/multer.types';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { BackupsService } from '../backups/backups.service';
 import { ResetAcademicYearDto, UpdateSettingsDto } from './dto/settings.dto';
@@ -41,6 +45,23 @@ export class SettingsService {
     actorUserId?: string,
   ): Promise<SystemSettingsRecord> {
     const previous = await this.getSettings();
+    if (
+      previous.logoUrl &&
+      previous.logoUrl.startsWith('/api/settings/logo/') &&
+      dto.logoUrl !== undefined &&
+      dto.logoUrl !== previous.logoUrl
+    ) {
+      const oldFilename = path.basename(previous.logoUrl);
+      const oldPath = path.resolve(this.getLogoStorageDir(), oldFilename);
+      if (fs.existsSync(oldPath)) {
+        try {
+          fs.unlinkSync(oldPath);
+        } catch (e: any) {
+          this.logger.warn(`Failed to unlink replaced logo: ${e.message}`);
+        }
+      }
+    }
+
     const updated = await this.repository.upsertSettings(dto, actorUserId);
     await this.cacheService.invalidatePrefix('settings');
 
@@ -54,6 +75,116 @@ export class SettingsService {
     });
 
     return updated;
+  }
+
+  getLogoStorageDir(): string {
+    const dir = path.resolve(process.cwd(), 'storage', 'uploads', 'branding');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  }
+
+  async uploadLogo(
+    file: UploadedMulterFile,
+    actorUserId?: string,
+  ): Promise<{ logoUrl: string; fileName: string }> {
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new BadRequestException('ملف الصورة مفقود أو غير صالح');
+    }
+
+    if (file.buffer.length > 5 * 1024 * 1024) {
+      throw new BadRequestException('حجم ملف الصورة يتجاوز الحد الأقصى المسموح به (5 ميجابايت)');
+    }
+
+    if (file.mimetype && !file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('نوع المحتوى للملف غير صالح. يجب أن يكون ملف صورة');
+    }
+
+    const allowedExts = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!allowedExts.includes(ext)) {
+      throw new BadRequestException(
+        'نوع الملف غير مدعوم. يرجى رفع صورة بصيغة PNG أو JPG أو WEBP أو SVG',
+      );
+    }
+
+    // Security check for SVG uploads to prevent stored script injection
+    if (ext === '.svg' || file.mimetype === 'image/svg+xml') {
+      const svgContent = file.buffer.toString('utf-8');
+      const hasScriptTag = /<script[\s>]/i.test(svgContent);
+      const hasJsUrl = /javascript:/i.test(svgContent);
+      const hasInlineHandlers = /on(load|error|click|mouseover|mouseenter)[\s=]/i.test(svgContent);
+      if (hasScriptTag || hasJsUrl || hasInlineHandlers) {
+        throw new BadRequestException('ملف SVG يحتوي على وسوم برمجية أو أحداث غير مسموح بها لأسباب أمنية');
+      }
+    }
+
+    const uploadDir = this.getLogoStorageDir();
+    const filename = `logo-${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
+    const targetPath = path.join(uploadDir, filename);
+
+    fs.writeFileSync(targetPath, file.buffer);
+
+    const logoUrl = `/api/settings/logo/${filename}`;
+
+    const previous = await this.getSettings();
+    if (previous.logoUrl && previous.logoUrl.startsWith('/api/settings/logo/')) {
+      const oldFilename = path.basename(previous.logoUrl);
+      const oldPath = path.resolve(uploadDir, oldFilename);
+      if (fs.existsSync(oldPath)) {
+        try {
+          fs.unlinkSync(oldPath);
+        } catch (e: any) {
+          this.logger.warn(`Failed to unlink previous logo: ${e.message}`);
+        }
+      }
+    }
+
+    await this.repository.upsertSettings({ logoUrl }, actorUserId);
+    await this.cacheService.invalidatePrefix('settings');
+
+    await this.auditLogsService.record({
+      actorUserId,
+      action: 'system.settings_logo_uploaded',
+      entityType: 'SETTINGS',
+      entityId: 'default',
+      beforeData: { logoUrl: previous.logoUrl },
+      afterData: { logoUrl },
+    });
+
+    return { logoUrl, fileName: filename };
+  }
+
+  async removeLogo(
+    actorUserId?: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const previous = await this.getSettings();
+    if (previous.logoUrl && previous.logoUrl.startsWith('/api/settings/logo/')) {
+      const oldFilename = path.basename(previous.logoUrl);
+      const oldPath = path.resolve(this.getLogoStorageDir(), oldFilename);
+      if (fs.existsSync(oldPath)) {
+        try {
+          fs.unlinkSync(oldPath);
+        } catch (e: any) {
+          this.logger.warn(`Failed to unlink removed logo: ${e.message}`);
+        }
+      }
+    }
+
+    await this.repository.upsertSettings({ logoUrl: null }, actorUserId);
+    await this.cacheService.invalidatePrefix('settings');
+
+    await this.auditLogsService.record({
+      actorUserId,
+      action: 'system.settings_logo_removed',
+      entityType: 'SETTINGS',
+      entityId: 'default',
+      beforeData: { logoUrl: previous.logoUrl },
+      afterData: { logoUrl: null },
+    });
+
+    return { success: true, message: 'تم حذف شعار السنتر بنجاح' };
   }
 
   async resetAcademicYear(

@@ -161,4 +161,82 @@ describe('SettingsService', () => {
       expect(result.backupId).toBe('backup-123');
     });
   });
+
+  describe('uploadLogo & removeLogo', () => {
+    it('uploads valid image, updates settings repository, and logs audit event', async () => {
+      const mockFile = {
+        buffer: Buffer.from('fake-image-bytes'),
+        originalname: 'logo.png',
+        mimetype: 'image/png',
+      } as any;
+      const userId = '00000000-0000-4000-8000-000000000001';
+
+      const result = await service.uploadLogo(mockFile, userId);
+
+      expect(result.logoUrl).toMatch(/^\/api\/settings\/logo\/logo-.*\.png$/);
+      expect(settingsRepository.upsertSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ logoUrl: result.logoUrl }),
+        userId,
+      );
+      expect(cacheService.invalidatePrefix).toHaveBeenCalledWith('settings');
+      expect(auditLogsService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'system.settings_logo_uploaded',
+          actorUserId: userId,
+        }),
+      );
+    });
+
+    it('rejects unsupported image extension and invalid mimetype', async () => {
+      const mockNonImage = {
+        buffer: Buffer.from('content'),
+        originalname: 'document.pdf',
+        mimetype: 'application/pdf',
+      } as any;
+
+      await expect(service.uploadLogo(mockNonImage)).rejects.toThrow(
+        /نوع المحتوى للملف غير صالح/,
+      );
+
+      const mockUnsupportedExt = {
+        buffer: Buffer.from('content'),
+        originalname: 'image.bmp',
+        mimetype: 'image/bmp',
+      } as any;
+
+      await expect(service.uploadLogo(mockUnsupportedExt)).rejects.toThrow(
+        /نوع الملف غير مدعوم/,
+      );
+    });
+
+    it('rejects SVG file containing script tag', async () => {
+      const maliciousSvg = {
+        buffer: Buffer.from('<svg><script>alert(1)</script></svg>'),
+        originalname: 'evil.svg',
+        mimetype: 'image/svg+xml',
+      } as any;
+
+      await expect(service.uploadLogo(maliciousSvg)).rejects.toThrow(
+        /ملف SVG يحتوي على وسوم برمجية أو أحداث غير مسموح بها/,
+      );
+    });
+
+    it('removes logo, clears database record, invalidates cache, and logs audit', async () => {
+      const userId = '00000000-0000-4000-8000-000000000001';
+      const result = await service.removeLogo(userId);
+
+      expect(result.success).toBe(true);
+      expect(settingsRepository.upsertSettings).toHaveBeenCalledWith(
+        { logoUrl: null },
+        userId,
+      );
+      expect(cacheService.invalidatePrefix).toHaveBeenCalledWith('settings');
+      expect(auditLogsService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'system.settings_logo_removed',
+          actorUserId: userId,
+        }),
+      );
+    });
+  });
 });

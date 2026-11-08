@@ -55,4 +55,26 @@ export const settingsApi = {
     );
     return data;
   },
+
+  uploadLogo: async (file: File): Promise<{ logoUrl: string; fileName: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await apiClient.post<{ logoUrl: string; fileName: string }>(
+      '/settings/logo',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    );
+    return data;
+  },
+
+  removeLogo: async (): Promise<{ success: boolean; message: string }> => {
+    const { data } = await apiClient.delete<{ success: boolean; message: string }>(
+      '/settings/logo',
+    );
+    return data;
+  },
 };

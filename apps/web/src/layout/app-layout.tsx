@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
 import { GraduationCap, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { SystemRole } from '@edu-center/shared';
 import { Badge, Button } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/features/auth/auth-context';
@@ -12,15 +13,29 @@ export function AppLayout() {
   const { settings } = useCenterSettings();
   const [logoError, setLogoError] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [dark, setDark] = React.useState(() => localStorage.getItem('edu_theme') === 'dark');
+  const [dark, setDark] = React.useState(() => {
+    try {
+      return typeof localStorage !== 'undefined' ? localStorage.getItem('edu_theme') === 'dark' : false;
+    } catch {
+      return false;
+    }
+  });
 
   React.useEffect(() => {
     setLogoError(false);
   }, [settings?.logoUrl]);
 
   React.useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('edu_theme', dark ? 'dark' : 'light');
+    try {
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.toggle('dark', dark);
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('edu_theme', dark ? 'dark' : 'light');
+      }
+    } catch {
+      // ignore storage errors
+    }
   }, [dark]);
 
   if (isLoading) {
@@ -36,6 +51,8 @@ export function AppLayout() {
   }
 
   const visibleNav = SIDEBAR_NAV_ITEMS.filter((item) => {
+    if (item.to === '/settings' && user.roleCode !== SystemRole.OWNER) return false;
+    if (item.requiredRole && user.roleCode !== item.requiredRole) return false;
     if (item.permission && !hasPermission(item.permission as any)) return false;
     if (item.anyPermissions && !item.anyPermissions.some((p) => hasPermission(p as any))) return false;
     return true;
