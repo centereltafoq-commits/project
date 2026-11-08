@@ -462,7 +462,7 @@ git commit -m "feat(desktop): implement desktop persistent store manager"
   - `ServerManager` class with `start()`, `stop()`, `restart()`, `getStatus()`.
   - Type: `ServerStatus { running: boolean; pid?: number; port: number; uptime?: number; error?: string }`.
 
-- [ ] **Step 1: Write failing unit tests for ServerManager**
+- [x] **Step 1: Write failing unit tests for ServerManager**
 
 ```typescript
 // apps/desktop/src/main/server-manager.spec.ts
@@ -529,12 +529,12 @@ describe('ServerManager', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/main/server-manager.spec.ts`  
 Expected: FAIL
 
-- [ ] **Step 3: Implement `apps/desktop/src/main/server-manager.ts`**
+- [x] **Step 3: Implement `apps/desktop/src/main/server-manager.ts`**
 
 ```typescript
 import { ChildProcess, spawn } from 'child_process';
@@ -650,12 +650,12 @@ export class ServerManager {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/main/server-manager.spec.ts`  
 Expected: PASS
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
 
 ```bash
 git add apps/desktop/src/main/server-manager.ts apps/desktop/src/main/server-manager.spec.ts
