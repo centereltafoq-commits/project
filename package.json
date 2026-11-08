@@ -6,15 +6,18 @@
   "workspaces": [
     "packages/shared",
     "apps/api",
-    "apps/web"
+    "apps/web",
+    "apps/desktop"
   ],
   "scripts": {
     "build:shared": "npm run build --workspace=@edu-center/shared",
     "build:api": "npm run build --workspace=@edu-center/api",
     "build:web": "npm run build --workspace=@edu-center/web",
+    "build:desktop": "npm run --workspace=@edu-center/desktop build",
     "build": "npm run build:shared && npm run build:api && npm run build:web",
     "dev:api": "npm run dev --workspace=@edu-center/api",
     "dev:web": "npm run dev --workspace=@edu-center/web",
+    "dev:desktop": "npm run --workspace=@edu-center/desktop dev",
     "db:migrate": "npm run db:push --workspace=@edu-center/api",
     "db:seed": "npm run db:seed --workspace=@edu-center/api",
     "test:api": "npm run test --workspace=@edu-center/api",

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.educenter.erp",
+  "productName": "EduCenter ERP",
+  "directories": {
+    "output": "dist-package",
+    "buildResources": "resources"
+  },
+  "files": [
+    "dist/**/*",
+    "resources/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": ["nsis"],
+    "icon": "resources/icon.png"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "EduCenter ERP"
+  }
+}
