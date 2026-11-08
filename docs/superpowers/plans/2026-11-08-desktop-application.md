@@ -677,7 +677,7 @@ git commit -m "feat(desktop): implement NestJS backend process lifecycle manager
     - `printReceiptSilent(options: SilentPrintOptions): Promise<{ success: boolean; error?: string }>`
   - Types: `PrinterInfo { name: string; isDefault: boolean; status?: number }`, `SilentPrintOptions { printerName?: string; htmlContent: string; width?: string }`.
 
-- [ ] **Step 1: Write failing unit tests for PrinterManager**
+- [x] **Step 1: Write failing unit tests for PrinterManager**
 
 ```typescript
 // apps/desktop/src/main/printer-manager.spec.ts
@@ -711,12 +711,12 @@ describe('PrinterManager', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/main/printer-manager.spec.ts`  
 Expected: FAIL
 
-- [ ] **Step 3: Implement `apps/desktop/src/main/printer-manager.ts`**
+- [x] **Step 3: Implement `apps/desktop/src/main/printer-manager.ts`**
 
 ```typescript
 export interface PrinterInfo {
@@ -850,12 +850,12 @@ export class PrinterManager {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/main/printer-manager.spec.ts`  
 Expected: PASS
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
 
 ```bash
 git add apps/desktop/src/main/printer-manager.ts apps/desktop/src/main/printer-manager.spec.ts
