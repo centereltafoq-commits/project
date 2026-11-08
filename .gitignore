@@ -5,6 +5,7 @@ node_modules/
 
 # Builds & Dist
 dist/
+dist-package/
 build/
 *.tsbuildinfo
 

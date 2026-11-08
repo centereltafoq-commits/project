@@ -18,11 +18,13 @@
     "dev:api": "npm run dev --workspace=@edu-center/api",
     "dev:web": "npm run dev --workspace=@edu-center/web",
     "dev:desktop": "npm run --workspace=@edu-center/desktop dev",
+    "pack:desktop": "npm run --workspace=@edu-center/desktop pack:win",
     "db:migrate": "npm run db:push --workspace=@edu-center/api",
     "db:seed": "npm run db:seed --workspace=@edu-center/api",
     "test:api": "npm run test --workspace=@edu-center/api",
     "test:web": "npm run test --workspace=@edu-center/web",
-    "test": "npm run test:api && npm run test:web"
+    "test:desktop": "npm run test --workspace=@edu-center/desktop",
+    "test": "npm run test:api && npm run test:web && npm run test:desktop"
   },
   "engines": {
     "node": ">=20.0.0"
