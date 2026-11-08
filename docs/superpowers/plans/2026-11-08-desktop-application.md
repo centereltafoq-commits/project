@@ -171,7 +171,7 @@ git commit -m "feat(desktop): scaffold desktop package, tsconfig, and electron-b
   - `getLocalNetworkIps(): string[]` — returns list of active IPv4 addresses on the machine (e.g. `['192.168.1.15']`).
   - `testServerConnection(url: string, timeoutMs?: number): Promise<{ ok: boolean; status?: number; error?: string }>` — probes server health endpoint.
 
-- [ ] **Step 1: Write failing unit tests for network utilities**
+- [x] **Step 1: Write failing unit tests for network utilities**
 
 ```typescript
 // apps/desktop/src/main/network-utils.spec.ts
@@ -212,12 +212,12 @@ describe('Network Utilities', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/main/network-utils.spec.ts`  
 Expected: FAIL (module not found)
 
-- [ ] **Step 3: Implement `apps/desktop/src/main/network-utils.ts`**
+- [x] **Step 3: Implement `apps/desktop/src/main/network-utils.ts`**
 
 ```typescript
 import * as os from 'os';
@@ -275,12 +275,12 @@ export async function testServerConnection(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/main/network-utils.spec.ts`  
 Expected: PASS
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
 
 ```bash
 git add apps/desktop/src/main/network-utils.ts apps/desktop/src/main/network-utils.spec.ts
