@@ -28,6 +28,14 @@ export function NewAcademicYearModal({
     'idle',
   );
 
+  const purgeTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (purgeTimerRef.current) clearTimeout(purgeTimerRef.current);
+    };
+  }, []);
+
   React.useEffect(() => {
     if (open) {
       setPin('');
@@ -36,7 +44,7 @@ export function NewAcademicYearModal({
       setProgressStage('idle');
       // Compute next suggested year if possible
       if (settings?.academicYear) {
-        const parts = settings.academicYear.split('/').map((s) => s.trim());
+        const parts = settings.academicYear.split(/[\/\-]/).map((s) => s.trim());
         if (parts.length === 2 && !isNaN(Number(parts[0])) && !isNaN(Number(parts[1]))) {
           setNewAcademicYear(`${Number(parts[0]) + 1} / ${Number(parts[1]) + 1}`);
         } else {
@@ -58,7 +66,7 @@ export function NewAcademicYearModal({
       setProgressStage('backup');
 
       // Update message briefly for user transparency
-      const purgeTimer = setTimeout(() => {
+      purgeTimerRef.current = setTimeout(() => {
         setProgressStage('purging');
       }, 1500);
 
@@ -69,7 +77,10 @@ export function NewAcademicYearModal({
         notes: notes.trim() || undefined,
       });
 
-      clearTimeout(purgeTimer);
+      if (purgeTimerRef.current) {
+        clearTimeout(purgeTimerRef.current);
+        purgeTimerRef.current = null;
+      }
 
       notify(result.message, 'success');
 
@@ -79,6 +90,10 @@ export function NewAcademicYearModal({
     } catch (err) {
       notify(extractErrorMessage(err), 'error');
     } finally {
+      if (purgeTimerRef.current) {
+        clearTimeout(purgeTimerRef.current);
+        purgeTimerRef.current = null;
+      }
       setIsSubmitting(false);
       setProgressStage('idle');
     }

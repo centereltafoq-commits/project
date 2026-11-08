@@ -46,7 +46,9 @@ apiClient.interceptors.response.use(
       original &&
       !original._retry &&
       !original.url?.includes('/auth/login') &&
-      !original.url?.includes('/auth/refresh')
+      !original.url?.includes('/auth/refresh') &&
+      !original.url?.includes('/settings/reset-academic-year') &&
+      !original.url?.includes('/backups/restore')
     ) {
       original._retry = true;
       if (!refreshPromise) {

@@ -22,7 +22,12 @@ export function ReportsPage() {
   const { hasPermission } = useAuth();
   const { settings } = useCenterSettings();
   const { notify } = useToast();
+  const [reportLogoError, setReportLogoError] = React.useState(false);
   const canExport = hasPermission(PERMISSIONS.REPORTS_EXPORT);
+
+  React.useEffect(() => {
+    setReportLogoError(false);
+  }, [settings.logoUrl]);
 
   const permittedReports = React.useMemo(
     () =>
@@ -158,11 +163,12 @@ export function ReportsPage() {
       <div className="hidden print:block border-b-2 border-primary pb-4 mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {settings.logoUrl && (
+            {settings.logoUrl && !reportLogoError && (
               <img
                 src={settings.logoUrl}
                 alt={settings.centerName}
                 className="h-14 w-14 object-contain"
+                onError={() => setReportLogoError(true)}
               />
             )}
             <div>

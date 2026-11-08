@@ -3,14 +3,21 @@ import { Navigate } from 'react-router-dom';
 import { GraduationCap, Lock, Mail } from 'lucide-react';
 import { Button, Card, Input, useToast } from '@/design-system';
 import { extractErrorMessage } from '@/lib/api-client';
+import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { useAuth } from './auth-context';
 
 export function LoginPage() {
   const { user, login } = useAuth();
+  const { settings } = useCenterSettings();
+  const [logoError, setLogoError] = React.useState(false);
   const { notify } = useToast();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    setLogoError(false);
+  }, [settings?.logoUrl]);
 
   if (user) {
     return <Navigate to="/" replace />;
@@ -21,7 +28,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(email, password);
-      notify('مرحباً بك في نظام إدارة السنتر التعليمي', 'success');
+      notify(`مرحباً بك في ${settings.centerName || 'نظام إدارة السنتر التعليمي'}`, 'success');
     } catch (err) {
       notify(extractErrorMessage(err), 'error');
     } finally {
@@ -33,12 +40,23 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 p-4" dir="rtl">
       <Card className="w-full max-w-md border-white/10 bg-card/95 p-7 shadow-2xl backdrop-blur">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
-            <GraduationCap className="h-8 w-8" />
+          <div className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-primary text-primary-foreground shadow-lg">
+            {settings.logoUrl && !logoError ? (
+              <img
+                src={settings.logoUrl}
+                alt={settings.centerName}
+                className="h-full w-full object-cover"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <GraduationCap className="h-8 w-8" />
+            )}
           </div>
-          <h1 className="text-2xl font-extrabold text-foreground">نظام إدارة السنتر التعليمي</h1>
+          <h1 className="text-2xl font-extrabold text-foreground">
+            {settings.centerName || 'نظام إدارة السنتر التعليمي'}
+          </h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            منصة متكاملة لإدارة الطلاب والمدرسين والحسابات والمواعيد
+            {settings.centerSubtitle || 'منصة متكاملة لإدارة الطلاب والمدرسين والحسابات والمواعيد'}
           </p>
         </div>
 

@@ -15,10 +15,10 @@ export interface SystemSettings {
 
 export interface UpdateSettingsPayload {
   centerName?: string;
-  centerSubtitle?: string;
-  logoUrl?: string;
-  phone?: string;
-  address?: string;
+  centerSubtitle?: string | null;
+  logoUrl?: string | null;
+  phone?: string | null;
+  address?: string | null;
   academicYear?: string;
   currencySymbol?: string;
 }

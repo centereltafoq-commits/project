@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { CheckCircle2, Printer, Building2 } from 'lucide-react';
 import { Badge, Button, Modal } from '@/design-system';
 import { useCenterSettings } from '@/features/settings/center-settings-context';
@@ -15,6 +16,12 @@ interface ReceiptPrintModalProps {
 
 export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) {
   const { settings } = useCenterSettings();
+  const [logoError, setLogoError] = React.useState(false);
+  const currencySymbol = settings.currencySymbol || 'ج.م';
+
+  React.useEffect(() => {
+    setLogoError(false);
+  }, [settings.logoUrl]);
 
   if (!receipt) return null;
 
@@ -32,12 +39,13 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
         <div className="rounded-xl border-2 border-dashed border-primary/40 bg-muted/20 p-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
             <div className="flex items-center gap-3">
-              {settings.logoUrl && (
+              {settings.logoUrl && !logoError && (
                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-card">
                   <img
                     src={settings.logoUrl}
                     alt={settings.centerName}
                     className="h-full w-full object-contain"
+                    onError={() => setLogoError(true)}
                   />
                 </div>
               )}
@@ -103,7 +111,7 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
                         {alloc.groupCode || '—'}
                       </td>
                       <td className="px-3 py-2 text-left font-bold">
-                        {formatCurrency(alloc.allocatedAmount)}
+                        {formatCurrency(alloc.allocatedAmount, currencySymbol)}
                       </td>
                     </tr>
                   ))}
@@ -118,7 +126,7 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
               <span className="font-bold">إجمالي المبلغ المحصّل</span>
             </div>
             <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300">
-              {formatCurrency(receipt.amount)}
+              {formatCurrency(receipt.amount, currencySymbol)}
             </span>
           </div>
 

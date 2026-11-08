@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { SettingsService } from './settings.service';
 import { SettingsRepository } from './settings.repository';
 import { BackupsService } from '../backups/backups.service';
@@ -109,12 +109,12 @@ describe('SettingsService', () => {
   });
 
   describe('resetAcademicYear', () => {
-    it('throws UnauthorizedException when PIN does not match', async () => {
+    it('throws ForbiddenException when PIN does not match', async () => {
       const dto = { pin: '999999', purgeStudents: false };
       const userId = '00000000-0000-4000-8000-000000000001';
 
       await expect(service.resetAcademicYear(dto, userId)).rejects.toThrow(
-        UnauthorizedException,
+        ForbiddenException,
       );
       expect(backupsService.createBackup).not.toHaveBeenCalled();
       expect(settingsRepository.clearOperationalData).not.toHaveBeenCalled();

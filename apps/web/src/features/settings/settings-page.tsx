@@ -77,10 +77,10 @@ export function SettingsPage() {
       setIsSaving(true);
       await settingsApi.updateSettings({
         centerName: form.centerName.trim(),
-        centerSubtitle: form.centerSubtitle.trim() || undefined,
-        logoUrl: form.logoUrl.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        address: form.address.trim() || undefined,
+        centerSubtitle: form.centerSubtitle.trim() || null,
+        logoUrl: form.logoUrl.trim() || null,
+        phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
         academicYear: form.academicYear.trim() || undefined,
         currencySymbol: form.currencySymbol.trim() || undefined,
       });

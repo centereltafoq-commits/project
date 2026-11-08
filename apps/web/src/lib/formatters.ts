@@ -23,13 +23,16 @@ export const ARABIC_DAYS = [
   'السبت',
 ];
 
-export function formatCurrency(value: number | string | null | undefined): string {
+export function formatCurrency(
+  value: number | string | null | undefined,
+  symbol: string = 'ج.م',
+): string {
   const num = Number(value ?? 0);
-  if (Number.isNaN(num)) return '0 ج.م';
+  if (Number.isNaN(num)) return `0 ${symbol}`;
   return `${num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  })} ج.م`;
+  })} ${symbol}`;
 }
 
 export function formatYearMonthAr(yearMonth: string): string {

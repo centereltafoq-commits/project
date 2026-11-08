@@ -68,10 +68,14 @@ export class SettingsRepository {
     };
 
     if (dto.centerName !== undefined) updatePayload.centerName = dto.centerName;
-    if (dto.centerSubtitle !== undefined) updatePayload.centerSubtitle = dto.centerSubtitle;
-    if (dto.logoUrl !== undefined) updatePayload.logoUrl = dto.logoUrl;
-    if (dto.phone !== undefined) updatePayload.phone = dto.phone;
-    if (dto.address !== undefined) updatePayload.address = dto.address;
+    if (dto.centerSubtitle !== undefined)
+      updatePayload.centerSubtitle = dto.centerSubtitle ? dto.centerSubtitle.trim() : null;
+    if (dto.logoUrl !== undefined)
+      updatePayload.logoUrl = dto.logoUrl ? dto.logoUrl.trim() : null;
+    if (dto.phone !== undefined)
+      updatePayload.phone = dto.phone ? dto.phone.trim() : null;
+    if (dto.address !== undefined)
+      updatePayload.address = dto.address ? dto.address.trim() : null;
     if (dto.academicYear !== undefined) updatePayload.academicYear = dto.academicYear;
     if (dto.currencySymbol !== undefined) updatePayload.currencySymbol = dto.currencySymbol;
 

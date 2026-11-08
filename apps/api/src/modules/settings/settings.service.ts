@@ -1,8 +1,8 @@
 import * as crypto from 'crypto';
 import {
+  ForbiddenException,
   Injectable,
   Logger,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../common/cache/cache.module';
@@ -79,7 +79,7 @@ export class SettingsService {
         entityId: 'default',
         metadata: { attemptedAt: new Date().toISOString() },
       });
-      throw new UnauthorizedException(
+      throw new ForbiddenException(
         'رمز الأمان PIN غير صحيح. تم إلغاء عملية بدء العام الدراسي الجديد لأسباب أمنية.',
       );
     }
