@@ -4,6 +4,7 @@ import { PERMISSIONS } from '@edu-center/shared';
 import { AppLayout } from '@/layout/app-layout';
 import { SIDEBAR_NAV_ITEMS } from '@/layout/nav-items';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
+import { CenterSettingsProvider } from '@/features/settings/center-settings-context';
 import { LoginPage } from '@/features/auth/login-page';
 import { PermissionGuardRoute } from '@/components/permission-guard-route';
 import { ForbiddenPage } from '@/components/forbidden-page';
@@ -68,6 +69,9 @@ const AuditLogsPage = React.lazy(() =>
 const BackupsPage = React.lazy(() =>
   import('@/features/backups/backups-page').then((m) => ({ default: m.BackupsPage })),
 );
+const SettingsPage = React.lazy(() =>
+  import('@/features/settings/settings-page').then((m) => ({ default: m.SettingsPage })),
+);
 
 function PageLoader() {
   return (
@@ -99,165 +103,175 @@ function RoleAwareHome() {
 export function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <React.Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route element={<AppLayout />}>
-              <Route index element={<RoleAwareHome />} />
-              <Route
-                path="students"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.STUDENTS_VIEW}>
-                    <StudentsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="students/:id"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.STUDENTS_VIEW}>
-                    <StudentProfilePage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="teachers"
-                element={
-                  <PermissionGuardRoute
-                    anyPermissions={[PERMISSIONS.TEACHERS_VIEW, PERMISSIONS.TEACHERS_VIEW_OWN]}
-                  >
-                    <TeachersPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="teachers/:id"
-                element={
-                  <PermissionGuardRoute
-                    anyPermissions={[PERMISSIONS.TEACHERS_VIEW, PERMISSIONS.TEACHERS_VIEW_OWN]}
-                  >
-                    <TeacherProfilePage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="assistants"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.ASSISTANTS_VIEW}>
-                    <AssistantsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="assistants/:id"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.ASSISTANTS_VIEW}>
-                    <AssistantProfilePage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="groups"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.GROUPS_VIEW}>
-                    <GroupsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="groups/:id"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.GROUPS_VIEW}>
-                    <GroupDetailsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="attendance"
-                element={
-                  <PermissionGuardRoute
-                    anyPermissions={[
-                      PERMISSIONS.ATTENDANCE_VIEW,
-                      PERMISSIONS.SESSIONS_VIEW,
-                      PERMISSIONS.MAKEUP_MANAGE,
-                    ]}
-                  >
-                    <AttendancePage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="finance"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.FINANCE_VIEW}>
-                    <FinancePage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="bookings"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.BOOKINGS_VIEW}>
-                    <BookingsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="classrooms"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.CLASSROOMS_VIEW}>
-                    <ClassroomsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="calendar"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.CALENDAR_VIEW}>
-                    <CalendarPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="reports"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.REPORTS_VIEW}>
-                    <ReportsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="users"
-                element={
-                  <PermissionGuardRoute
-                    anyPermissions={[PERMISSIONS.USERS_VIEW, PERMISSIONS.ROLES_MANAGE]}
-                  >
-                    <UsersPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="audit-logs"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.AUDIT_VIEW}>
-                    <AuditLogsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route
-                path="backups"
-                element={
-                  <PermissionGuardRoute permission={PERMISSIONS.BACKUPS_VIEW}>
-                    <BackupsPage />
-                  </PermissionGuardRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
-        </React.Suspense>
-      </BrowserRouter>
+      <CenterSettingsProvider>
+        <BrowserRouter>
+          <React.Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route element={<AppLayout />}>
+                <Route index element={<RoleAwareHome />} />
+                <Route
+                  path="students"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.STUDENTS_VIEW}>
+                      <StudentsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="students/:id"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.STUDENTS_VIEW}>
+                      <StudentProfilePage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="teachers"
+                  element={
+                    <PermissionGuardRoute
+                      anyPermissions={[PERMISSIONS.TEACHERS_VIEW, PERMISSIONS.TEACHERS_VIEW_OWN]}
+                    >
+                      <TeachersPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="teachers/:id"
+                  element={
+                    <PermissionGuardRoute
+                      anyPermissions={[PERMISSIONS.TEACHERS_VIEW, PERMISSIONS.TEACHERS_VIEW_OWN]}
+                    >
+                      <TeacherProfilePage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="assistants"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.ASSISTANTS_VIEW}>
+                      <AssistantsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="assistants/:id"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.ASSISTANTS_VIEW}>
+                      <AssistantProfilePage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="groups"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.GROUPS_VIEW}>
+                      <GroupsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="groups/:id"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.GROUPS_VIEW}>
+                      <GroupDetailsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="attendance"
+                  element={
+                    <PermissionGuardRoute
+                      anyPermissions={[
+                        PERMISSIONS.ATTENDANCE_VIEW,
+                        PERMISSIONS.SESSIONS_VIEW,
+                        PERMISSIONS.MAKEUP_MANAGE,
+                      ]}
+                    >
+                      <AttendancePage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="finance"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.FINANCE_VIEW}>
+                      <FinancePage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="bookings"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.BOOKINGS_VIEW}>
+                      <BookingsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="classrooms"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.CLASSROOMS_VIEW}>
+                      <ClassroomsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="calendar"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.CALENDAR_VIEW}>
+                      <CalendarPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="reports"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.REPORTS_VIEW}>
+                      <ReportsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="users"
+                  element={
+                    <PermissionGuardRoute
+                      anyPermissions={[PERMISSIONS.USERS_VIEW, PERMISSIONS.ROLES_MANAGE]}
+                    >
+                      <UsersPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="audit-logs"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.AUDIT_VIEW}>
+                      <AuditLogsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="backups"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.BACKUPS_VIEW}>
+                      <BackupsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <PermissionGuardRoute permission={PERMISSIONS.SETTINGS_MANAGE}>
+                      <SettingsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </React.Suspense>
+        </BrowserRouter>
+      </CenterSettingsProvider>
     </AuthProvider>
   );
 }

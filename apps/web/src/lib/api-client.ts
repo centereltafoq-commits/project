@@ -1,13 +1,18 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-let accessTokenMemory: string | null = localStorage.getItem('edu_access_token');
+let accessTokenMemory: string | null =
+  typeof window !== 'undefined' && window.localStorage
+    ? window.localStorage.getItem('edu_access_token')
+    : null;
 
 export function setAccessToken(token: string | null): void {
   accessTokenMemory = token;
-  if (token) {
-    localStorage.setItem('edu_access_token', token);
-  } else {
-    localStorage.removeItem('edu_access_token');
+  if (typeof window !== 'undefined' && window.localStorage) {
+    if (token) {
+      window.localStorage.setItem('edu_access_token', token);
+    } else {
+      window.localStorage.removeItem('edu_access_token');
+    }
   }
 }
 
