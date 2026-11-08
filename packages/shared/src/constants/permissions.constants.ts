@@ -60,6 +60,8 @@ export const PERMISSIONS = {
 
   BACKUPS_VIEW: 'backups.view',
   BACKUPS_MANAGE: 'backups.manage',
+
+  SETTINGS_MANAGE: 'settings.manage',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

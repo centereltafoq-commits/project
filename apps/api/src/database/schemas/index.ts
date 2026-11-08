@@ -8,4 +8,5 @@ export * from './bookings.schema';
 export * from './finance.schema';
 export * from './grade-levels.schema';
 export * from './backups.schema';
+export * from './settings.schema';
 

@@ -60,6 +60,8 @@ const PERMISSION_META_MAP: Record<PermissionCode, { module: string; nameAr: stri
 
   [PERMISSIONS.BACKUPS_VIEW]: { module: 'BACKUPS', nameAr: 'عرض سجلات النسخ الاحتياطي والأمان' },
   [PERMISSIONS.BACKUPS_MANAGE]: { module: 'BACKUPS', nameAr: 'إجراء واستعادة وتنزيل النسخ الاحتياطية' },
+
+  [PERMISSIONS.SETTINGS_MANAGE]: { module: 'SETTINGS', nameAr: 'إدارة إعدادات النظام وتصفير العام الدراسي' },
 };
 
 export function buildSeedPermissionsList() {
