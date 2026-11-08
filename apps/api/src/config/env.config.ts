@@ -10,6 +10,7 @@ export interface AppEnvConfig {
   jwtRefreshExpiresInDays: number;
   rateLimitTtlMs: number;
   rateLimitMax: number;
+  annualResetPin: string;
 }
 
 const REQUIRED_ENV_KEYS = [
@@ -38,6 +39,7 @@ export function validateAndLoadEnv(rawEnv: Record<string, unknown>): AppEnvConfi
     jwtRefreshExpiresInDays: Number(rawEnv.JWT_REFRESH_EXPIRES_IN_DAYS || 7),
     rateLimitTtlMs: Number(rawEnv.RATE_LIMIT_TTL_MS || 60000),
     rateLimitMax: Number(rawEnv.RATE_LIMIT_MAX || 180),
+    annualResetPin: String(rawEnv.ANNUAL_RESET_PIN || '123456'),
   };
 }
 

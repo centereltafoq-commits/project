@@ -27,6 +27,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { GradeLevelsModule } from './modules/grade-levels/grade-levels.module';
 import { BackupsModule } from './modules/backups/backups.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Controller('health')
 class HealthController {
@@ -72,6 +73,7 @@ class HealthController {
     ReportsModule,
     GradeLevelsModule,
     BackupsModule,
+    SettingsModule,
   ],
   controllers: [HealthController],
   providers: [
