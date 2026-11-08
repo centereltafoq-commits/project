@@ -27,7 +27,7 @@ import { useCenterSettings } from './center-settings-context';
 import { NewAcademicYearModal } from './components/new-academic-year-modal';
 
 export function SettingsPage() {
-  const { toast } = useToast();
+  const { notify } = useToast();
   const { settings, refetch, isLoading } = useCenterSettings();
 
   const [form, setForm] = React.useState({
@@ -69,11 +69,7 @@ export function SettingsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.centerName.trim()) {
-      toast({
-        title: 'حقل إجباري مفقود',
-        description: 'اسم السنتر إجباري ولا يمكن تركه فارغاً.',
-        tone: 'danger',
-      });
+      notify('اسم السنتر إجباري ولا يمكن تركه فارغاً', 'error');
       return;
     }
 
@@ -90,17 +86,9 @@ export function SettingsPage() {
       });
 
       await refetch();
-      toast({
-        title: 'تم حفظ الإعدادات',
-        description: 'تم تحديث هوية وبيانات السنتر بنجاح وانعكاسها على النظام.',
-        tone: 'success',
-      });
+      notify('تم تحديث هوية وبيانات السنتر بنجاح وانعكاسها على النظام', 'success');
     } catch (err) {
-      toast({
-        title: 'فشل حفظ الإعدادات',
-        description: extractErrorMessage(err),
-        tone: 'danger',
-      });
+      notify(extractErrorMessage(err), 'error');
     } finally {
       setIsSaving(false);
     }

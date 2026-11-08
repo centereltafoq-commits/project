@@ -16,7 +16,7 @@ export function NewAcademicYearModal({
   onOpenChange,
   onSuccess,
 }: NewAcademicYearModalProps) {
-  const { toast } = useToast();
+  const { notify } = useToast();
   const { settings, refetch } = useCenterSettings();
 
   const [pin, setPin] = React.useState('');
@@ -49,11 +49,7 @@ export function NewAcademicYearModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pin.length !== 6) {
-      toast({
-        title: 'خطأ في المدخلات',
-        description: 'يجب إدخال رمز أمان PIN مكون من 6 أرقام.',
-        tone: 'danger',
-      });
+      notify('يجب إدخال رمز أمان PIN مكون من 6 أرقام', 'error');
       return;
     }
 
@@ -75,21 +71,13 @@ export function NewAcademicYearModal({
 
       clearTimeout(purgeTimer);
 
-      toast({
-        title: 'تم بدء العام الدراسي الجديد بنجاح',
-        description: result.message,
-        tone: 'success',
-      });
+      notify(result.message, 'success');
 
       await refetch();
       onOpenChange(false);
       onSuccess?.();
     } catch (err) {
-      toast({
-        title: 'فشلت عملية التصفير',
-        description: extractErrorMessage(err),
-        tone: 'danger',
-      });
+      notify(extractErrorMessage(err), 'error');
     } finally {
       setIsSubmitting(false);
       setProgressStage('idle');
