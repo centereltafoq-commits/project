@@ -4,12 +4,19 @@ import { GraduationCap, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { Badge, Button } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/features/auth/auth-context';
+import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { SIDEBAR_NAV_ITEMS } from './nav-items';
 
 export function AppLayout() {
   const { user, isLoading, logout, hasPermission } = useAuth();
+  const { settings } = useCenterSettings();
+  const [logoError, setLogoError] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [dark, setDark] = React.useState(() => localStorage.getItem('edu_theme') === 'dark');
+
+  React.useEffect(() => {
+    setLogoError(false);
+  }, [settings?.logoUrl]);
 
   React.useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -50,16 +57,29 @@ export function AppLayout() {
         )}
       >
         <div className="flex h-16 items-center justify-between border-b border-border px-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <GraduationCap className="h-5 w-5" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground">
+              {settings.logoUrl && !logoError ? (
+                <img
+                  src={settings.logoUrl}
+                  alt={settings.centerName}
+                  className="h-full w-full object-cover"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <GraduationCap className="h-5 w-5" />
+              )}
             </div>
-            <div>
-              <p className="text-sm font-extrabold leading-tight">سنتر النخبة التعليمي</p>
-              <p className="text-[11px] text-muted-foreground">نظام الإدارة المتكامل</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-extrabold leading-tight">
+                {settings.centerName || 'سنتر النخبة التعليمي'}
+              </p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {settings.centerSubtitle || 'نظام الإدارة المتكامل'}
+              </p>
             </div>
           </div>
-          <button onClick={() => setMobileOpen(false)} className="lg:hidden">
+          <button onClick={() => setMobileOpen(false)} className="lg:hidden shrink-0">
             <X className="h-5 w-5" />
           </button>
         </div>

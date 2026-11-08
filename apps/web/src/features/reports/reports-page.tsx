@@ -4,6 +4,7 @@ import { BarChart3, Download, Printer } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PERMISSIONS } from '@edu-center/shared';
 import { Button, PageHeader, ServerDataTable, StatCard, useToast } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
+import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
@@ -19,6 +20,7 @@ import {
 
 export function ReportsPage() {
   const { hasPermission } = useAuth();
+  const { settings } = useCenterSettings();
   const { notify } = useToast();
   const canExport = hasPermission(PERMISSIONS.REPORTS_EXPORT);
 
@@ -152,6 +154,34 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-5">
+      {/* Printable Report Header */}
+      <div className="hidden print:block border-b-2 border-primary pb-4 mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {settings.logoUrl && (
+              <img
+                src={settings.logoUrl}
+                alt={settings.centerName}
+                className="h-14 w-14 object-contain"
+              />
+            )}
+            <div>
+              <h1 className="text-xl font-extrabold text-black">
+                {settings.centerName || 'سنتر النخبة التعليمي'}
+              </h1>
+              <p className="text-xs text-gray-600">
+                {settings.centerSubtitle || 'نظام الإدارة المتكامل'}
+                {settings.academicYear && ` • العام الدراسي: ${settings.academicYear}`}
+              </p>
+            </div>
+          </div>
+          <div className="text-left text-xs text-gray-500">
+            <p className="font-semibold text-black">{activeDefinition.fullTitle}</p>
+            <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}</p>
+          </div>
+        </div>
+      </div>
+
       <PageHeader
         title={`مركز التقارير الشاملة والتصدير (${permittedReports.length} تقارير متاحة)`}
         description={activeDefinition.fullTitle}

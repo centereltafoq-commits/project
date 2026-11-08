@@ -1,5 +1,6 @@
-import { CheckCircle2, Printer } from 'lucide-react';
+import { CheckCircle2, Printer, Building2 } from 'lucide-react';
 import { Badge, Button, Modal } from '@/design-system';
+import { useCenterSettings } from '@/features/settings/center-settings-context';
 import {
   formatCurrency,
   formatDateAr,
@@ -13,6 +14,8 @@ interface ReceiptPrintModalProps {
 }
 
 export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) {
+  const { settings } = useCenterSettings();
+
   if (!receipt) return null;
 
   return (
@@ -28,13 +31,28 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
       <div className="space-y-4 print:text-black">
         <div className="rounded-xl border-2 border-dashed border-primary/40 bg-muted/20 p-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-            <div>
-              <h4 className="text-base font-extrabold text-foreground">
-                مركز التميز التعليمي — الإدارة المالية
-              </h4>
-              <p className="text-xs text-muted-foreground">
-                شهر الاستحقاق: {formatYearMonthAr(receipt.yearMonth)}
-              </p>
+            <div className="flex items-center gap-3">
+              {settings.logoUrl && (
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-card">
+                  <img
+                    src={settings.logoUrl}
+                    alt={settings.centerName}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              )}
+              <div>
+                <h4 className="text-base font-extrabold text-foreground">
+                  {settings.centerName || 'سنتر النخبة التعليمي'} — الإدارة المالية
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  شهر الاستحقاق: {formatYearMonthAr(receipt.yearMonth)}
+                  {settings.phone && ` • هاتف: ${settings.phone}`}
+                </p>
+                {settings.address && (
+                  <p className="text-[11px] text-muted-foreground">{settings.address}</p>
+                )}
+              </div>
             </div>
             <div className="text-left">
               <Badge variant="info" className="text-xs font-mono">

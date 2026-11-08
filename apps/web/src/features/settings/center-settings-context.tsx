@@ -21,11 +21,13 @@ const DEFAULT_SETTINGS: SystemSettings = {
   updatedBy: null,
 };
 
-const CenterSettingsContext = React.createContext<CenterSettingsContextValue>({
+const DEFAULT_VALUE: CenterSettingsContextValue = {
   settings: DEFAULT_SETTINGS,
   isLoading: false,
   refetch: async () => {},
-});
+};
+
+const CenterSettingsContext = React.createContext<CenterSettingsContextValue>(DEFAULT_VALUE);
 
 export function CenterSettingsProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
@@ -58,9 +60,5 @@ export function CenterSettingsProvider({ children }: { children: React.ReactNode
 }
 
 export function useCenterSettings(): CenterSettingsContextValue {
-  const context = React.useContext(CenterSettingsContext);
-  if (!context) {
-    throw new Error('useCenterSettings must be used within a CenterSettingsProvider');
-  }
-  return context;
+  return React.useContext(CenterSettingsContext) || DEFAULT_VALUE;
 }
