@@ -1,0 +1,400 @@
+import { app, BrowserWindow, ipcMain } from 'electron';
+import * as path from 'path';
+import { StoreManager } from './store-manager';
+import { ServerManager } from './server-manager';
+import { PrinterManager } from './printer-manager';
+import { registerIpcHandlers } from './ipc-handlers';
+import { testServerConnection } from './network-utils';
+
+export interface AppContext {
+  storeManager: StoreManager;
+  serverManager: ServerManager;
+  printerManager: PrinterManager;
+  mainWindow: BrowserWindow | null;
+}
+
+export interface LoadOptions {
+  testConnectionFn?: typeof testServerConnection;
+}
+
+/**
+ * Builds a self-contained Arabic HTML recovery & connection wizard page
+ * displayed when client mode cannot reach the central center server.
+ */
+export function getConnectionSetupFallbackHtml(targetUrl: string, errorReason: string): string {
+  const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <title>نظام إدارة السنتر التعليمي - إعداد الاتصال</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 520px;
+      padding: 36px 32px;
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+    }
+    p.desc {
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .input-group {
+      text-align: right;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      width: 100%;
+      direction: ltr;
+      text-align: left;
+      padding: 12px 14px;
+      font-size: 15px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus {
+      border-color: #2563eb;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    button {
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    button:active {
+      transform: scale(0.99);
+    }
+    .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+    }
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+    .error-msg {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">تعذر الاتصال بالسيرفر</div>
+    <h1>إعداد الاتصال بشبكة السنتر</h1>
+    <p class="desc">
+      لم نتمكن من الوصول إلى السيرفر على العنوان:<br>
+      <strong style="color: #0f172a; direction: ltr; display: inline-block;">${targetUrl}</strong>
+      <br><span style="font-size: 12px; color: #94a3b8;">(${errorReason})</span>
+    </p>
+
+    <div class="input-group">
+      <label for="serverUrlInput">عنوان خادم السنتر (IP / URL):</label>
+      <input type="text" id="serverUrlInput" value="${targetUrl}" placeholder="http://192.168.1.50:4000">
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="retryBtn" onclick="retryConnection()">فحص الاتصال وإعادة المحاولة</button>
+      <button class="btn-secondary" id="serverModeBtn" onclick="switchToServerMode()">تشغيل هذا الجهاز كسيرفر رئيسي للسنتر</button>
+    </div>
+
+    <div class="error-msg" id="statusMsg"></div>
+  </div>
+
+  <script>
+    async function retryConnection() {
+      const input = document.getElementById('serverUrlInput');
+      const msg = document.getElementById('statusMsg');
+      const btn = document.getElementById('retryBtn');
+      const url = input.value.trim();
+
+      if (!url) {
+        msg.innerText = 'يرجى إدخال عنوان الخادم';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'جاري الفحص...';
+      msg.innerText = '';
+
+      try {
+        if (window.desktopApi && typeof window.desktopApi.testConnection === 'function') {
+          const res = await window.desktopApi.testConnection(url);
+          if (res.ok) {
+            await window.desktopApi.saveConfig({ serverUrl: url });
+            window.location.href = url;
+            return;
+          } else {
+            msg.innerText = res.error || 'فشل الاتصال بهذا العنوان، تأكد من تشغيل السيرفر الرئيسي';
+          }
+        } else {
+          window.location.href = url;
+        }
+      } catch (err) {
+        msg.innerText = 'حدث خطأ غير متوقع أثناء الفحص';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'فحص الاتصال وإعادة المحاولة';
+      }
+    }
+
+    async function switchToServerMode() {
+      const msg = document.getElementById('statusMsg');
+      try {
+        if (window.desktopApi && typeof window.desktopApi.saveConfig === 'function') {
+          await window.desktopApi.saveConfig({ serverMode: 'server', serverUrl: 'http://localhost:4000' });
+          if (typeof window.desktopApi.startServer === 'function') {
+            await window.desktopApi.startServer();
+          }
+          window.location.reload();
+        }
+      } catch (err) {
+        msg.innerText = 'تعذر التبديل إلى وضع السيرفر';
+      }
+    }
+  </script>
+</body>
+</html>`;
+
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
+/**
+ * Loads the application content into the main browser window based on server/client configuration.
+ */
+export async function loadAppContent(
+  window: BrowserWindow,
+  context: AppContext,
+  options?: LoadOptions,
+): Promise<void> {
+  const { storeManager, serverManager } = context;
+  const config = storeManager.getConfig();
+  const testConn = options?.testConnectionFn || testServerConnection;
+
+  if (config.serverMode === 'server') {
+    // 1. Server Mode: ensure local NestJS API is started
+    const status = serverManager.getStatus();
+    if (!status.running) {
+      await serverManager.start();
+    }
+
+    const serverUrl = config.serverUrl || 'http://localhost:4000';
+    let isReady = false;
+
+    // Retry checking health up to 5 times while the backend boots
+    for (let i = 0; i < 5; i++) {
+      const health = await testConn(serverUrl, 1500);
+      if (health.ok) {
+        isReady = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    }
+
+    if (isReady) {
+      await window.loadURL(serverUrl);
+    } else {
+      window.loadURL(serverUrl).catch(() => {
+        window.loadURL(
+          getConnectionSetupFallbackHtml(
+            serverUrl,
+            'جاري بدء تشغيل السيرفر المحلي للسنتر...',
+          ),
+        );
+      });
+    }
+  } else {
+    // 2. Client Mode: test connection to remote server
+    const targetUrl = config.serverUrl || 'http://localhost:4000';
+    const connection = await testConn(targetUrl, 3000);
+
+    if (connection.ok) {
+      await window.loadURL(targetUrl);
+    } else {
+      await window.loadURL(
+        getConnectionSetupFallbackHtml(
+          targetUrl,
+          connection.error || 'تعذر الوصول إلى الخادم عبر الشبكة المحلية',
+        ),
+      );
+    }
+  }
+}
+
+/**
+ * Creates the primary application window with secure sandbox & context bridge configuration.
+ */
+export async function createMainWindow(
+  context: AppContext,
+  options?: LoadOptions,
+): Promise<BrowserWindow> {
+  const { storeManager, serverManager, printerManager } = context;
+  const config = storeManager.getConfig();
+  const bounds = config.windowBounds || { width: 1280, height: 850 };
+
+  const preloadPath = path.join(__dirname, '../preload/index.js');
+
+  const mainWindow = new BrowserWindow({
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    minWidth: 1024,
+    minHeight: 700,
+    show: false,
+    title: 'EduCenter ERP - إدارة السنتر التعليمي',
+    webPreferences: {
+      preload: preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+
+  context.mainWindow = mainWindow;
+
+  // Persist window geometry on user adjustments
+  const saveBounds = () => {
+    if (!mainWindow.isDestroyed()) {
+      const currentBounds = mainWindow.getBounds();
+      storeManager.saveConfig({ windowBounds: currentBounds });
+    }
+  };
+
+  mainWindow.on('resize', saveBounds);
+  mainWindow.on('move', saveBounds);
+  mainWindow.on('close', saveBounds);
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  // Register all desktop IPC handlers
+  registerIpcHandlers({
+    ipcMain,
+    storeManager,
+    serverManager,
+    printerManager,
+    webContentsGetter: () => (mainWindow.isDestroyed() ? null : mainWindow.webContents),
+  });
+
+  await loadAppContent(mainWindow, context, options);
+
+  return mainWindow;
+}
+
+/**
+ * Initializes the full Electron application lifecycle.
+ */
+export function setupApp(customContext?: AppContext) {
+  const context: AppContext = customContext || {
+    storeManager: new StoreManager(),
+    serverManager: new ServerManager(),
+    printerManager: new PrinterManager(),
+    mainWindow: null,
+  };
+
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    app.quit();
+    return;
+  }
+
+  app.on('second-instance', () => {
+    if (context.mainWindow) {
+      if (context.mainWindow.isMinimized()) {
+        context.mainWindow.restore();
+      }
+      context.mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(async () => {
+    await createMainWindow(context);
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('activate', async () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      await createMainWindow(context);
+    }
+  });
+
+  app.on('before-quit', async () => {
+    try {
+      if (context.serverManager) {
+        await context.serverManager.stop();
+      }
+    } catch (err) {
+      console.error('[App] Failed to gracefully stop server on quit:', err);
+    }
+  });
+}
+
+// Automatically launch lifecycle when run as the Electron entrypoint
+if (typeof process.env.VITEST === 'undefined') {
+  setupApp();
+}

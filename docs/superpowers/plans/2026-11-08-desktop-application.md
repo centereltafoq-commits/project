@@ -876,7 +876,7 @@ git commit -m "feat(desktop): implement direct silent thermal printer manager"
 **Interfaces:**
 - Produces: `window.desktopApi` ContextBridge surface exposed safely to the Web renderer.
 
-- [ ] **Step 1: Write failing unit tests for DesktopApi interface definition**
+- [x] **Step 1: Write failing unit tests for DesktopApi interface definition**
 
 ```typescript
 // apps/desktop/src/preload/preload.spec.ts
@@ -895,12 +895,12 @@ describe('Desktop API IPC Channels', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/preload/preload.spec.ts`  
 Expected: FAIL
 
-- [ ] **Step 3: Implement `apps/desktop/src/preload/desktop-api.types.ts` & `apps/desktop/src/preload/index.ts`**
+- [x] **Step 3: Implement `apps/desktop/src/preload/desktop-api.types.ts` & `apps/desktop/src/preload/index.ts`**
 
 ```typescript
 // apps/desktop/src/preload/desktop-api.types.ts
@@ -955,16 +955,16 @@ const api: DesktopApi = {
 contextBridge.exposeInMainWorld('desktopApi', api);
 ```
 
-- [ ] **Step 4: Implement `apps/desktop/src/main/ipc-handlers.ts` and `apps/desktop/src/main/index.ts`**
+- [x] **Step 4: Implement `apps/desktop/src/main/ipc-handlers.ts` and `apps/desktop/src/main/index.ts`**
 
 Register IPC invoke listeners hooking up `StoreManager`, `ServerManager`, `PrinterManager`, and `network-utils` to handle all incoming desktop messages.
 
-- [ ] **Step 5: Run tests to verify passing**
+- [x] **Step 5: Run tests to verify passing**
 
 Run: `cmd.exe /c npx vitest run apps/desktop/src/preload/preload.spec.ts`  
 Expected: PASS
 
-- [ ] **Step 6: Commit changes**
+- [x] **Step 6: Commit changes**
 
 ```bash
 git add apps/desktop/src/preload apps/desktop/src/main
