@@ -10,7 +10,10 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@edu-center/shared';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
-import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import {
+  RequireAnyPermissions,
+  RequirePermissions,
+} from '../../common/decorators/permissions.decorator';
 import { CreateGroupDto, GroupQueryDto, UpdateGroupDto } from './dto/group.dto';
 import {
   CreateEnrollmentDto,
@@ -29,8 +32,21 @@ export class GroupsController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.GROUPS_VIEW)
-  async list(@Query() query: GroupQueryDto) {
-    return this.groupsService.list(query);
+  async list(
+    @Query() query: GroupQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.groupsService.list(query, actor);
+  }
+
+  @Get('lookups')
+  @RequireAnyPermissions(
+    PERMISSIONS.GROUPS_VIEW,
+    PERMISSIONS.GROUPS_MANAGE,
+    PERMISSIONS.ENROLLMENTS_MANAGE,
+  )
+  async getLookups(@CurrentUser() actor: AuthenticatedUser) {
+    return this.groupsService.getLookups(actor);
   }
 
   @Patch('enrollments/:enrollmentId')
@@ -64,8 +80,11 @@ export class GroupsController {
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.GROUPS_VIEW)
-  async getById(@Param('id', ParseUUIDPipe) id: string) {
-    return this.groupsService.getById(id);
+  async getById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.groupsService.getById(id, actor);
   }
 
   @Post()

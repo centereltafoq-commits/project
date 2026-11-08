@@ -84,6 +84,8 @@ export function ExpenseFormModal({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['report-data'] });
       onOpenChange(false);
       notify(editing ? 'تم تعديل المصروف بنجاح' : 'تم تسجيل المصروف بنجاح', 'success');
     },
@@ -105,6 +107,7 @@ export function ExpenseFormModal({
         className="space-y-4"
       >
         <Select
+          searchable
           label="بند المصروف"
           required
           value={form.category}
@@ -129,6 +132,7 @@ export function ExpenseFormModal({
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
           />
           <Select
+            searchable
             label="وسيلة السداد"
             value={form.paymentMethod}
             onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}

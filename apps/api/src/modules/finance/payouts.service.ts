@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PaymentMethod } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import {
@@ -9,6 +10,7 @@ import {
   CreateTeacherPayoutDto,
   TeacherPayoutsQueryDto,
 } from './dto/payments-payouts.dto';
+import { MonthlySettlementService } from './monthly-settlement.service';
 import { AssistantPayoutsRepository } from './repositories/assistant-payouts.repository';
 import { TeacherPayoutsRepository } from './repositories/teacher-payouts.repository';
 import { generateReferenceCode, roundMoney } from './utils/money.util';
@@ -18,7 +20,9 @@ export class PayoutsService {
   constructor(
     private readonly teacherRepo: TeacherPayoutsRepository,
     private readonly assistantRepo: AssistantPayoutsRepository,
+    private readonly monthlySettlementService: MonthlySettlementService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly cache: CacheService,
   ) {}
 
   async listTeacherPayouts(query: TeacherPayoutsQueryDto) {
@@ -31,6 +35,9 @@ export class PayoutsService {
     if (cleanAmount <= 0) {
       throw new BadRequestException('مبلغ الصرف يجب أن يكون أكبر من صفر');
     }
+
+    await this.monthlySettlementService.assertMonthOpen(dto.yearMonth);
+    await this.monthlySettlementService.recalculateMonth(dto.yearMonth);
 
     const referenceNumber =
       dto.referenceNumber?.trim() || generateReferenceCode('TPY', dto.yearMonth, 4);
@@ -62,6 +69,13 @@ export class PayoutsService {
       },
     });
 
+    try {
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
+
     return {
       ...created,
       paidByName: actor.fullName,
@@ -78,6 +92,9 @@ export class PayoutsService {
     if (cleanAmount <= 0) {
       throw new BadRequestException('مبلغ الصرف يجب أن يكون أكبر من صفر');
     }
+
+    await this.monthlySettlementService.assertMonthOpen(dto.yearMonth);
+    await this.monthlySettlementService.recalculateMonth(dto.yearMonth);
 
     const referenceNumber =
       dto.referenceNumber?.trim() || generateReferenceCode('APY', dto.yearMonth, 4);
@@ -108,6 +125,13 @@ export class PayoutsService {
         paymentMethod: created.paymentMethod,
       },
     });
+
+    try {
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
 
     return {
       ...created,

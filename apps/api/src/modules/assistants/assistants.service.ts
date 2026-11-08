@@ -19,17 +19,39 @@ export class AssistantsService {
     private readonly audit: AuditLogsService,
   ) {}
 
-  async list(query: AssistantQueryDto) {
-    const { rows, total, page, limit } = await this.repository.findPaginated(query);
-    return createPaginatedResult(rows, total, page, limit);
+  private canSeeCompensation(actor?: AuthenticatedUser): boolean {
+    if (!actor) return true;
+    if (actor.roleCode === SystemRole.OWNER) return true;
+    return Boolean(
+      actor.permissions?.includes(PERMISSIONS.FINANCE_VIEW) ||
+        actor.permissions?.includes(PERMISSIONS.ASSISTANTS_MANAGE),
+    );
   }
 
-  async getById(id: string) {
+  private maskAssistantRow<T extends { rateValue: string; customFormulaNote: string | null }>(
+    row: T,
+    actor?: AuthenticatedUser,
+  ): T {
+    if (this.canSeeCompensation(actor)) return row;
+    return {
+      ...row,
+      rateValue: '0.00',
+      customFormulaNote: null,
+    };
+  }
+
+  async list(query: AssistantQueryDto, actor?: AuthenticatedUser) {
+    const { rows, total, page, limit } = await this.repository.findPaginated(query);
+    const maskedRows = rows.map((r) => this.maskAssistantRow(r, actor));
+    return createPaginatedResult(maskedRows, total, page, limit);
+  }
+
+  async getById(id: string, actor?: AuthenticatedUser) {
     const assistant = await this.repository.findById(id);
     if (!assistant) {
       throw new NotFoundException('المساعد غير موجود');
     }
-    return assistant;
+    return this.maskAssistantRow(assistant, actor);
   }
 
   async create(dto: CreateAssistantDto, actor: AuthenticatedUser) {
@@ -86,19 +108,24 @@ export class AssistantsService {
   }
 
   async getProfile(id: string, requestedYearMonth?: string, actor?: AuthenticatedUser) {
-    const assistant = await this.getById(id);
+    const rawAssistant = await this.getById(id);
+    const assistant = this.maskAssistantRow(rawAssistant, actor);
     const yearMonth = requestedYearMonth || this.getCurrentYearMonth();
     const bundle = await this.profileRepository.fetchProfileBundle(id, yearMonth);
     const canViewFinance =
       !actor ||
       actor.roleCode === SystemRole.OWNER ||
       Boolean(actor.permissions?.includes(PERMISSIONS.FINANCE_VIEW));
+    const canSeeRates = this.canSeeCompensation(actor);
+    const maskedLinkedGroups = canSeeRates
+      ? bundle.linkedGroups
+      : bundle.linkedGroups.map((g) => ({ ...g, overrideRateValue: null }));
 
     if (!canViewFinance) {
       return {
         assistant,
         yearMonth,
-        linkedGroups: bundle.linkedGroups,
+        linkedGroups: maskedLinkedGroups,
         monthlyBreakdown: {
           groupDues: [],
           baseGlobalDue: 0,
@@ -114,6 +141,12 @@ export class AssistantsService {
     const execByGroup = new Map(
       bundle.sessionCounts.map((s) => [s.groupId, Number(s.executedCount || 0)]),
     );
+    const hoursByGroup = new Map(
+      bundle.sessionCounts.map((s) => [
+        s.groupId,
+        this.round2(Number((s as { executedMinutes?: number }).executedMinutes || 0) / 60),
+      ]),
+    );
     const presentByGroup = new Map(
       bundle.attendanceCounts.map((a) => [a.groupId, Number(a.presentEntries || 0)]),
     );
@@ -122,13 +155,14 @@ export class AssistantsService {
     );
 
     const groupDues = bundle.linkedGroups.map((grp) => {
+      const sessionsCount = execByGroup.get(grp.groupId) ?? 0;
       const stored = storedByGroup.get(grp.groupId);
-      if (stored) {
+      if (stored && (stored.isLocked || stored.sessionsCount === sessionsCount)) {
         return {
           groupId: grp.groupId,
           groupName: grp.groupName,
           calculationMethod: stored.calculationMethod,
-          rateValue: Number(grp.overrideRateValue ?? assistant.rateValue),
+          rateValue: Number(grp.overrideRateValue ?? rawAssistant.rateValue),
           sessionsCount: stored.sessionsCount,
           studentsCount: stored.studentsCount,
           amount: Number(stored.amount),
@@ -137,9 +171,9 @@ export class AssistantsService {
       }
 
       const method = (grp.overrideCalculationMethod ||
-        assistant.calculationMethod) as AssistantCalculationMethod;
-      const rate = Number(grp.overrideRateValue ?? assistant.rateValue ?? 0);
-      const sessionsCount = execByGroup.get(grp.groupId) ?? 0;
+        rawAssistant.calculationMethod) as AssistantCalculationMethod;
+      const rate = Number(grp.overrideRateValue ?? rawAssistant.rateValue ?? 0);
+      const hoursCount = hoursByGroup.get(grp.groupId) ?? sessionsCount * 2;
       const studentsCount = Number(grp.activeStudentsCount || 0);
       const presentEntries = presentByGroup.get(grp.groupId) ?? 0;
       const sessionPrice = Number(grp.calculatedSessionPrice || 0);
@@ -151,12 +185,15 @@ export class AssistantsService {
         amount = presentEntries * rate;
       } else if (method === AssistantCalculationMethod.FIXED_PER_SESSION) {
         amount = sessionsCount * rate;
+      } else if (method === AssistantCalculationMethod.HOURLY) {
+        amount = (hoursCount > 0 ? hoursCount : sessionsCount * 2) * rate;
       } else if (method === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT) {
+        const clampedRate = Math.min(100, Math.max(0, rate));
         const rev =
           presentEntries > 0
             ? presentEntries * sessionPrice
             : studentsCount * sessionsCount * sessionPrice;
-        amount = (rev * rate) / 100;
+        amount = (rev * clampedRate) / 100;
       } else if (method === AssistantCalculationMethod.FIXED_MONTHLY) {
         amount = grp.overrideRateValue !== null ? rate : 0;
       } else {
@@ -175,12 +212,17 @@ export class AssistantsService {
       };
     });
 
-    const baseGlobalDue =
-      (assistant.calculationMethod === AssistantCalculationMethod.FIXED_MONTHLY ||
-        assistant.calculationMethod === AssistantCalculationMethod.CUSTOM_AGREEMENT) &&
-      bundle.linkedGroups.every((g) => g.overrideRateValue === null) &&
-      bundle.storedDues.length === 0
-        ? Number(assistant.rateValue || 0)
+    const globalStoredDue = bundle.storedDues.find((d) => !d.groupId);
+    const hasNonOverriddenOrNoLinks =
+      bundle.linkedGroups.length === 0 ||
+      bundle.linkedGroups.some((g) => !g.overrideCalculationMethod && g.overrideRateValue === null);
+
+    const baseGlobalDue = globalStoredDue
+      ? Number(globalStoredDue.amount)
+      : (rawAssistant.calculationMethod === AssistantCalculationMethod.FIXED_MONTHLY ||
+            rawAssistant.calculationMethod === AssistantCalculationMethod.CUSTOM_AGREEMENT) &&
+          hasNonOverriddenOrNoLinks
+        ? Number(rawAssistant.rateValue || 0)
         : 0;
 
     const liveTotalDues = this.round2(
@@ -192,18 +234,18 @@ export class AssistantsService {
         .reduce((s, p) => s + Number(p.amount || 0), 0),
     );
 
-    const totalDues = bundle.storedMonthlyRecord
+    const totalDues = bundle.storedMonthlyRecord?.isClosed
       ? Number(bundle.storedMonthlyRecord.totalDues)
       : liveTotalDues;
     const totalPayouts = bundle.storedMonthlyRecord?.isClosed
       ? Number(bundle.storedMonthlyRecord.totalPaidOut)
       : monthPayoutsTotal;
-    const remainingBalance = this.round2(totalDues - totalPayouts);
+    const remainingBalance = Math.max(0, this.round2(totalDues - totalPayouts));
 
     return {
       assistant,
       yearMonth,
-      linkedGroups: bundle.linkedGroups,
+      linkedGroups: maskedLinkedGroups,
       monthlyBreakdown: {
         groupDues,
         baseGlobalDue,

@@ -162,5 +162,53 @@ describe('computeTeacherMonthlySummary', () => {
     // 250 - 3000 = -2750 -> clamped to 0
     expect(result.totals.remainingBalance).toBe(0);
   });
+
+  it('uses live recalculated dues for open months even when an older unlocked storedMonthlyRecord exists', () => {
+    const bundle: any = {
+      storedDues: [
+        {
+          groupId: 'grp-1',
+          groupName: 'Open Math',
+          executedSessionsCount: 1,
+          studentsCount: 10,
+          grossGroupRevenue: '1000.00',
+          teacherAmount: '700.00',
+          centerAmount: '300.00',
+          isLocked: false,
+        },
+      ],
+      storedMonthlyRecord: {
+        totalDues: '700.00',
+        totalPaidOut: '200.00',
+        remainingBalance: '500.00',
+        isClosed: false,
+      },
+      payouts: [{ id: 'p-1', yearMonth: '2026-11', amount: '200.00' }],
+      monthSessions: [
+        { id: 's-1', groupId: 'grp-1', status: SessionStatus.COMPLETED, teacherId: 't-1' },
+        { id: 's-2', groupId: 'grp-1', status: SessionStatus.COMPLETED, teacherId: 't-1' },
+      ],
+      monthAttendanceCounts: [{ groupId: 'grp-1', presentEntries: 20 }],
+      assignedGroups: [
+        {
+          id: 'grp-1',
+          name: 'Open Math',
+          isActive: true,
+          activeStudentsCount: 10,
+          monthlySessionsCount: 4,
+          monthlyPrice: 400,
+          calculatedSessionPrice: 100,
+          revenueSplitMethod: GroupRevenueSplitMethod.CUSTOM_PERCENTAGE,
+          teacherPercentage: 70,
+        },
+      ],
+    };
+
+    const result = computeTeacherMonthlySummary('2026-11', bundle);
+    // 20 attendances * 100 = 2000 gross -> 70% = 1400 live dues (not stale 700)
+    expect(result.totals.totalDues).toBe(1400);
+    expect(result.totals.totalPayouts).toBe(200);
+    expect(result.totals.remainingBalance).toBe(1200);
+  });
 });
 

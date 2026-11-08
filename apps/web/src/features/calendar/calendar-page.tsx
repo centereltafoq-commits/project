@@ -9,7 +9,9 @@ import {
   Clock,
   Wrench,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Button, Card, PageHeader, Select, StatCard } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/cn';
 import { CalendarEventModal } from './calendar-event-modal';
@@ -25,6 +27,11 @@ import {
 import { DailyTimelineView, MonthlyGridView, WeeklyGridView } from './calendar-views';
 
 export function CalendarPage() {
+  const { hasPermission } = useAuth();
+  const canViewClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_VIEW);
+  const canViewTeachers = hasPermission(PERMISSIONS.TEACHERS_VIEW);
+  const canViewBookings = hasPermission(PERMISSIONS.BOOKINGS_VIEW);
+
   const [viewMode, setViewMode] = React.useState<CalendarViewMode>('week');
   const [anchorDate, setAnchorDate] = React.useState<Date>(() => new Date());
   const [teacherId, setTeacherId] = React.useState('');
@@ -71,36 +78,38 @@ export function CalendarPage() {
         description="متابعة شاملة لحصص المجموعات، الحجوزات المعتمدة، الطلبات المعلقة، وصيانة القاعات لحظياً"
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="إجمالي القاعات الدراسية"
-          value={summary?.total ?? 0}
-          subtitle="قاعات مسجلة بالسنتر"
-          icon={Building2}
-          tone="primary"
-        />
-        <StatCard
-          title="قاعات متاحة بالكامل"
-          value={summary?.available ?? 0}
-          subtitle="خالية في النطاق المعروض"
-          icon={CheckCircle2}
-          tone="success"
-        />
-        <StatCard
-          title="قاعات بها حصص / حجوزات"
-          value={summary?.occupied ?? 0}
-          subtitle="مشغولة بجدول نشط"
-          icon={Clock}
-          tone="purple"
-        />
-        <StatCard
-          title="قاعات قيد الصيانة / متوقفة"
-          value={summary?.maintenance ?? 0}
-          subtitle="مغلقة للصيانة أو غير نشطة"
-          icon={Wrench}
-          tone="danger"
-        />
-      </div>
+      {canViewClassrooms && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="إجمالي القاعات الدراسية"
+            value={summary?.total ?? 0}
+            subtitle="قاعات مسجلة بالسنتر"
+            icon={Building2}
+            tone="primary"
+          />
+          <StatCard
+            title="قاعات متاحة بالكامل"
+            value={summary?.available ?? 0}
+            subtitle="خالية في النطاق المعروض"
+            icon={CheckCircle2}
+            tone="success"
+          />
+          <StatCard
+            title="قاعات بها حصص / حجوزات"
+            value={summary?.occupied ?? 0}
+            subtitle="مشغولة بجدول نشط"
+            icon={Clock}
+            tone="purple"
+          />
+          <StatCard
+            title="قاعات قيد الصيانة / متوقفة"
+            value={summary?.maintenance ?? 0}
+            subtitle="مغلقة للصيانة أو غير نشطة"
+            icon={Wrench}
+            tone="danger"
+          />
+        </div>
+      )}
 
       <Card className="space-y-4 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -161,46 +170,62 @@ export function CalendarPage() {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              searchable
-              clearable
-              searchPlaceholder="ابحث باسم المدرس..."
-              placeholder="كل المدرسين"
-              value={teacherId}
-              onChange={(e) => setTeacherId(e.target.value)}
-              options={(data?.filters.teachers ?? []).map((t) => ({
-                value: t.id,
-                label: t.fullName,
-              }))}
-              className="w-48"
-            />
-            <Select
-              searchable
-              clearable
-              searchPlaceholder="ابحث باسم أو رقم القاعة..."
-              placeholder="كل القاعات"
-              value={classroomId}
-              onChange={(e) => setClassroomId(e.target.value)}
-              options={(data?.filters.classrooms ?? []).map((c) => ({
-                value: c.id,
-                label: `${c.name} (${c.roomNumber})`,
-              }))}
-              className="w-48"
-            />
-          </div>
+          {(canViewTeachers || canViewClassrooms) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {canViewTeachers && (
+                <Select
+                  searchable
+                  clearable
+                  searchPlaceholder="ابحث باسم المدرس..."
+                  placeholder="كل المدرسين"
+                  value={teacherId}
+                  onChange={(e) => setTeacherId(e.target.value)}
+                  options={(data?.filters.teachers ?? []).map((t) => ({
+                    value: t.id,
+                    label: t.fullName,
+                  }))}
+                  className="w-48"
+                />
+              )}
+              {canViewClassrooms && (
+                <Select
+                  searchable
+                  clearable
+                  searchPlaceholder="ابحث باسم أو رقم القاعة..."
+                  placeholder="كل القاعات"
+                  value={classroomId}
+                  onChange={(e) => setClassroomId(e.target.value)}
+                  options={(data?.filters.classrooms ?? []).map((c) => ({
+                    value: c.id,
+                    label: `${c.name} (${c.roomNumber})`,
+                  }))}
+                  className="w-48"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-4 border-t border-border pt-3 text-xs">
-          {(Object.keys(EVENT_CATEGORY_STYLES) as CalendarEventCategory[]).map((cat) => {
-            const st = EVENT_CATEGORY_STYLES[cat];
-            return (
-              <div key={cat} className="flex items-center gap-1.5">
-                <span className={cn('h-2.5 w-2.5 rounded-full', st.dotClass)} />
-                <span className="font-semibold text-muted-foreground">{st.label}</span>
-              </div>
-            );
-          })}
+          {(Object.keys(EVENT_CATEGORY_STYLES) as CalendarEventCategory[])
+            .filter((cat) => {
+              if (!canViewBookings && (cat === 'PENDING_BOOKING' || cat === 'CONFIRMED_BOOKING')) {
+                return false;
+              }
+              if (!canViewClassrooms && cat === 'CLASSROOM_MAINTENANCE') {
+                return false;
+              }
+              return true;
+            })
+            .map((cat) => {
+              const st = EVENT_CATEGORY_STYLES[cat];
+              return (
+                <div key={cat} className="flex items-center gap-1.5">
+                  <span className={cn('h-2.5 w-2.5 rounded-full', st.dotClass)} />
+                  <span className="font-semibold text-muted-foreground">{st.label}</span>
+                </div>
+              );
+            })}
         </div>
       </Card>
 

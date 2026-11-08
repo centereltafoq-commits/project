@@ -175,6 +175,7 @@ export function PaymentsHistoryTab({
       filters={
         <div className="flex flex-wrap items-center gap-2">
           <Select
+            searchable
             placeholder="كل وسائل الدفع"
             value={paymentMethod}
             onChange={(e) => {

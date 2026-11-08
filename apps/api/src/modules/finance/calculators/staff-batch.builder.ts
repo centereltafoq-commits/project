@@ -57,12 +57,16 @@ export function buildStaffSettlementBatch(
     { groupsCount: number; executedSessionsCount: number; totalDues: number }
   >();
 
+  const groupById = new Map(snap.allGroups.map((g) => [g.id, g]));
+
   for (const grp of snap.allGroups) {
     const execCount = (studentBatch.executedSessionsByGroup.get(grp.id) ?? []).length;
     const enrolledCount = studentBatch.groupEnrolledStudentsMap.get(grp.id) ?? 0;
-    if (!grp.isActive && execCount === 0 && enrolledCount === 0) continue;
-
     const existingDue = existingTeacherDueMap.get(`${grp.primaryTeacherId}:${grp.id}`);
+    if (!grp.isActive && execCount === 0 && enrolledCount === 0 && !existingDue?.isLocked) {
+      continue;
+    }
+
     const policy = policyByGroup.get(grp.id);
     const split = calculateGroupRevenueSplit({
       policy: {
@@ -114,6 +118,42 @@ export function buildStaffSettlementBatch(
       executedSessionsCount: prev.executedSessionsCount + split.executedSessionsCount,
       totalDues: roundMoney(prev.totalDues + split.teacherAmount),
     });
+  }
+
+  for (const lockedDue of snap.existingTeacherDues) {
+    if (!lockedDue.isLocked) continue;
+    const grp = groupById.get(lockedDue.groupId);
+    if (grp && grp.primaryTeacherId === lockedDue.teacherId) continue;
+
+    const prev = teacherAgg.get(lockedDue.teacherId) ?? {
+      groupsCount: 0,
+      executedSessionsCount: 0,
+      totalDues: 0,
+    };
+    teacherAgg.set(lockedDue.teacherId, {
+      groupsCount: prev.groupsCount + 1,
+      executedSessionsCount: prev.executedSessionsCount + lockedDue.executedSessionsCount,
+      totalDues: roundMoney(prev.totalDues + parseMoney(lockedDue.teacherAmount)),
+    });
+  }
+
+  for (const rec of snap.existingTeacherRecords) {
+    if (!rec.isClosed && !teacherAgg.has(rec.teacherId)) {
+      teacherAgg.set(rec.teacherId, {
+        groupsCount: 0,
+        executedSessionsCount: 0,
+        totalDues: 0,
+      });
+    }
+  }
+  for (const [teacherId] of teacherPayoutMap) {
+    if (!teacherAgg.has(teacherId)) {
+      teacherAgg.set(teacherId, {
+        groupsCount: 0,
+        executedSessionsCount: 0,
+        totalDues: 0,
+      });
+    }
   }
 
   const teacherMonthlyRows: NewTeacherMonthlyRow[] = [];

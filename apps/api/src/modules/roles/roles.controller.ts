@@ -1,7 +1,10 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { PERMISSIONS } from '@edu-center/shared';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
-import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import {
+  RequireAnyPermissions,
+  RequirePermissions,
+} from '../../common/decorators/permissions.decorator';
 import { CreateRoleDto, UpdateRolePermissionsDto } from './dto/role.dto';
 import { RolesService } from './roles.service';
 
@@ -10,13 +13,17 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @RequirePermissions(PERMISSIONS.USERS_VIEW)
+  @RequireAnyPermissions(
+    PERMISSIONS.USERS_VIEW,
+    PERMISSIONS.USERS_MANAGE,
+    PERMISSIONS.ROLES_MANAGE,
+  )
   async listRoles() {
     return this.rolesService.listRoles();
   }
 
   @Get('permissions')
-  @RequirePermissions(PERMISSIONS.USERS_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.USERS_VIEW, PERMISSIONS.ROLES_MANAGE)
   async listPermissions() {
     return this.rolesService.listPermissions();
   }

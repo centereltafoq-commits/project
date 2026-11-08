@@ -129,6 +129,7 @@ export function ClassroomFormModal({
             onChange={(e) => setForm({ ...form, seatsCount: e.target.value })}
           />
           <Select
+            searchable
             label="حالة القاعة"
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as ClassroomStatus })}

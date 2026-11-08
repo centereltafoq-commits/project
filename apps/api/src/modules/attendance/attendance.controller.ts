@@ -32,9 +32,14 @@ export class AttendanceController {
   ) {}
 
   @Get('lookups')
-  @RequirePermissions(PERMISSIONS.ATTENDANCE_VIEW)
-  async getLookups() {
-    return this.attendanceService.getLookups();
+  @RequireAnyPermissions(
+    PERMISSIONS.ATTENDANCE_VIEW,
+    PERMISSIONS.SESSIONS_VIEW,
+    PERMISSIONS.SESSIONS_MANAGE,
+    PERMISSIONS.MAKEUP_MANAGE,
+  )
+  async getLookups(@CurrentUser() actor: AuthenticatedUser) {
+    return this.attendanceService.getLookups(actor);
   }
 
   @Get('sessions')
@@ -78,7 +83,7 @@ export class AttendanceController {
   }
 
   @Get('makeups')
-  @RequirePermissions(PERMISSIONS.ATTENDANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.ATTENDANCE_VIEW, PERMISSIONS.MAKEUP_MANAGE)
   async listMakeups(@Query() query: MakeupQueryDto) {
     return this.makeupsService.listMakeups(query);
   }

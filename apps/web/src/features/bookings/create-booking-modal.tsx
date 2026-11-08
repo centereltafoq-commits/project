@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookingRequestType } from '@edu-center/shared';
+import { BookingRequestType, PERMISSIONS } from '@edu-center/shared';
 import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { ARABIC_DAYS, getTodayIsoDate } from '@/lib/formatters';
 import { SegmentedToggle } from './bookings-filters';
@@ -16,6 +17,10 @@ interface CreateBookingModalProps {
 export function CreateBookingModal({ open, onOpenChange, lookups }: CreateBookingModalProps) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { hasPermission } = useAuth();
+  const canSelectPreferredRoom =
+    hasPermission(PERMISSIONS.CLASSROOMS_VIEW) ||
+    hasPermission(PERMISSIONS.BOOKINGS_APPROVE_ADMIN);
 
   const today = getTodayIsoDate();
   const [requestType, setRequestType] = React.useState<BookingRequestType>(
@@ -195,6 +200,7 @@ export function CreateBookingModal({ open, onOpenChange, lookups }: CreateBookin
           <div className="space-y-3 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Select
+                searchable
                 label="اليوم الأسبوعي الثابت"
                 value={dayOfWeek}
                 onChange={(e) => setDayOfWeek(e.target.value)}
@@ -230,19 +236,21 @@ export function CreateBookingModal({ open, onOpenChange, lookups }: CreateBookin
           </div>
         )}
 
-        <Select
-          label="القاعة المفضلة (اختياري — التخصيص النهائي للإدارة)"
-          searchable
-          clearable
-          searchPlaceholder="ابحث باسم أو رقم القاعة..."
-          placeholder="بدون تفضيل قاعة محددة"
-          value={requestedClassroomId}
-          onChange={(e) => setRequestedClassroomId(e.target.value)}
-          options={(lookups?.classrooms ?? []).map((c) => ({
-            value: c.id,
-            label: `${c.name} (${c.roomNumber}) — سعة ${c.maxCapacity}`,
-          }))}
-        />
+        {canSelectPreferredRoom && (
+          <Select
+            label="القاعة المفضلة (اختياري — التخصيص النهائي للإدارة)"
+            searchable
+            clearable
+            searchPlaceholder="ابحث باسم أو رقم القاعة..."
+            placeholder="بدون تفضيل قاعة محددة"
+            value={requestedClassroomId}
+            onChange={(e) => setRequestedClassroomId(e.target.value)}
+            options={(lookups?.classrooms ?? []).map((c) => ({
+              value: c.id,
+              label: `${c.name} (${c.roomNumber}) — سعة ${c.maxCapacity}`,
+            }))}
+          />
+        )}
 
         <Textarea label="ملاحظات إضافية" value={notes} onChange={(e) => setNotes(e.target.value)} />
 

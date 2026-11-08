@@ -51,6 +51,11 @@ export function FinancePage() {
   const { notify } = useToast();
   const { hasPermission } = useAuth();
   const canCloseMonth = hasPermission(PERMISSIONS.FINANCE_CLOSE_MONTH);
+  const canRecalculateMonth =
+    hasPermission(PERMISSIONS.FINANCE_VIEW) ||
+    hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT) ||
+    hasPermission(PERMISSIONS.FINANCE_PAYOUTS) ||
+    canCloseMonth;
 
   const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
   const [closeConfirmOpen, setCloseConfirmOpen] = React.useState(false);
@@ -71,6 +76,11 @@ export function FinancePage() {
     mutationFn: async () => apiClient.post('/finance/recalculate-month', { yearMonth }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['student-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['assistant-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['report-data'] });
       notify(
         `تم إعادة احتساب السجلات المفتوحة لشهر ${formatYearMonthAr(yearMonth)} بنجاح`,
         'success',
@@ -83,6 +93,11 @@ export function FinancePage() {
     mutationFn: async () => apiClient.post('/finance/close-month', { yearMonth }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['student-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['assistant-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['report-data'] });
       setCloseConfirmOpen(false);
       notify(
         `تم إغلاق شهر ${formatYearMonthAr(yearMonth)} مالياً وتجميد الأسعار التاريخية بنجاح`,
@@ -118,28 +133,29 @@ export function FinancePage() {
               )}
             </div>
 
-            {canCloseMonth && (
-              <>
-                <Button
-                  variant="outline"
-                  isLoading={recalculateMutation.isPending}
-                  onClick={() => recalculateMutation.mutate()}
-                  className="gap-1.5"
-                >
-                  <Calculator className="h-4 w-4" />
-                  إعادة احتساب الشهر
-                </Button>
+            {canRecalculateMonth && (
+              <Button
+                variant="outline"
+                disabled={summary?.isMonthClosed}
+                isLoading={recalculateMutation.isPending}
+                onClick={() => recalculateMutation.mutate()}
+                className="gap-1.5"
+              >
+                <Calculator className="h-4 w-4" />
+                إعادة احتساب الشهر
+              </Button>
+            )}
 
-                <Button
-                  variant="danger"
-                  disabled={summary?.isMonthClosed}
-                  onClick={() => setCloseConfirmOpen(true)}
-                  className="gap-1.5"
-                >
-                  <Lock className="h-4 w-4" />
-                  إغلاق الشهر مالياً
-                </Button>
-              </>
+            {canCloseMonth && (
+              <Button
+                variant="danger"
+                disabled={summary?.isMonthClosed}
+                onClick={() => setCloseConfirmOpen(true)}
+                className="gap-1.5"
+              >
+                <Lock className="h-4 w-4" />
+                إغلاق الشهر مالياً
+              </Button>
             )}
           </div>
         }
@@ -217,6 +233,7 @@ export function FinancePage() {
         <TabsContent value="student-billing">
           <StudentBillingTab
             yearMonth={yearMonth}
+            isMonthClosed={Boolean(summary?.isMonthClosed)}
             lookups={lookups}
             onShowReceipt={(r) => setActiveReceipt(r)}
           />
@@ -228,13 +245,24 @@ export function FinancePage() {
           />
         </TabsContent>
         <TabsContent value="teacher-dues">
-          <TeacherDuesTab yearMonth={yearMonth} lookups={lookups} />
+          <TeacherDuesTab
+            yearMonth={yearMonth}
+            isMonthClosed={Boolean(summary?.isMonthClosed)}
+            lookups={lookups}
+          />
         </TabsContent>
         <TabsContent value="assistant-dues">
-          <AssistantDuesTab yearMonth={yearMonth} lookups={lookups} />
+          <AssistantDuesTab
+            yearMonth={yearMonth}
+            isMonthClosed={Boolean(summary?.isMonthClosed)}
+            lookups={lookups}
+          />
         </TabsContent>
         <TabsContent value="expenses">
-          <ExpensesTab yearMonth={yearMonth} />
+          <ExpensesTab
+            yearMonth={yearMonth}
+            isMonthClosed={Boolean(summary?.isMonthClosed)}
+          />
         </TabsContent>
       </Tabs>
 

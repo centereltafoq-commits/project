@@ -33,6 +33,8 @@ export function AssistantsPage() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const canManageAssistants = hasPermission(PERMISSIONS.ASSISTANTS_MANAGE);
+  const canSeeRates =
+    hasPermission(PERMISSIONS.FINANCE_VIEW) || canManageAssistants;
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -95,7 +97,7 @@ export function AssistantsPage() {
     },
     {
       key: 'calculationMethod',
-      header: 'نظام المستحقات والقيمة',
+      header: canSeeRates ? 'نظام المستحقات والقيمة' : 'نظام المستحقات',
       className: 'whitespace-nowrap',
       render: (row) => {
         const isPct =
@@ -106,9 +108,11 @@ export function AssistantsPage() {
             <Badge variant="info">
               {ASSISTANT_CALC_METHOD_LABELS[row.calculationMethod] ?? row.calculationMethod}
             </Badge>
-            <span className="font-extrabold text-xs text-foreground font-mono">
-              ({valStr})
-            </span>
+            {canSeeRates && (
+              <span className="font-extrabold text-xs text-foreground font-mono">
+                ({valStr})
+              </span>
+            )}
           </div>
         );
       },
@@ -207,6 +211,7 @@ export function AssistantsPage() {
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
               placeholder="كل طرق الاحتساب"
               value={methodFilter}
               onChange={(e) => {
@@ -217,6 +222,7 @@ export function AssistantsPage() {
               className="w-56"
             />
             <Select
+              searchable
               placeholder="كل الحالات"
               value={statusFilter}
               onChange={(e) => {

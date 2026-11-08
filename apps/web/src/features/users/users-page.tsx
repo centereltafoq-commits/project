@@ -37,6 +37,7 @@ export function UsersPage() {
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const { hasPermission } = useAuth();
+  const canViewUsers = hasPermission(PERMISSIONS.USERS_VIEW);
   const canManageUsers = hasPermission(PERMISSIONS.USERS_MANAGE);
   const canManageRoles = hasPermission(PERMISSIONS.ROLES_MANAGE);
 
@@ -60,11 +61,13 @@ export function UsersPage() {
 
   const { data: roles = [] } = useQuery<RoleOption[]>({
     queryKey: ['roles'],
+    enabled: canViewUsers || canManageUsers || canManageRoles,
     queryFn: async () => (await apiClient.get('/roles')).data,
   });
 
   const { data, isLoading } = useQuery<PaginatedResult<UserRow>>({
     queryKey: ['users', page, limit, debouncedSearch, roleFilter],
+    enabled: canViewUsers,
     queryFn: async () => {
       const res = await apiClient.get('/users', {
         params: {
@@ -202,8 +205,8 @@ export function UsersPage() {
         }
       />
 
-      <Tabs defaultValue="users">
-        {canManageRoles && (
+      <Tabs defaultValue={canViewUsers ? 'users' : 'roles'}>
+        {canViewUsers && canManageRoles && (
           <TabsList>
             <TabsTrigger value="users">
               <Users className="h-4 w-4" />
@@ -216,61 +219,65 @@ export function UsersPage() {
           </TabsList>
         )}
 
-        <TabsContent value="users">
-          <ServerDataTable
-            columns={columns}
-            data={data?.data ?? []}
-            meta={data?.meta}
-            isLoading={isLoading}
-            rowKey={(r) => r.id}
-            onRowClick={(r) => {
-              setQuickViewUser(r);
-              setQuickViewOpen(true);
-            }}
-            searchPlaceholder="ابحث بالاسم أو البريد أو الهاتف..."
-            searchValue={search}
-            onSearchChange={(val) => {
-              setSearch(val);
-              setPage(1);
-            }}
-            page={page}
-            onPageChange={setPage}
-            limit={limit}
-            onLimitChange={(l) => {
-              setLimit(l);
-              setPage(1);
-            }}
-            filters={
-              <div className="flex flex-wrap items-center gap-2">
-                <Select
-                  placeholder="كل الأدوار الوظيفية"
-                  value={roleFilter}
-                  onChange={(e) => {
-                    setRoleFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  options={roles.map((r) => ({ value: r.id, label: r.nameAr }))}
-                  className="w-48"
-                />
-                {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setRoleFilter('');
-                      setSearch('');
+        {canViewUsers && (
+          <TabsContent value="users">
+            <ServerDataTable
+              columns={columns}
+              data={data?.data ?? []}
+              meta={data?.meta}
+              isLoading={isLoading}
+              rowKey={(r) => r.id}
+              onRowClick={(r) => {
+                setQuickViewUser(r);
+                setQuickViewOpen(true);
+              }}
+              searchPlaceholder="ابحث بالاسم أو البريد أو الهاتف..."
+              searchValue={search}
+              onSearchChange={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+              page={page}
+              onPageChange={setPage}
+              limit={limit}
+              onLimitChange={(l) => {
+                setLimit(l);
+                setPage(1);
+              }}
+              filters={
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    searchable
+                    searchPlaceholder="ابحث في الأدوار..."
+                    placeholder="كل الأدوار الوظيفية"
+                    value={roleFilter}
+                    onChange={(e) => {
+                      setRoleFilter(e.target.value);
                       setPage(1);
                     }}
-                    className="gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    مسح الفلاتر
-                  </Button>
-                )}
-              </div>
-            }
-          />
-        </TabsContent>
+                    options={roles.map((r) => ({ value: r.id, label: r.nameAr }))}
+                    className="w-48"
+                  />
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setRoleFilter('');
+                        setSearch('');
+                        setPage(1);
+                      }}
+                      className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      مسح الفلاتر
+                    </Button>
+                  )}
+                </div>
+              }
+            />
+          </TabsContent>
+        )}
 
         {canManageRoles && (
           <TabsContent value="roles">
@@ -283,7 +290,7 @@ export function UsersPage() {
         open={quickViewOpen}
         onOpenChange={setQuickViewOpen}
         user={quickViewUser}
-        onToggleActive={(u) => toggleActiveMutation.mutate(u)}
+        onToggleActive={canManageUsers ? (u) => toggleActiveMutation.mutate(u) : undefined}
         isToggling={toggleActiveMutation.isPending}
       />
 
@@ -327,6 +334,8 @@ export function UsersPage() {
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
           <Select
+            searchable
+            searchPlaceholder="ابحث في الأدوار الوظيفية..."
             label="الدور الوظيفي"
             required
             placeholder="اختر الدور الوظيفي"

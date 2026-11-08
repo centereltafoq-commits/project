@@ -94,6 +94,9 @@ export class AssistantsProfileRepository {
               .select({
                 groupId: sessions.groupId,
                 executedCount: sql<number>`COUNT(*) FILTER (WHERE ${sessions.status} = 'COMPLETED')::int`,
+                executedMinutes: sql<number>`COALESCE(SUM(
+                  EXTRACT(EPOCH FROM (${sessions.endTime}::time - ${sessions.startTime}::time)) / 60
+                ) FILTER (WHERE ${sessions.status} = 'COMPLETED'), 0)::float`,
               })
               .from(sessions)
               .where(and(inArray(sessions.groupId, groupIds), eq(sessions.yearMonth, yearMonth)))

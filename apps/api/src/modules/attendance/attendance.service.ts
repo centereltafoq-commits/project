@@ -1,4 +1,10 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import {
   AttendanceStatus,
   PERMISSIONS,
@@ -9,6 +15,7 @@ import { AuthenticatedUser } from '../../common/decorators/current-user.decorato
 import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { MonthlySettlementService } from '../finance/monthly-settlement.service';
 import { AttendanceRepository } from './attendance.repository';
 import { RecordSessionAttendanceDto } from './dto/attendance-record.dto';
 import {
@@ -30,10 +37,39 @@ export class AttendanceService {
     private readonly sheetRepository: SessionSheetRepository,
     private readonly audit: AuditLogsService,
     private readonly cache: CacheService,
+    @Optional() private readonly settlementService?: MonthlySettlementService,
   ) {}
 
-  async getLookups() {
-    return this.repository.getLookups();
+  async getLookups(actor?: AuthenticatedUser) {
+    const lookups = await this.repository.getLookups();
+    const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
+    const perms = actor?.permissions ?? [];
+
+    const canSeeTeachers =
+      isOwner ||
+      perms.includes(PERMISSIONS.TEACHERS_VIEW) ||
+      perms.includes(PERMISSIONS.TEACHERS_MANAGE) ||
+      perms.includes(PERMISSIONS.SESSIONS_MANAGE);
+
+    const canSeeClassrooms =
+      isOwner ||
+      perms.includes(PERMISSIONS.CLASSROOMS_VIEW) ||
+      perms.includes(PERMISSIONS.CLASSROOMS_MANAGE) ||
+      perms.includes(PERMISSIONS.SESSIONS_MANAGE) ||
+      perms.includes(PERMISSIONS.MAKEUP_MANAGE);
+
+    const canSeeStudents =
+      isOwner ||
+      perms.includes(PERMISSIONS.STUDENTS_VIEW) ||
+      perms.includes(PERMISSIONS.MAKEUP_MANAGE) ||
+      perms.includes(PERMISSIONS.ATTENDANCE_RECORD);
+
+    return {
+      groups: lookups.groups,
+      teachers: canSeeTeachers ? lookups.teachers : [],
+      classrooms: canSeeClassrooms ? lookups.classrooms : [],
+      students: canSeeStudents ? lookups.students : [],
+    };
   }
 
   async listSessions(query: SessionQueryDto) {
@@ -87,6 +123,13 @@ export class AttendanceService {
       afterData: created,
     });
 
+    try {
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
+
     return created;
   }
 
@@ -130,6 +173,13 @@ export class AttendanceService {
         skippedCount: candidateDates.length - rowsToInsert.length,
       },
     });
+
+    try {
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
 
     return {
       yearMonth: dto.yearMonth,
@@ -242,8 +292,15 @@ export class AttendanceService {
       });
     }
 
+    if (this.settlementService) {
+      await this.settlementService.recalculateMonth(session.yearMonth);
+    }
+
     try {
-      await this.cache.invalidatePrefix('dashboard:summary:');
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
     } catch {}
 
     return this.getSessionSheet(sessionId);

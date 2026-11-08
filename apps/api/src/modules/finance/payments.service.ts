@@ -42,13 +42,8 @@ export class PaymentsService {
       }
     }
 
-    const existingCount = await this.queryRepo.countStudentMonthlyRecords(
-      dto.studentId,
-      dto.yearMonth,
-    );
-    if (existingCount === 0) {
-      await this.monthlySettlementService.recalculateMonth(dto.yearMonth);
-    }
+    await this.monthlySettlementService.assertMonthOpen(dto.yearMonth);
+    await this.monthlySettlementService.recalculateMonth(dto.yearMonth);
 
     const receiptNumber =
       dto.receiptNumber?.trim() || generateReferenceCode('RCP', dto.yearMonth, 6);
@@ -86,7 +81,10 @@ export class PaymentsService {
     });
 
     try {
-      await this.cache.invalidatePrefix('dashboard:summary:');
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
     } catch {}
 
     return {

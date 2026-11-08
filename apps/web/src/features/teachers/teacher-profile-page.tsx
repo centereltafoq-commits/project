@@ -46,7 +46,8 @@ import { TEACHER_STATUS_META, TeacherProfileData } from './teachers.types';
 export function TeacherProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canViewAllTeachers = hasPermission(PERMISSIONS.TEACHERS_VIEW);
   const canManageTeachers = hasPermission(PERMISSIONS.TEACHERS_MANAGE);
   const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
 
@@ -79,6 +80,8 @@ export function TeacherProfilePage() {
 
   const { teacher, monthlyBreakdown } = data;
   const { totals } = monthlyBreakdown;
+  const isOwnTeacher = Boolean(user?.id && teacher.userId === user.id);
+  const canSeeTeacherFinance = canViewFinance || isOwnTeacher;
   const statusMeta = TEACHER_STATUS_META[teacher.employmentStatus] ?? {
     label: teacher.employmentStatus,
     variant: 'success' as const,
@@ -101,10 +104,12 @@ export function TeacherProfilePage() {
                 تعديل البيانات
               </Button>
             )}
-            <Button variant="ghost" onClick={() => navigate('/teachers')}>
-              <ArrowRight className="h-4 w-4" />
-              قائمة المدرسين
-            </Button>
+            {canViewAllTeachers && (
+              <Button variant="ghost" onClick={() => navigate('/teachers')}>
+                <ArrowRight className="h-4 w-4" />
+                قائمة المدرسين
+              </Button>
+            )}
           </>
         }
       />
@@ -128,7 +133,9 @@ export function TeacherProfilePage() {
               </Badge>
             </div>
           </div>
-          <Badge variant="purple">مستحقات شهر {formatYearMonthAr(yearMonth)}</Badge>
+          {canSeeTeacherFinance && (
+            <Badge variant="purple">مستحقات شهر {formatYearMonthAr(yearMonth)}</Badge>
+          )}
         </div>
       </Card>
 
@@ -140,7 +147,7 @@ export function TeacherProfilePage() {
           icon={BookOpen}
           tone="primary"
         />
-        {canViewFinance ? (
+        {canSeeTeacherFinance ? (
           <>
             <StatCard
               title="إجمالي مستحقات الشهر"
@@ -184,9 +191,9 @@ export function TeacherProfilePage() {
         )}
       </div>
 
-      <Tabs defaultValue={canViewFinance ? 'summary' : 'groups'}>
+      <Tabs defaultValue={canSeeTeacherFinance ? 'summary' : 'groups'}>
         <TabsList>
-          {canViewFinance && (
+          {canSeeTeacherFinance && (
             <TabsTrigger value="summary">
               <Wallet className="h-4 w-4" />
               الملخص الشهري والمستحقات
@@ -200,7 +207,7 @@ export function TeacherProfilePage() {
             <Clock className="h-4 w-4" />
             أوقات الإتاحة ({data.availability.length})
           </TabsTrigger>
-          {canViewFinance && (
+          {canSeeTeacherFinance && (
             <TabsTrigger value="payouts">
               <CreditCard className="h-4 w-4" />
               عمليات الصرف ({data.payouts.length})
@@ -212,7 +219,7 @@ export function TeacherProfilePage() {
           </TabsTrigger>
         </TabsList>
 
-        {canViewFinance && (
+        {canSeeTeacherFinance && (
           <TabsContent value="summary">
             <TeacherMonthlySummaryTab data={data} />
           </TabsContent>
@@ -221,9 +228,13 @@ export function TeacherProfilePage() {
           <TeacherGroupsAndScheduleTab data={data} />
         </TabsContent>
         <TabsContent value="availability">
-          <TeacherAvailabilityTab teacherId={teacher.id} initialSlots={data.availability} />
+          <TeacherAvailabilityTab
+            teacherId={teacher.id}
+            initialSlots={data.availability}
+            canEdit={canManageTeachers}
+          />
         </TabsContent>
-        {canViewFinance && (
+        {canSeeTeacherFinance && (
           <TabsContent value="payouts">
             <TeacherPayoutsTab data={data} />
           </TabsContent>

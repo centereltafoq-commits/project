@@ -18,12 +18,13 @@ import { PayoutsSubtable } from './payouts-subtable';
 
 interface TeacherDuesTabProps {
   yearMonth: string;
+  isMonthClosed?: boolean;
   lookups?: FinanceLookups;
 }
 
-export function TeacherDuesTab({ yearMonth, lookups }: TeacherDuesTabProps) {
+export function TeacherDuesTab({ yearMonth, isMonthClosed = false, lookups }: TeacherDuesTabProps) {
   const { hasPermission } = useAuth();
-  const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS);
+  const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS) && !isMonthClosed;
 
   const [viewMode, setViewMode] = React.useState<'dues' | 'payouts'>('dues');
   const [page, setPage] = React.useState(1);

@@ -130,6 +130,10 @@ export class TeacherPayoutsRepository {
         )
         .for('update');
 
+      if (monthly?.isClosed) {
+        throw new ConflictException('الشهر المالي مغلق نهائياً ولا يمكن تسجيل صرفيات عليه');
+      }
+
       const [created] = await tx
         .insert(teacherPayouts)
         .values({

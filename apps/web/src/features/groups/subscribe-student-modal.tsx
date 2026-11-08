@@ -1,11 +1,8 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PaginatedResult } from '@edu-center/shared';
 import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/design-system';
-import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatCurrency, getTodayIsoDate } from '@/lib/formatters';
-import { StudentRow } from '../students/students.types';
 import { GroupDetailData } from './groups.types';
 
 interface SubscribeStudentModalProps {
@@ -40,18 +37,12 @@ export function SubscribeStudentModal({
     }
   }, [open, group]);
 
-  const { data: studentsList } = useQuery<PaginatedResult<StudentRow>>({
-    queryKey: ['students-picker'],
+  const { data: lookupsData } = useQuery<{
+    students: Array<{ id: string; studentCode: string; fullName: string; gradeLevel: string }>;
+  }>({
+    queryKey: ['groups-lookups'],
     enabled: open,
-    queryFn: async () =>
-      (
-        await apiClient.get('/students', {
-          params: {
-            limit: 250,
-            status: 'ACTIVE',
-          },
-        })
-      ).data,
+    queryFn: async () => (await apiClient.get('/groups/lookups')).data,
   });
 
   const computedSessionPrice =
@@ -73,6 +64,11 @@ export function SubscribeStudentModal({
       queryClient.invalidateQueries({ queryKey: ['group-enrollments', group.id] });
       queryClient.invalidateQueries({ queryKey: ['group-detail', group.id] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['classroom-allocated-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['classroom-unallocated-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['student-profile'] });
       notify('تم تسجيل اشتراك الطالب بالمجموعة بنجاح', 'success');
       onOpenChange(false);
     },
@@ -102,7 +98,7 @@ export function SubscribeStudentModal({
           placeholder="اختر الطالب المراد تسجيله في المجموعة..."
           value={studentId}
           onChange={(e) => setStudentId(e.target.value)}
-          options={(studentsList?.data ?? []).map((s) => ({
+          options={(lookupsData?.students ?? []).map((s) => ({
             value: s.id,
             label: `${s.fullName} (${s.studentCode}) — ${s.gradeLevel}`,
           }))}

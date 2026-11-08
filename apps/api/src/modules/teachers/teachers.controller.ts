@@ -11,7 +11,10 @@ import {
 } from '@nestjs/common';
 import { PERMISSIONS } from '@edu-center/shared';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
-import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import {
+  RequireAnyPermissions,
+  RequirePermissions,
+} from '../../common/decorators/permissions.decorator';
 import {
   CreateTeacherDto,
   TeacherProfileQueryDto,
@@ -41,7 +44,7 @@ export class TeachersController {
   }
 
   @Get(':id/profile')
-  @RequirePermissions(PERMISSIONS.TEACHERS_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.TEACHERS_VIEW, PERMISSIONS.TEACHERS_VIEW_OWN)
   async getProfile(
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: TeacherProfileQueryDto,

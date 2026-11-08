@@ -3,9 +3,11 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { BookingStatus, PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { BookingsRepository } from './bookings.repository';
 import {
@@ -22,13 +24,35 @@ export class BookingsReviewService {
     private readonly repository: BookingsRepository,
     private readonly conflictChecker: ScheduleConflictChecker,
     private readonly audit: AuditLogsService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
-  async getAvailableClassrooms(bookingId: string, query: AvailableClassroomsQueryDto) {
+  private async invalidateCaches() {
+    try {
+      await Promise.all([
+        this.cache?.invalidatePrefix('dashboard:summary:'),
+        this.cache?.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
+  }
+
+  async getAvailableClassrooms(
+    bookingId: string,
+    query: AvailableClassroomsQueryDto,
+    actor?: AuthenticatedUser,
+  ) {
     const booking = await this.repository.findById(bookingId);
     if (!booking) {
       throw new NotFoundException('طلب الحجز غير موجود');
     }
+
+    const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
+    const perms = actor?.permissions ?? [];
+    const canSeeClassrooms =
+      isOwner ||
+      perms.includes(PERMISSIONS.CLASSROOMS_VIEW) ||
+      perms.includes(PERMISSIONS.CLASSROOMS_MANAGE) ||
+      perms.includes(PERMISSIONS.BOOKINGS_APPROVE_ADMIN);
 
     const effectiveDate = query.date ?? booking.requestedDate;
     const effectiveStart = query.startTime ?? booking.startTime;
@@ -36,13 +60,15 @@ export class BookingsReviewService {
     const effectiveAttendees = query.expectedAttendees ?? booking.expectedAttendees;
 
     const [roomsResult, participantConflicts] = await Promise.all([
-      this.conflictChecker.evaluateAvailableClassrooms({
-        date: effectiveDate,
-        startTime: effectiveStart,
-        endTime: effectiveEnd,
-        expectedAttendees: effectiveAttendees,
-        excludeBookingId: booking.id,
-      }),
+      canSeeClassrooms
+        ? this.conflictChecker.evaluateAvailableClassrooms({
+            date: effectiveDate,
+            startTime: effectiveStart,
+            endTime: effectiveEnd,
+            expectedAttendees: effectiveAttendees,
+            excludeBookingId: booking.id,
+          })
+        : Promise.resolve({ availableClassrooms: [], unavailableClassrooms: [] }),
       this.conflictChecker.checkConflicts({
         excludeBookingId: booking.id,
         date: effectiveDate,
@@ -170,6 +196,7 @@ export class BookingsReviewService {
       afterData: updated,
     });
 
+    await this.invalidateCaches();
     return updated;
   }
 
@@ -180,6 +207,18 @@ export class BookingsReviewService {
     }
     if (existing.status === BookingStatus.CANCELLED) {
       throw new BadRequestException('هذا الموعد ملغي بالفعل');
+    }
+
+    const isAdmin =
+      actor.roleCode === SystemRole.OWNER ||
+      actor.permissions.includes(PERMISSIONS.BOOKINGS_APPROVE_ADMIN);
+    if (!isAdmin) {
+      const teacher = await this.repository.findTeacherById(existing.teacherId);
+      const isOwnTeacher = Boolean(teacher?.userId && teacher.userId === actor.id);
+      const isRequester = existing.createdByUserId === actor.id;
+      if (!isOwnTeacher && !isRequester) {
+        throw new ForbiddenException('لا يمكنك إلغاء حجز لا يخصك');
+      }
     }
 
     const updated = await this.repository.cancelSingleOccurrence(id, actor.id, dto.comment);
@@ -194,6 +233,7 @@ export class BookingsReviewService {
       afterData: updated,
     });
 
+    await this.invalidateCaches();
     return updated;
   }
 
@@ -204,6 +244,16 @@ export class BookingsReviewService {
     }
     if (existing.status !== BookingStatus.CONFIRMED) {
       throw new BadRequestException('لا يمكن إكمال سوى الحجوزات المؤكدة');
+    }
+
+    const isAdmin =
+      actor.roleCode === SystemRole.OWNER ||
+      actor.permissions.includes(PERMISSIONS.BOOKINGS_APPROVE_ADMIN);
+    if (!isAdmin) {
+      const teacher = await this.repository.findTeacherById(existing.teacherId);
+      if (!teacher?.userId || teacher.userId !== actor.id) {
+        throw new ForbiddenException('يمكن للمدرس إكمال حجوزاته الخاصة فقط');
+      }
     }
 
     const updated = await this.repository.markCompleted(id);
@@ -218,6 +268,7 @@ export class BookingsReviewService {
       afterData: updated,
     });
 
+    await this.invalidateCaches();
     return updated;
   }
 }

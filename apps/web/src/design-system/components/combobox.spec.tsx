@@ -124,4 +124,39 @@ describe('Combobox Component', () => {
     expect(screen.getByText('الطالب')).toBeInTheDocument();
     expect(screen.getByText('أحمد محمود علي (STD-1029)')).toBeInTheDocument();
   });
+
+  it('hides clear button on searchable Select when required or without placeholder', () => {
+    const { rerender } = render(
+      <Select
+        searchable
+        required
+        placeholder="اختر الطالب..."
+        value="1"
+        onChange={() => {}}
+        options={options}
+      />,
+    );
+    expect(screen.queryByTitle('إلغاء التحديد')).not.toBeInTheDocument();
+
+    rerender(
+      <Select
+        searchable
+        value="1"
+        onChange={() => {}}
+        options={options}
+      />,
+    );
+    expect(screen.queryByTitle('إلغاء التحديد')).not.toBeInTheDocument();
+
+    rerender(
+      <Select
+        searchable
+        placeholder="كل الطلاب"
+        value="1"
+        onChange={() => {}}
+        options={options}
+      />,
+    );
+    expect(screen.getByTitle('إلغاء التحديد')).toBeInTheDocument();
+  });
 });

@@ -125,6 +125,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: TeacherFormMod
             onChange={(d) => setForm({ ...form, contractDate: d })}
           />
           <Select
+            searchable
             label="حالة العمل بالسنتر"
             value={form.employmentStatus}
             onChange={(e) =>

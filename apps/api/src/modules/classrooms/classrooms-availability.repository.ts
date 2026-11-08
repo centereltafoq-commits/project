@@ -19,6 +19,8 @@ export class ClassroomsAvailabilityRepository {
   async findAvailable(query: AvailableClassroomsQueryDto) {
     const windowStart = new Date(`${query.date}T${query.startTime}:00`);
     const windowEnd = new Date(`${query.date}T${query.endTime}:00`);
+    const [qy, qm, qd] = query.date.split('-').map(Number);
+    const queryDayOfWeek = new Date(Date.UTC(qy!, qm! - 1, qd!)).getUTCDay();
 
     return this.db
       .select()
@@ -64,6 +66,26 @@ export class ClassroomsAvailabilityRepository {
                   eq(classroomBookings.status, 'CONFIRMED'),
                   lt(classroomBookings.startTime, query.endTime),
                   gt(classroomBookings.endTime, query.startTime),
+                ),
+              ),
+          ),
+          notExists(
+            this.db
+              .select({ id: groups.id })
+              .from(groups)
+              .where(
+                and(
+                  eq(groups.isActive, true),
+                  sql`EXISTS (
+                    SELECT 1 FROM jsonb_array_elements(COALESCE(${groups.scheduleSlots}, '[]'::jsonb)) AS slot
+                    WHERE (
+                      (slot->>'classroomId') = ${classrooms.id}::text
+                      OR ((slot->>'classroomId') IS NULL AND ${groups.defaultClassroomId} = ${classrooms.id})
+                    )
+                    AND (slot->>'dayOfWeek')::int = ${queryDayOfWeek}
+                    AND (slot->>'startTime') < ${query.endTime}
+                    AND (slot->>'endTime') > ${query.startTime}
+                  )`,
                 ),
               ),
           ),

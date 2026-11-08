@@ -33,13 +33,14 @@ interface ExpensesResponse extends PaginatedResult<ExpenseRow> {
 
 interface ExpensesTabProps {
   yearMonth: string;
+  isMonthClosed?: boolean;
 }
 
-export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
+export function ExpensesTab({ yearMonth, isMonthClosed = false }: ExpensesTabProps) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const { hasPermission } = useAuth();
-  const canManageExpenses = hasPermission(PERMISSIONS.FINANCE_EXPENSES);
+  const canManageExpenses = hasPermission(PERMISSIONS.FINANCE_EXPENSES) && !isMonthClosed;
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -74,6 +75,8 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
     mutationFn: async (id: string) => apiClient.delete(`/finance/expenses/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['report-data'] });
       notify('تم حذف المصروف بنجاح', 'success');
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),
@@ -219,6 +222,7 @@ export function ExpensesTab({ yearMonth }: ExpensesTabProps) {
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
               placeholder="كل بنود المصروفات"
               value={categoryFilter}
               onChange={(e) => {

@@ -12,8 +12,8 @@ export class ReportsController {
 
   @Get('filter-options')
   @RequirePermissions(PERMISSIONS.REPORTS_VIEW)
-  async getFilterOptions() {
-    return this.reportsService.getFilterOptions();
+  async getFilterOptions(@CurrentUser() actor: AuthenticatedUser) {
+    return this.reportsService.getFilterOptions(actor);
   }
 
   @Get(':reportType/export-csv')

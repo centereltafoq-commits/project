@@ -224,6 +224,8 @@ export function StudentsPage() {
               className="w-48"
             />
             <Select
+              searchable
+              clearable
               placeholder="كل الحالات"
               value={statusFilter}
               onChange={(e) => {

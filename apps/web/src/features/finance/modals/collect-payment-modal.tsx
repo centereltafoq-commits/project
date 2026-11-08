@@ -86,6 +86,9 @@ export function CollectPaymentModal({
     },
     onSuccess: (createdReceipt) => {
       queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['student-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['report-data'] });
       onOpenChange(false);
       notify('تم تحصيل الدفعة وإصدار الإيصال بنجاح', 'success');
       onReceiptCreated(createdReceipt);
@@ -161,6 +164,7 @@ export function CollectPaymentModal({
             onChange={(e) => setAmount(e.target.value)}
           />
           <Select
+            searchable
             label="وسيلة الدفع"
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}

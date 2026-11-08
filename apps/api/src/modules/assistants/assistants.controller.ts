@@ -25,8 +25,8 @@ export class AssistantsController {
 
   @Get()
   @RequirePermissions(PERMISSIONS.ASSISTANTS_VIEW)
-  async list(@Query() query: AssistantQueryDto) {
-    return this.assistantsService.list(query);
+  async list(@Query() query: AssistantQueryDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.assistantsService.list(query, actor);
   }
 
   @Get(':id/profile')
@@ -41,8 +41,11 @@ export class AssistantsController {
 
   @Get(':id')
   @RequirePermissions(PERMISSIONS.ASSISTANTS_VIEW)
-  async getById(@Param('id', ParseUUIDPipe) id: string) {
-    return this.assistantsService.getById(id);
+  async getById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.assistantsService.getById(id, actor);
   }
 
   @Post()

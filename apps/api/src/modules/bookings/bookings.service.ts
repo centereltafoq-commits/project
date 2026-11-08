@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus } from '@edu-center/shared';
+import { BookingStatus, PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -24,8 +24,40 @@ export class BookingsService {
     private readonly audit: AuditLogsService,
   ) {}
 
-  async getLookups() {
-    return this.repository.getLookups();
+  async getLookups(actor?: AuthenticatedUser) {
+    const lookups = await this.repository.getLookups();
+    const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
+    const perms = actor?.permissions ?? [];
+
+    const canSeeClassrooms =
+      isOwner ||
+      perms.includes(PERMISSIONS.CLASSROOMS_VIEW) ||
+      perms.includes(PERMISSIONS.CLASSROOMS_MANAGE) ||
+      perms.includes(PERMISSIONS.BOOKINGS_APPROVE_ADMIN);
+
+    const canSeeAllTeachers =
+      isOwner ||
+      perms.includes(PERMISSIONS.TEACHERS_VIEW) ||
+      perms.includes(PERMISSIONS.TEACHERS_MANAGE) ||
+      perms.includes(PERMISSIONS.BOOKINGS_APPROVE_ADMIN);
+
+    const canSeeOwnTeacher = perms.includes(PERMISSIONS.TEACHERS_VIEW_OWN);
+
+    const canSeeStudents =
+      isOwner ||
+      perms.includes(PERMISSIONS.STUDENTS_VIEW) ||
+      perms.includes(PERMISSIONS.BOOKINGS_CREATE) ||
+      perms.includes(PERMISSIONS.BOOKINGS_APPROVE_ADMIN);
+
+    return {
+      teachers: canSeeAllTeachers
+        ? lookups.teachers
+        : canSeeOwnTeacher && actor?.id
+          ? lookups.teachers.filter((t) => t.userId === actor.id)
+          : [],
+      students: canSeeStudents ? lookups.students : [],
+      classrooms: canSeeClassrooms ? lookups.classrooms : [],
+    };
   }
 
   async list(query: BookingQueryDto) {

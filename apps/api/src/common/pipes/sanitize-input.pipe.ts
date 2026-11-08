@@ -16,7 +16,12 @@ function sanitizeValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(sanitizeValue);
   }
-  if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    !(value instanceof Date) &&
+    !Buffer.isBuffer(value)
+  ) {
     const cleaned: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
       if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;

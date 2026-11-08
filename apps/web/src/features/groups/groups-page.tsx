@@ -280,6 +280,8 @@ export function GroupsPage() {
               className="w-48"
             />
             <Select
+              searchable
+              clearable
               placeholder="كل الحالات"
               value={activeFilter}
               onChange={(e) => {

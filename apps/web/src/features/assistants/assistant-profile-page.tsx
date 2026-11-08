@@ -34,6 +34,7 @@ export function AssistantProfilePage() {
   const { hasPermission } = useAuth();
   const canManageAssistants = hasPermission(PERMISSIONS.ASSISTANTS_MANAGE);
   const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+  const canSeeRate = canViewFinance || canManageAssistants;
 
   const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
   const [editOpen, setEditOpen] = React.useState(false);
@@ -105,13 +106,15 @@ export function AssistantProfilePage() {
               <span className="text-muted-foreground">الهاتف:</span>
               <strong dir="ltr">{assistant.phone}</strong>
             </div>
-            <div>
-              <span className="text-muted-foreground">المعدل الافتراضي: </span>
-              <strong>
-                {isPct ? `${Number(assistant.rateValue)}%` : formatCurrency(assistant.rateValue)}
-              </strong>
-            </div>
-            {assistant.customFormulaNote && (
+            {canSeeRate && (
+              <div>
+                <span className="text-muted-foreground">المعدل الافتراضي: </span>
+                <strong>
+                  {isPct ? `${Number(assistant.rateValue)}%` : formatCurrency(assistant.rateValue)}
+                </strong>
+              </div>
+            )}
+            {canSeeRate && assistant.customFormulaNote && (
               <div>
                 <span className="text-muted-foreground">ملاحظة الاتفاق: </span>
                 <span>{assistant.customFormulaNote}</span>

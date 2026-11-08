@@ -61,6 +61,15 @@ export class MonthlySettlementWriteRepository {
           });
       }
 
+      await tx
+        .delete(teacherDues)
+        .where(
+          and(
+            eq(teacherDues.yearMonth, input.yearMonth),
+            eq(teacherDues.isLocked, false),
+          ),
+        );
+
       if (input.teacherDueRows.length > 0) {
         await tx
           .insert(teacherDues)

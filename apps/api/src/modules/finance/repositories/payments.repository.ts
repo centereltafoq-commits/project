@@ -67,6 +67,10 @@ export class PaymentsRepository {
         )
         .for('update');
 
+      if (monthlyRows.some((r) => r.isClosed)) {
+        throw new ConflictException('الشهر المالي مغلق نهائياً ولا يمكن تحصيل دفعات عليه');
+      }
+
       const recordByGroup = new Map(monthlyRows.map((r) => [r.groupId, r]));
       const plannedAllocations: Array<{
         groupId: string;

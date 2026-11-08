@@ -11,7 +11,9 @@ import {
   Users,
   XCircle,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, StatCard } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { DashboardSummaryData } from '../dashboard.types';
 
 interface DashboardAcademicTabProps {
@@ -19,6 +21,15 @@ interface DashboardAcademicTabProps {
 }
 
 export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
+  const { hasPermission } = useAuth();
+  const canAccessAttendance =
+    hasPermission(PERMISSIONS.ATTENDANCE_VIEW) ||
+    hasPermission(PERMISSIONS.SESSIONS_VIEW) ||
+    hasPermission(PERMISSIONS.MAKEUP_MANAGE);
+  const canViewStudents = hasPermission(PERMISSIONS.STUDENTS_VIEW);
+  const canViewTeachers =
+    hasPermission(PERMISSIONS.TEACHERS_VIEW) || hasPermission(PERMISSIONS.TEACHERS_VIEW_OWN);
+  const canViewGroups = hasPermission(PERMISSIONS.GROUPS_VIEW);
   const { present, absent, excused, makeup } = data.todayAttendance;
   const totalMarked = present + absent + excused + makeup;
 
@@ -84,12 +95,14 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
               </p>
             </div>
           </div>
-          <Link to="/attendance">
-            <Button variant="outline" size="sm">
-              فتح سجل الحضور
-              <ArrowLeft className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
+          {canAccessAttendance && (
+            <Link to="/attendance">
+              <Button variant="outline" size="sm">
+                فتح سجل الحضور
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          )}
         </CardHeader>
         <CardContent className="space-y-5 pt-4">
           {totalMarked === 0 ? (
@@ -190,55 +203,63 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
       </Card>
 
       {/* 3. بطاقات الوصول السريع للأقسام الأكاديمية */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Link
-          to="/students"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">دليل الطلاب والصفوف الدراسية</p>
-              <p className="text-xs text-muted-foreground">تعديل الملفات وأرقام الهواتف</p>
-            </div>
-          </div>
-          <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-        </Link>
+      {(canViewStudents || canViewTeachers || canViewGroups) && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {canViewStudents && (
+            <Link
+              to="/students"
+              className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
+            >
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <GraduationCap className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">دليل الطلاب والصفوف الدراسية</p>
+                  <p className="text-xs text-muted-foreground">تعديل الملفات وأرقام الهواتف</p>
+                </div>
+              </div>
+              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          )}
 
-        <Link
-          to="/teachers"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-purple-500/10 p-2 text-purple-600">
-              <UserCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">هيئة التدريس والمواد</p>
-              <p className="text-xs text-muted-foreground">ملفات المدرسين والمجموعات المسندة</p>
-            </div>
-          </div>
-          <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-        </Link>
+          {canViewTeachers && (
+            <Link
+              to="/teachers"
+              className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
+            >
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-purple-500/10 p-2 text-purple-600">
+                  <UserCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">هيئة التدريس والمواد</p>
+                  <p className="text-xs text-muted-foreground">ملفات المدرسين والمجموعات المسندة</p>
+                </div>
+              </div>
+              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          )}
 
-        <Link
-          to="/groups"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
-              <BookOpen className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">المجموعات الدراسية والجداول</p>
-              <p className="text-xs text-muted-foreground">المواعيد الأسبوعية والأسعار</p>
-            </div>
-          </div>
-          <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-        </Link>
-      </div>
+          {canViewGroups && (
+            <Link
+              to="/groups"
+              className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
+            >
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">المجموعات الدراسية والجداول</p>
+                  <p className="text-xs text-muted-foreground">المواعيد الأسبوعية والأسعار</p>
+                </div>
+              </div>
+              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

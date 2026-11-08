@@ -115,6 +115,7 @@ export const TEACHER_STATUS_META: Record<
 
 export const SPLIT_METHOD_LABELS: Record<string, string> = {
   FIXED_PER_STUDENT: 'مبلغ ثابت عن كل طالب',
+  FIXED_PER_SESSION: 'مبلغ ثابت عن كل حصة',
   ACTUAL_ATTENDANCE_RATIO: 'حسب نسبة الحضور الفعلي',
   CUSTOM_PERCENTAGE: 'نسبة مئوية مخصصة',
 };

@@ -17,7 +17,6 @@ interface ScheduleAndAssistantsEditorProps {
   assistantLinks: AssistantDraftLink[];
   onAssistantLinksChange: (links: AssistantDraftLink[]) => void;
   assistantOptions: Array<{ value: string; label: string }>;
-  classroomOptions?: Array<{ value: string; label: string }>;
 }
 
 export function GroupScheduleAssistantsEditor({
@@ -26,19 +25,26 @@ export function GroupScheduleAssistantsEditor({
   assistantLinks,
   onAssistantLinksChange,
   assistantOptions,
-  classroomOptions,
 }: ScheduleAndAssistantsEditorProps) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-bold">مواعيد المجموعة الأسبوعية</span>
+          <div>
+            <span className="text-sm font-bold">مواعيد المجموعة الأسبوعية المقترحة (اختياري)</span>
+            <p className="text-[11px] text-muted-foreground">
+              يمكن تحديد الأيام والأوقات المبدئية هنا أو تنظيمها مباشرة عند تسكين المجموعة من شاشة إدارة القاعات
+            </p>
+          </div>
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={() =>
-              onSlotsChange([...slots, { dayOfWeek: 6, startTime: '16:00', endTime: '18:00' }])
+              onSlotsChange([
+                ...slots,
+                { dayOfWeek: 6, startTime: '16:00', endTime: '18:00', classroomId: null },
+              ])
             }
           >
             <Plus className="h-3.5 w-3.5" />
@@ -46,11 +52,12 @@ export function GroupScheduleAssistantsEditor({
           </Button>
         </div>
         {slots.length === 0 ? (
-          <p className="text-xs text-muted-foreground">لم تتم إضافة مواعيد أسبوعية بعد</p>
+          <p className="text-xs text-muted-foreground">لم تتم إضافة مواعيد أسبوعية بعد (تُنظم عند التسكين في إدارة القاعات)</p>
         ) : (
           slots.map((slot, idx) => (
-            <div key={idx} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-5">
+            <div key={idx} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-4">
               <Select
+                searchable
                 label="اليوم"
                 value={String(slot.dayOfWeek)}
                 onChange={(e) =>
@@ -65,7 +72,7 @@ export function GroupScheduleAssistantsEditor({
               <Input
                 label="من"
                 type="time"
-                value={slot.startTime}
+                value={slot.startTime.slice(0, 5)}
                 onChange={(e) =>
                   onSlotsChange(
                     slots.map((s, i) => (i === idx ? { ...s, startTime: e.target.value } : s)),
@@ -75,27 +82,12 @@ export function GroupScheduleAssistantsEditor({
               <Input
                 label="إلى"
                 type="time"
-                value={slot.endTime}
+                value={slot.endTime.slice(0, 5)}
                 onChange={(e) =>
                   onSlotsChange(
                     slots.map((s, i) => (i === idx ? { ...s, endTime: e.target.value } : s)),
                   )
                 }
-              />
-              <Select
-                label="القاعة (اختياري)"
-                value={slot.classroomId ?? ''}
-                onChange={(e) =>
-                  onSlotsChange(
-                    slots.map((s, i) =>
-                      i === idx ? { ...s, classroomId: e.target.value || null } : s,
-                    ),
-                  )
-                }
-                options={[
-                  { value: '', label: 'بدون تحديد (تتبع قاعة المجموعة)' },
-                  ...(classroomOptions ?? []),
-                ]}
               />
               <Button
                 type="button"
@@ -152,6 +144,7 @@ export function GroupScheduleAssistantsEditor({
               options={assistantOptions}
             />
             <Select
+              searchable
               label="استثناء الطريقة"
               placeholder="الافتراضي للمساعد"
               value={lnk.overrideCalculationMethod}

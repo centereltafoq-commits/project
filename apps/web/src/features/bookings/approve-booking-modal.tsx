@@ -174,39 +174,43 @@ export function ApproveBookingModal({ booking, onClose }: ApproveBookingModalPro
                 <Building2 className="h-4 w-4 text-primary" />
                 تخصيص القاعة الدراسية يدوياً (خاص بالإدارة)
               </span>
-              <Badge variant="success">
-                {loadingRooms ? '...' : availability?.availableClassrooms.length ?? 0} قاعة متاحة
-              </Badge>
+              {isAdminApprover && (
+                <Badge variant="success">
+                  {loadingRooms ? '...' : availability?.availableClassrooms.length ?? 0} قاعة متاحة
+                </Badge>
+              )}
             </div>
 
             {isAdminApprover ? (
-              <Select
-                searchable
-                clearable
-                searchPlaceholder="ابحث باسم أو رقم القاعة..."
-                placeholder="بدون تخصيص قاعة / اختر قاعة متاحة..."
-                value={assignedClassroomId}
-                onChange={(e) => setAssignedClassroomId(e.target.value)}
-                options={(availability?.availableClassrooms ?? []).map((room) => ({
-                  value: room.id,
-                  label: `${room.name} (قاعة ${room.roomNumber}) — سعة ${room.maxCapacity} مقعد`,
-                }))}
-              />
+              <>
+                <Select
+                  searchable
+                  clearable
+                  searchPlaceholder="ابحث باسم أو رقم القاعة..."
+                  placeholder="بدون تخصيص قاعة / اختر قاعة متاحة..."
+                  value={assignedClassroomId}
+                  onChange={(e) => setAssignedClassroomId(e.target.value)}
+                  options={(availability?.availableClassrooms ?? []).map((room) => ({
+                    value: room.id,
+                    label: `${room.name} (قاعة ${room.roomNumber}) — سعة ${room.maxCapacity} مقعد`,
+                  }))}
+                />
+
+                {availability && availability.unavailableClassrooms.length > 0 && (
+                  <div className="pt-1 text-xs text-muted-foreground">
+                    <span className="font-semibold">غير متاحة حالياً: </span>
+                    {availability.unavailableClassrooms.map((u) => (
+                      <span key={u.id} className="ml-2 inline-block">
+                        • {u.name}: ({u.reasons.join('، ')})
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
             ) : (
               <p className="text-xs text-muted-foreground">
                 تخصيص القاعات متاح لمسؤولي الإدارة فقط.
               </p>
-            )}
-
-            {availability && availability.unavailableClassrooms.length > 0 && (
-              <div className="pt-1 text-xs text-muted-foreground">
-                <span className="font-semibold">غير متاحة حالياً: </span>
-                {availability.unavailableClassrooms.map((u) => (
-                  <span key={u.id} className="ml-2 inline-block">
-                    • {u.name}: ({u.reasons.join('، ')})
-                  </span>
-                ))}
-              </div>
             )}
           </div>
 

@@ -448,6 +448,7 @@ export function BackupsPage() {
           filters={
             <div className="flex flex-wrap items-center gap-2">
               <Select
+                searchable
                 placeholder="كل الحالات"
                 value={statusFilter}
                 onChange={(e) => {
@@ -457,7 +458,7 @@ export function BackupsPage() {
                 options={[
                   { value: 'SUCCESS', label: 'ناجحة' },
                   { value: 'FAILED', label: 'فشلت' },
-                  { value: 'PENDING', label: 'قيد الإنشاء' },
+                  { value: 'IN_PROGRESS', label: 'قيد الإنشاء' },
                 ]}
                 className="w-36"
               />

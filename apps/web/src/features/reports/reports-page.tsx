@@ -60,6 +60,7 @@ export function ReportsPage() {
 
   const { data: filterOptions } = useQuery<ReportFilterOptionsData>({
     queryKey: ['reports-filter-options'],
+    enabled: Boolean(activeDefinition && permittedReports.length > 0),
     queryFn: async () => {
       const res = await apiClient.get<ReportFilterOptionsData>('/reports/filter-options');
       return res.data;
@@ -69,10 +70,10 @@ export function ReportsPage() {
 
   const queryParams = React.useMemo(
     () => ({
-      yearMonth: activeDefinition.usesMonth ? yearMonth : undefined,
-      groupId: activeDefinition.usesGroup && groupId ? groupId : undefined,
-      teacherId: activeDefinition.usesTeacher && teacherId ? teacherId : undefined,
-      studentId: activeDefinition.usesStudent && studentId ? studentId : undefined,
+      yearMonth: activeDefinition?.usesMonth ? yearMonth : undefined,
+      groupId: activeDefinition?.usesGroup && groupId ? groupId : undefined,
+      teacherId: activeDefinition?.usesTeacher && teacherId ? teacherId : undefined,
+      studentId: activeDefinition?.usesStudent && studentId ? studentId : undefined,
       search: debouncedSearch || undefined,
       page,
       limit,
@@ -82,6 +83,7 @@ export function ReportsPage() {
 
   const { data, isLoading } = useQuery<ReportApiResponse>({
     queryKey: ['report-data', activeReport, queryParams],
+    enabled: Boolean(activeDefinition && permittedReports.length > 0),
     queryFn: async () => {
       const res = await apiClient.get<ReportApiResponse>(`/reports/${activeReport}`, {
         params: queryParams,

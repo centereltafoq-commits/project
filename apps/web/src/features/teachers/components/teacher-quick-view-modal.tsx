@@ -10,7 +10,9 @@ import {
   Phone,
   ShieldCheck,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Modal } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatDateAr } from '@/lib/formatters';
 import { TEACHER_STATUS_META, TeacherRow } from '../teachers.types';
 
@@ -28,6 +30,8 @@ export function TeacherQuickViewModal({
   onEdit,
 }: TeacherQuickViewModalProps) {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageTeachers = hasPermission(PERMISSIONS.TEACHERS_MANAGE);
 
   if (!teacher) return null;
 
@@ -132,18 +136,22 @@ export function TeacherQuickViewModal({
 
         {/* أزرار الإجراءات في أسفل النافذة */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onOpenChange(false);
-              onEdit(teacher);
-            }}
-            className="gap-1.5"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            تعديل البيانات
-          </Button>
+          {canManageTeachers ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onOpenChange(false);
+                onEdit(teacher);
+              }}
+              className="gap-1.5"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              تعديل البيانات
+            </Button>
+          ) : (
+            <span />
+          )}
 
           <Button
             variant="primary"

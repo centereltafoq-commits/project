@@ -35,6 +35,8 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
   const { notify } = useToast();
   const { hasPermission } = useAuth();
   const canManageMakeup = hasPermission(PERMISSIONS.MAKEUP_MANAGE);
+  const canFilterStudents =
+    hasPermission(PERMISSIONS.STUDENTS_VIEW) || canManageMakeup;
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -221,23 +223,27 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
         }}
         filters={
           <div className="flex flex-wrap items-center gap-2">
+            {canFilterStudents && (
+              <Select
+                searchable
+                clearable
+                searchPlaceholder="ابحث باسم الطالب أو الكود..."
+                placeholder="كل الطلاب"
+                value={studentFilter}
+                onChange={(e) => {
+                  setStudentFilter(e.target.value);
+                  setPage(1);
+                }}
+                options={(lookups?.students ?? []).map((s) => ({
+                  value: s.id,
+                  label: `${s.fullName} (${s.studentCode})`,
+                }))}
+                className="w-52"
+              />
+            )}
             <Select
               searchable
               clearable
-              searchPlaceholder="ابحث باسم الطالب أو الكود..."
-              placeholder="كل الطلاب"
-              value={studentFilter}
-              onChange={(e) => {
-                setStudentFilter(e.target.value);
-                setPage(1);
-              }}
-              options={(lookups?.students ?? []).map((s) => ({
-                value: s.id,
-                label: `${s.fullName} (${s.studentCode})`,
-              }))}
-              className="w-52"
-            />
-            <Select
               placeholder="كل الحالات"
               value={statusFilter}
               onChange={(e) => {

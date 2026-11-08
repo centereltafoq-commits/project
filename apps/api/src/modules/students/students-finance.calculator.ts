@@ -1,8 +1,8 @@
 import {
-  AttendanceStatus,
   FullMonthAbsencePolicy,
-  MakeupStatus,
+  SessionStatus,
 } from '@edu-center/shared';
+import { calculateStudentMonthlyBilling } from '../finance/calculators/student-billing.calculator';
 import { StudentsProfileRepository } from './students-profile.repository';
 
 export interface StudentGroupMonthlyBreakdown {
@@ -58,11 +58,12 @@ export function computeStudentMonthlyBreakdown(
     if (!uniqueGroups.has(enr.groupId)) uniqueGroups.set(enr.groupId, enr);
   }
 
+  const sessionIdsWithAttendance = new Set(bundle.monthAttendance.map((a) => a.sessionId));
   const breakdown: StudentGroupMonthlyBreakdown[] = [];
 
   for (const [groupId, enr] of uniqueGroups.entries()) {
     const stored = storedByGroup.get(groupId);
-    if (stored) {
+    if (stored?.isClosed) {
       breakdown.push({
         groupId,
         groupName: stored.groupName,
@@ -75,93 +76,62 @@ export function computeStudentMonthlyBreakdown(
         totalDue: Number(stored.totalDue),
         totalPaid: Number(stored.totalPaid),
         remaining: Number(stored.remainingBalance),
-        isClosed: stored.isClosed,
+        isClosed: true,
       });
       continue;
     }
 
-    const eligibleSessions = bundle.groupSessionsInMonth.filter(
+    const executedGroupSessions = bundle.groupSessionsInMonth.filter(
       (s) =>
         s.groupId === groupId &&
-        (s.status as string) !== 'CANCELLED' &&
-        s.sessionDate >= enr.startDate &&
-        (!enr.endDate || s.sessionDate <= enr.endDate),
+        (s.status as string) !== SessionStatus.CANCELLED &&
+        ((s.status as string) === SessionStatus.COMPLETED || sessionIdsWithAttendance.has(s.id)),
     );
     const groupAtt = bundle.monthAttendance.filter((a) => a.groupId === groupId);
-    const presentCount = groupAtt.filter((a) => a.status === AttendanceStatus.PRESENT).length;
-    const absentCount = groupAtt.filter((a) => a.status === AttendanceStatus.ABSENT).length;
-    const excusedCount = groupAtt.filter((a) => a.status === AttendanceStatus.EXCUSED).length;
-    const attMakeupCount = groupAtt.filter(
-      (a) => a.status === AttendanceStatus.MAKEUP_ATTENDED,
-    ).length;
-
     const groupMakeups = bundle.studentMakeups.filter(
       (m) => m.groupId === groupId && m.sessionYearMonth === yearMonth,
     );
-    const completedMakeups = groupMakeups.filter((m) => m.status === MakeupStatus.COMPLETED).length;
-    const makeupCount = Math.max(attMakeupCount, completedMakeups);
-    const extraMakeupFees = groupMakeups
-      .filter((m) => !m.isFree && m.status !== MakeupStatus.CANCELLED)
-      .reduce((sum, m) => sum + Number(m.extraFee || 0), 0);
+    const currentPaid = Math.max(
+      allocatedByGroup.get(groupId) ?? 0,
+      stored ? Number(stored.totalPaid || 0) : 0,
+    );
 
-    const totalSessions = eligibleSessions.length;
-    const sessionPrice =
-      Number(enr.agreedSessionPrice || 0) > 0
-        ? round2(Number(enr.agreedSessionPrice))
-        : Number(enr.agreedSessionsCount || 0) > 0
-          ? round2(Number(enr.agreedMonthlyPrice || 0) / Number(enr.agreedSessionsCount))
-          : 0;
-    let baseDue = 0;
-
-    if (totalSessions > 0) {
-      const attendedCount = presentCount + makeupCount;
-      const isFullMonthAbsent =
-        attendedCount === 0 && (!enr.chargeExcusedAbsence || excusedCount === 0);
-
-      if (isFullMonthAbsent) {
-        if (enr.fullMonthAbsencePolicy === FullMonthAbsencePolicy.CHARGE_FIXED_RESERVATION_FEE) {
-          baseDue = Number(enr.fullAbsenceFixedFee || 0);
-        } else if (
-          enr.fullMonthAbsencePolicy === FullMonthAbsencePolicy.CHARGE_FULL_SUBSCRIPTION
-        ) {
-          baseDue =
-            Number(enr.agreedMonthlyPrice || 0) > 0
-              ? Number(enr.agreedMonthlyPrice)
-              : Number(enr.agreedSessionsCount || 0) * sessionPrice;
-        } else {
-          baseDue = 0;
-        }
-      } else {
-        const billableSessionsCount =
-          attendedCount + (enr.chargeExcusedAbsence ? excusedCount : 0);
-        if (
-          billableSessionsCount === Number(enr.agreedSessionsCount || 0) &&
-          Number(enr.agreedMonthlyPrice || 0) > 0 &&
-          (!enr.agreedSessionPrice || Number(enr.agreedSessionPrice) <= 0)
-        ) {
-          baseDue = round2(Number(enr.agreedMonthlyPrice));
-        } else {
-          baseDue = round2(billableSessionsCount * sessionPrice);
-        }
-      }
-    }
-
-    const totalDue = round2(baseDue + extraMakeupFees);
-    const totalPaid = round2(allocatedByGroup.get(groupId) ?? 0);
-    const remaining = round2(Math.max(0, totalDue - totalPaid));
+    const calc = calculateStudentMonthlyBilling({
+      enrollment: {
+        startDate: enr.startDate,
+        endDate: enr.endDate,
+        agreedMonthlyPrice: Number(enr.agreedMonthlyPrice || 0),
+        agreedSessionsCount: Number(enr.agreedSessionsCount || 0),
+        agreedSessionPrice: Number(enr.agreedSessionPrice || 0),
+      },
+      policy: {
+        fullMonthAbsencePolicy:
+          enr.fullMonthAbsencePolicy ?? FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+        fullAbsenceFixedFee: Number(enr.fullAbsenceFixedFee || 0),
+        chargeExcusedAbsence: Boolean(enr.chargeExcusedAbsence),
+      },
+      sessions: executedGroupSessions,
+      attendances: groupAtt.map((a) => ({ sessionId: a.sessionId, status: a.status })),
+      makeups: groupMakeups.map((m) => ({
+        isFree: m.isFree,
+        extraFee: Number(m.extraFee || 0),
+        status: m.status,
+      })),
+      currentTotalPaid: currentPaid,
+    });
 
     breakdown.push({
       groupId,
-      groupName: enr.groupName,
-      totalSessions,
-      presentCount,
-      absentCount,
-      excusedCount,
-      makeupCount,
-      sessionPrice,
-      totalDue,
-      totalPaid,
-      remaining,
+      groupName: stored?.groupName ?? enr.groupName,
+      totalSessions: calc.eligibleSessions,
+      presentCount: calc.presentCount,
+      absentCount: calc.absentCount,
+      excusedCount: calc.excusedCount,
+      makeupCount: calc.makeupAttendedCount,
+      sessionPrice: calc.sessionPriceSnapshot,
+      totalDue: calc.totalDue,
+      totalPaid: calc.totalPaid,
+      remaining: calc.remainingBalance,
       isClosed: false,
     });
   }

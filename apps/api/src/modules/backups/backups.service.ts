@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
+import { CacheService } from '../../common/cache/cache.module';
 import { UsersRepository } from '../users/users.repository';
 import { BackupsRepository } from './backups.repository';
 import { GoogleDriveDriver } from './drivers/google-drive.driver';
@@ -31,6 +32,7 @@ export class BackupsService {
     private readonly googleDriveDriver: GoogleDriveDriver,
     private readonly usersRepository: UsersRepository,
     private readonly config: ConfigService,
+    private readonly cacheService: CacheService,
   ) {
     this.storageDir = path.resolve(process.cwd(), 'storage', 'backups');
     if (!fs.existsSync(this.storageDir)) {
@@ -58,12 +60,24 @@ export class BackupsService {
     return { dbUrl, password };
   }
 
+  private sanitizePublicSettings<
+    T extends { googleDriveTokens?: unknown; dropboxTokens?: unknown },
+  >(settings: T) {
+    return {
+      ...settings,
+      googleDriveTokens: settings.googleDriveTokens ? { connected: true } : null,
+      dropboxTokens: settings.dropboxTokens ? { connected: true } : null,
+    };
+  }
+
   async getSettings() {
-    return this.repository.getSettings();
+    const raw = await this.repository.getSettings();
+    return this.sanitizePublicSettings(raw);
   }
 
   async updateSettings(dto: UpdateBackupSettingsDto) {
-    return this.repository.updateSettings(dto);
+    const updated = await this.repository.updateSettings(dto);
+    return this.sanitizePublicSettings(updated);
   }
 
   async listRecords(query: BackupQueryDto) {
@@ -79,7 +93,7 @@ export class BackupsService {
   }
 
   async createBackup(triggerType: 'MANUAL' | 'SCHEDULED' = 'MANUAL') {
-    const settings = await this.getSettings();
+    const settings = await this.repository.getSettings();
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const timestampStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
@@ -241,6 +255,7 @@ export class BackupsService {
     }
 
     await this.executeRestore(record.filePath);
+    await this.cacheService.invalidatePrefix('');
     return { success: true, message: `تمت استعادة قاعدة البيانات بنجاح من النسخة (${record.fileName})` };
   }
 
@@ -251,6 +266,7 @@ export class BackupsService {
 
     try {
       await this.executeRestore(tempFile);
+      await this.cacheService.invalidatePrefix('');
       return { success: true, message: 'تمت استعادة قاعدة البيانات من الملف المرفوع بنجاح' };
     } finally {
       if (fs.existsSync(tempFile)) {
@@ -309,9 +325,10 @@ export class BackupsService {
   }
 
   async disconnectGoogle() {
-    return this.repository.updateSettings({
+    const updated = await this.repository.updateSettings({
       googleDriveEnabled: false,
       googleDriveTokens: null,
     });
+    return this.sanitizePublicSettings(updated);
   }
 }

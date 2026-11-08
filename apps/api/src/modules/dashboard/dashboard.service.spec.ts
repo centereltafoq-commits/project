@@ -106,5 +106,42 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.totalExpenses).toBe(0);
     expect(res.netCenterResult).toBe(0);
     expect(res.netCashFlow).toBe(0);
+    expect(res.monthlySessionsStats.executedSessions).toBe(50);
+    expect(res.monthlySessionsStats.scheduledSessions).toBe(50);
+    expect(res.monthlySessionsStats.totalBillableSessions).toBe(0);
+    expect(res.monthlySessionsStats.totalPaidSessions).toBe(0);
+    expect(res.monthlySessionsStats.totalUnpaidSessions).toBe(0);
+    expect(res.monthlySessionsStats.collectionRateSessions).toBe(0);
+    expect(res.pendingBookingsCount).toBe(0);
+    expect(res.upcomingAppointments).toEqual([]);
+    expect(res.classroomsSummary).toEqual({
+      total: 0,
+      availableNow: 0,
+      occupiedNow: 0,
+      maintenance: 0,
+    });
+    expect(res.classroomsLive).toEqual([]);
+    expect(res.todaySessions).toEqual([]);
+  });
+
+  it('masks bookings and classrooms payloads while allowing authorized finance/bookings/classrooms views separately', async () => {
+    const accountant: AuthenticatedUser = {
+      id: 'acc-2',
+      email: 'acc2@test.com',
+      fullName: 'Accountant',
+      roleCode: SystemRole.ACCOUNTANT,
+      permissions: [
+        PERMISSIONS.DASHBOARD_VIEW,
+        PERMISSIONS.FINANCE_VIEW,
+        PERMISSIONS.ATTENDANCE_VIEW,
+      ],
+    };
+
+    const res = await service.getSummary('2026-11', accountant);
+    expect(res.totalRevenue).toBe(50000);
+    expect(res.pendingBookingsCount).toBe(0);
+    expect(res.upcomingAppointments).toEqual([]);
+    expect(res.classroomsLive).toEqual([]);
+    expect(res.classroomsSummary.total).toBe(0);
   });
 });

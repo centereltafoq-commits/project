@@ -31,8 +31,13 @@ export function computeTeacherMonthlySummary(
   const groupsBreakdown: TeacherGroupMonthlyItem[] = [];
 
   for (const grp of bundle.assignedGroups) {
+    const grpSessions = bundle.monthSessions.filter((s) => s.groupId === grp.id);
+    const executedSessionsCount = grpSessions.filter(
+      (s) => s.status === SessionStatus.COMPLETED,
+    ).length;
+
     const stored = storedByGroup.get(grp.id);
-    if (stored) {
+    if (stored && (stored.isLocked || stored.executedSessionsCount === executedSessionsCount)) {
       groupsBreakdown.push({
         groupId: grp.id,
         groupName: stored.groupName,
@@ -48,11 +53,6 @@ export function computeTeacherMonthlySummary(
     }
 
     if (!grp.isActive) continue;
-
-    const grpSessions = bundle.monthSessions.filter((s) => s.groupId === grp.id);
-    const executedSessionsCount = grpSessions.filter(
-      (s) => s.status === SessionStatus.COMPLETED,
-    ).length;
     const studentsCount = Number(grp.activeStudentsCount || 0);
     const monthlySessionsCount = Math.max(1, Number(grp.monthlySessionsCount || 1));
     const sessionPrice = Number(grp.calculatedSessionPrice || 0);
@@ -113,7 +113,7 @@ export function computeTeacherMonthlySummary(
   const liveTotalDues = round2(groupsBreakdown.reduce((s, g) => s + g.teacherShare, 0));
   const executedSessionsTotal = groupsBreakdown.reduce((s, g) => s + g.executedSessionsCount, 0);
 
-  const totalDues = bundle.storedMonthlyRecord
+  const totalDues = bundle.storedMonthlyRecord?.isClosed
     ? Number(bundle.storedMonthlyRecord.totalDues)
     : liveTotalDues;
   const totalPayouts = bundle.storedMonthlyRecord?.isClosed

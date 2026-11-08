@@ -12,7 +12,9 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, StatCard } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatCurrency, formatYearMonthAr } from '@/lib/formatters';
 import { DashboardSummaryData } from '../dashboard.types';
 
@@ -21,6 +23,8 @@ interface DashboardFinanceTabProps {
 }
 
 export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
+  const { hasPermission } = useAuth();
+  const canViewReports = hasPermission(PERMISSIONS.REPORTS_VIEW);
   const collectionRate =
     data.totalRevenue > 0
       ? Math.min(100, Math.round((data.totalCollectedPayments / data.totalRevenue) * 100))
@@ -195,12 +199,14 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
           <h3 className="text-sm font-bold text-foreground">
             توزيع الالتزامات والمصروفات (إجمالي الالتزامات: {formatCurrency(totalObligations)})
           </h3>
-          <Link to="/reports">
-            <Button variant="ghost" size="sm">
-              تقرير الأرباح والخسائر الشامل
-              <ArrowLeft className="h-3 w-3" />
-            </Button>
-          </Link>
+          {canViewReports && (
+            <Link to="/reports">
+              <Button variant="ghost" size="sm">
+                تقرير الأرباح والخسائر الشامل
+                <ArrowLeft className="h-3 w-3" />
+              </Button>
+            </Link>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -231,7 +237,7 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
       </section>
 
       {/* 3. روابط سريعة للدفاتر المالية */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-3 ${canViewReports ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <Link
           to="/finance"
           className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
@@ -264,21 +270,23 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
           <ArrowLeft className="h-4 w-4 text-muted-foreground" />
         </Link>
 
-        <Link
-          to="/reports"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
-              <TrendingUp className="h-5 w-5" />
+        {canViewReports && (
+          <Link
+            to="/reports"
+            className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
+          >
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold">التقارير المالية والضريبية</p>
+                <p className="text-xs text-muted-foreground">كشف حساب الطلاب والمدرسين</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-bold">التقارير المالية والضريبية</p>
-              <p className="text-xs text-muted-foreground">كشف حساب الطلاب والمدرسين</p>
-            </div>
-          </div>
-          <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-        </Link>
+            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        )}
       </div>
     </div>
   );

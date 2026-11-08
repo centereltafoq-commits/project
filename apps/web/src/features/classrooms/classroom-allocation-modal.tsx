@@ -5,6 +5,7 @@ import {
   Building2,
   Calendar,
   CheckCircle,
+  Clock,
   Plus,
   Trash2,
   Users,
@@ -13,12 +14,13 @@ import {
 import {
   Badge,
   Button,
+  Input,
   Modal,
   Select,
   useToast,
 } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { ARABIC_DAYS } from '@/lib/formatters';
+import { ARABIC_DAYS, formatTimeRangeAr } from '@/lib/formatters';
 import { AllocatedGroupItem, ClassroomRow } from './classrooms.types';
 
 interface ClassroomAllocationModalProps {
@@ -55,9 +57,20 @@ export function ClassroomAllocationModal({
   const { notify } = useToast();
 
   const [selectedGroupId, setSelectedGroupId] = React.useState<string>('');
+  const [draftSlots, setDraftSlots] = React.useState<
+    Array<{ dayOfWeek: number; startTime: string; endTime: string }>
+  >([]);
   const [updateUpcoming, setUpdateUpcoming] = React.useState<boolean>(true);
   const [allowOverCapacity, setAllowOverCapacity] = React.useState<boolean>(false);
   const [includeAll, setIncludeAll] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (!open) {
+      setSelectedGroupId('');
+      setDraftSlots([]);
+      setAllowOverCapacity(false);
+    }
+  }, [open, classroom?.id]);
 
   // Fetch groups allocated to this classroom
   const {
@@ -73,7 +86,6 @@ export function ClassroomAllocationModal({
   // Fetch groups needing allocation (or all active groups if includeAll is true)
   const {
     data: unallocatedGroups,
-    isLoading: isUnallocatedLoading,
   } = useQuery<UnallocatedGroup[]>({
     queryKey: ['classroom-unallocated-groups', includeAll],
     enabled: Boolean(open),
@@ -86,36 +98,80 @@ export function ClassroomAllocationModal({
   });
 
   const allocatedGroups = allocatedData?.groups ?? [];
-  const selectedGroup = (unallocatedGroups ?? []).find((g) => g.id === selectedGroupId);
+  const selectedGroup = React.useMemo(() => {
+    const fromUnallocated = (unallocatedGroups ?? []).find((g) => g.id === selectedGroupId);
+    if (fromUnallocated) return fromUnallocated;
+    const fromAllocated = allocatedGroups.find((g) => g.id === selectedGroupId);
+    if (!fromAllocated) return undefined;
+    return {
+      ...fromAllocated,
+      defaultClassroomId: classroom?.id ?? null,
+      defaultClassroomName: classroom?.name ?? null,
+    } as UnallocatedGroup;
+  }, [unallocatedGroups, allocatedGroups, selectedGroupId, classroom]);
 
-  // Check for conflicts between selected group slots and current classroom schedule
+  React.useEffect(() => {
+    if (!selectedGroup || !classroom) {
+      setDraftSlots([]);
+      return;
+    }
+    const existingForThisRoom = (selectedGroup.scheduleSlots ?? []).filter(
+      (s) => !s.classroomId || s.classroomId === classroom.id,
+    );
+    setDraftSlots(
+      existingForThisRoom.map((s) => ({
+        dayOfWeek: Number(s.dayOfWeek),
+        startTime: s.startTime.slice(0, 5),
+        endTime: s.endTime.slice(0, 5),
+      })),
+    );
+  }, [selectedGroup?.id, classroom?.id]);
+
+  // Check for validation errors & conflicts between draftSlots and current classroom schedule
   const conflictWarnings = React.useMemo(() => {
     if (!selectedGroup || !classroom) return [];
     const warnings: string[] = [];
-    const groupSlots = selectedGroup.scheduleSlots ?? [];
-    // Only check slots that are targeted for this classroom (or not assigned to another room)
-    const slotsForThisRoom = groupSlots.filter(
-      (s) => !s.classroomId || s.classroomId === classroom.id,
-    );
 
-    for (const slotA of slotsForThisRoom) {
+    for (let i = 0; i < draftSlots.length; i++) {
+      const slotA = draftSlots[i];
+      if (!slotA.startTime || !slotA.endTime || slotA.startTime >= slotA.endTime) {
+        const dayName = ARABIC_DAYS[slotA.dayOfWeek] ?? String(slotA.dayOfWeek);
+        warnings.push(`موعد غير صالح يوم (${dayName}): وقت النهاية يجب أن يكون بعد وقت البداية`);
+        continue;
+      }
+
+      for (let j = i + 1; j < draftSlots.length; j++) {
+        const slotSelf = draftSlots[j];
+        if (
+          Number(slotA.dayOfWeek) === Number(slotSelf.dayOfWeek) &&
+          slotA.startTime < slotSelf.endTime &&
+          slotA.endTime > slotSelf.startTime
+        ) {
+          const dayName = ARABIC_DAYS[slotA.dayOfWeek] ?? String(slotA.dayOfWeek);
+          warnings.push(`تعارض داخلي بين مواعيد المجموعة نفسها يوم (${dayName})`);
+        }
+      }
+
       for (const existingGroup of allocatedGroups) {
+        if (existingGroup.id === selectedGroup.id) continue;
         for (const slotB of existingGroup.slotsForThisRoom ?? []) {
+          const bStart = slotB.startTime.slice(0, 5);
+          const bEnd = slotB.endTime.slice(0, 5);
           if (
             Number(slotA.dayOfWeek) === Number(slotB.dayOfWeek) &&
-            slotA.startTime < slotB.endTime &&
-            slotA.endTime > slotB.startTime
+            slotA.startTime < bEnd &&
+            slotA.endTime > bStart
           ) {
             const dayName = ARABIC_DAYS[slotA.dayOfWeek] ?? String(slotA.dayOfWeek);
             warnings.push(
-              `تعارض مع "${existingGroup.name}" يوم (${dayName}) من ${slotB.startTime} إلى ${slotB.endTime}`,
+              `تعارض مع "${existingGroup.name}" يوم (${dayName}) (${formatTimeRangeAr(bStart, bEnd)})`,
             );
           }
         }
       }
     }
     return warnings;
-  }, [selectedGroup, classroom, allocatedGroups]);
+  }, [selectedGroup, classroom, allocatedGroups, draftSlots]);
 
   // Check for capacity warning
   const isOverCapacity = React.useMemo(() => {
@@ -129,21 +185,44 @@ export function ClassroomAllocationModal({
   // Allocation mutation
   const allocateMutation = useMutation({
     mutationFn: async () => {
-      if (!classroom || !selectedGroupId) return;
+      if (!classroom || !selectedGroup) return;
+      const otherRoomSlots = (selectedGroup.scheduleSlots ?? [])
+        .filter((s) => s.classroomId && s.classroomId !== classroom.id)
+        .map((s) => ({
+          dayOfWeek: Number(s.dayOfWeek),
+          startTime: s.startTime.slice(0, 5),
+          endTime: s.endTime.slice(0, 5),
+          classroomId: s.classroomId ?? null,
+        }));
+      const mergedSlots = [
+        ...otherRoomSlots,
+        ...draftSlots.map((s) => ({
+          dayOfWeek: Number(s.dayOfWeek),
+          startTime: s.startTime.slice(0, 5),
+          endTime: s.endTime.slice(0, 5),
+          classroomId: classroom.id,
+        })),
+      ];
       return apiClient.post(`/classrooms/${classroom.id}/allocate-group`, {
-        groupId: selectedGroupId,
+        groupId: selectedGroup.id,
+        slots: mergedSlots,
         updateUpcomingSessions: updateUpcoming,
         allowOverCapacity: isOverCapacity ? allowOverCapacity : undefined,
       });
     },
     onSuccess: () => {
-      notify('تم تسكين المجموعة في القاعة بنجاح', 'success');
+      notify('تم تسكين المجموعة وتنظيم مواعيدها في القاعة بنجاح', 'success');
       setSelectedGroupId('');
+      setDraftSlots([]);
       queryClient.invalidateQueries({ queryKey: ['classroom-allocated-groups'] });
       queryClient.invalidateQueries({ queryKey: ['classroom-unallocated-groups'] });
       queryClient.invalidateQueries({ queryKey: ['classroom-schedule'] });
       queryClient.invalidateQueries({ queryKey: ['classrooms'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['group-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),
   });
@@ -161,6 +240,9 @@ export function ClassroomAllocationModal({
       queryClient.invalidateQueries({ queryKey: ['classroom-schedule'] });
       queryClient.invalidateQueries({ queryKey: ['classrooms'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['group-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),
   });
@@ -270,14 +352,27 @@ export function ClassroomAllocationModal({
                               className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
                             >
                               <Calendar className="h-3 w-3" />
-                              {ARABIC_DAYS[s.dayOfWeek]}: {s.startTime} - {s.endTime}
+                              {ARABIC_DAYS[s.dayOfWeek]}: {formatTimeRangeAr(s.startTime, s.endTime)}
                             </span>
                           ))
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-xs"
+                        onClick={() => {
+                          setIncludeAll(true);
+                          setSelectedGroupId(group.id);
+                          setAllowOverCapacity(group.enrolledCount > classroom.maxCapacity);
+                        }}
+                      >
+                        <Clock className="h-3.5 w-3.5 text-primary" />
+                        تنظيم المواعيد
+                      </Button>
                       <Button
                         size="sm"
                         variant="danger"
@@ -350,29 +445,97 @@ export function ClassroomAllocationModal({
             />
 
             {selectedGroup && (
-              <div className="rounded-lg border border-border/70 bg-card p-3 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-foreground">
-                    المواعيد المسجلة للمجموعة:
+              <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-3 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-foreground">
+                    تنظيم المواعيد الأسبوعية للمجموعة ({selectedGroup.name}) داخل هذه القاعة:
                   </span>
-                  <span className="text-muted-foreground">
-                    الطلاب المسجلين: <strong className="text-foreground">{selectedGroup.enrolledCount}</strong> • الحد الأقصى: {selectedGroup.maxStudents}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-muted-foreground">
+                      الطلاب المسجلين: <strong className="text-foreground">{selectedGroup.enrolledCount}</strong> • الحد الأقصى: {selectedGroup.maxStudents}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 px-2.5 text-xs"
+                      onClick={() =>
+                        setDraftSlots((prev) => [
+                          ...prev,
+                          { dayOfWeek: 6, startTime: '16:00', endTime: '18:00' },
+                        ])
+                      }
+                    >
+                      <Plus className="h-3 w-3" />
+                      إضافة موعد بالقاعة
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5">
-                  {(selectedGroup.scheduleSlots ?? []).length === 0 ? (
-                    <span className="text-muted-foreground">
-                      لا توجد مواعيد أسبوعية للمجموعة (يمكن تعيينها من إعدادات المجموعة)
-                    </span>
-                  ) : (
-                    selectedGroup.scheduleSlots.map((s, idx) => (
-                      <Badge key={idx} variant="info" className="gap-1 text-xs">
-                        {ARABIC_DAYS[s.dayOfWeek]}: {s.startTime} - {s.endTime}
-                      </Badge>
-                    ))
-                  )}
-                </div>
+                {draftSlots.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-muted-foreground">
+                    لم يتم تحديد مواعيد أسبوعية لهذه المجموعة في القاعة بعد — اضغط «إضافة موعد بالقاعة» لتحديد اليوم والوقت.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {draftSlots.map((slot, idx) => (
+                      <div
+                        key={idx}
+                        className="grid grid-cols-1 items-end gap-2 rounded-lg border border-border bg-muted/20 p-2.5 sm:grid-cols-4"
+                      >
+                        <Select
+                          searchable
+                          label="اليوم"
+                          value={String(slot.dayOfWeek)}
+                          onChange={(e) =>
+                            setDraftSlots((prev) =>
+                              prev.map((s, i) =>
+                                i === idx ? { ...s, dayOfWeek: Number(e.target.value) } : s,
+                              ),
+                            )
+                          }
+                          options={ARABIC_DAYS.map((d, di) => ({ value: String(di), label: d }))}
+                        />
+                        <Input
+                          label="من الساعة"
+                          type="time"
+                          value={slot.startTime}
+                          onChange={(e) =>
+                            setDraftSlots((prev) =>
+                              prev.map((s, i) =>
+                                i === idx ? { ...s, startTime: e.target.value } : s,
+                              ),
+                            )
+                          }
+                        />
+                        <Input
+                          label="إلى الساعة"
+                          type="time"
+                          value={slot.endTime}
+                          onChange={(e) =>
+                            setDraftSlots((prev) =>
+                              prev.map((s, i) =>
+                                i === idx ? { ...s, endTime: e.target.value } : s,
+                              ),
+                            )
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="danger"
+                          size="sm"
+                          className="h-10"
+                          onClick={() =>
+                            setDraftSlots((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          حذف الموعد
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Conflict Warnings */}
                 {conflictWarnings.length > 0 && (

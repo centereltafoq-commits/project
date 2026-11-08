@@ -32,27 +32,62 @@ export class DashboardService {
       await this.cache.set(cacheKey, summary, DASHBOARD_CACHE_TTL_SECONDS);
     }
 
-    if (
-      actor &&
-      actor.roleCode !== SystemRole.OWNER &&
-      !actor.permissions?.includes(PERMISSIONS.FINANCE_VIEW)
-    ) {
-      return {
-        ...summary,
-        totalRevenue: 0,
-        totalCollectedPayments: 0,
-        totalReceivables: 0,
-        totalTeacherDues: 0,
-        totalAssistantDues: 0,
-        totalTeacherPaidOut: 0,
-        totalAssistantPaidOut: 0,
-        totalExpenses: 0,
-        netCenterResult: 0,
-        netCashFlow: 0,
-      };
+    const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
+    const perms = actor?.permissions ?? [];
+    const canViewFinance = isOwner || perms.includes(PERMISSIONS.FINANCE_VIEW);
+    const canViewBookings = isOwner || perms.includes(PERMISSIONS.BOOKINGS_VIEW);
+    const canViewClassrooms = isOwner || perms.includes(PERMISSIONS.CLASSROOMS_VIEW);
+    const canViewAttendance =
+      isOwner ||
+      perms.includes(PERMISSIONS.ATTENDANCE_VIEW) ||
+      perms.includes(PERMISSIONS.SESSIONS_VIEW);
+
+    if (canViewFinance && canViewBookings && canViewClassrooms && canViewAttendance) {
+      return summary;
     }
 
-    return summary;
+    return {
+      ...summary,
+      ...(canViewAttendance ? {} : { todaySessions: [] }),
+      ...(canViewBookings
+        ? {}
+        : {
+            pendingBookingsCount: 0,
+            upcomingAppointments: [],
+          }),
+      ...(canViewClassrooms
+        ? {}
+        : {
+            classroomsSummary: {
+              total: 0,
+              availableNow: 0,
+              occupiedNow: 0,
+              maintenance: 0,
+            },
+            classroomsLive: [],
+          }),
+      ...(canViewFinance
+        ? {}
+        : {
+            monthlySessionsStats: {
+              ...summary.monthlySessionsStats,
+              totalBillableSessions: 0,
+              totalPaidSessions: 0,
+              totalUnpaidSessions: 0,
+              collectionRateSessions: 0,
+            },
+            totalRevenue: 0,
+            totalCollectedPayments: 0,
+            totalReceivables: 0,
+            totalTeacherDues: 0,
+            totalAssistantDues: 0,
+            totalTeacherPaidOut: 0,
+            totalAssistantPaidOut: 0,
+            totalExpenses: 0,
+            netCenterResult: 0,
+            netCashFlow: 0,
+          }),
+    };
   }
 
   private formatYearMonth(date: Date): string {

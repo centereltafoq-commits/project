@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus, ClassroomStatus } from '@edu-center/shared';
+import { BookingStatus, ClassroomStatus, PERMISSIONS, SystemRole } from '@edu-center/shared';
+import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CalendarRepository } from './calendar.repository';
 import { CalendarEventsQueryDto } from './dto/calendar-query.dto';
 import {
@@ -35,7 +36,13 @@ export interface UnifiedCalendarEvent {
 export class CalendarService {
   constructor(private readonly repository: CalendarRepository) {}
 
-  async getEvents(query: CalendarEventsQueryDto) {
+  async getEvents(query: CalendarEventsQueryDto, actor?: AuthenticatedUser) {
+    const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
+    const perms = actor?.permissions ?? [];
+    const canViewBookings = isOwner || perms.includes(PERMISSIONS.BOOKINGS_VIEW);
+    const canViewClassrooms = isOwner || perms.includes(PERMISSIONS.CLASSROOMS_VIEW);
+    const canViewTeachers = isOwner || perms.includes(PERMISSIONS.TEACHERS_VIEW);
+
     const { fromDate, toDate, rangeStartUtc, rangeEndUtc } = resolveAndValidateCalendarRange(
       query.from,
       query.to,
@@ -46,8 +53,8 @@ export class CalendarService {
       toDate,
       rangeStartUtc,
       rangeEndUtc,
-      teacherId: query.teacherId,
-      classroomId: query.classroomId,
+      teacherId: canViewTeachers ? query.teacherId : undefined,
+      classroomId: canViewClassrooms ? query.classroomId : undefined,
     });
 
     const events: UnifiedCalendarEvent[] = [];
@@ -82,80 +89,84 @@ export class CalendarService {
       });
     }
 
-    for (const b of data.bookings) {
-      const isPending = b.status === BookingStatus.PENDING;
-      const roomId = b.assignedClassroomId ?? b.requestedClassroomId;
-      const roomName = b.assignedClassroomName ?? b.requestedClassroomName;
-      const roomNum = b.assignedRoomNumber ?? b.requestedRoomNumber;
+    if (canViewBookings) {
+      for (const b of data.bookings) {
+        const isPending = b.status === BookingStatus.PENDING;
+        const roomId = b.assignedClassroomId ?? b.requestedClassroomId;
+        const roomName = b.assignedClassroomName ?? b.requestedClassroomName;
+        const roomNum = b.assignedRoomNumber ?? b.requestedRoomNumber;
 
-      if (!isPending && b.assignedClassroomId) {
-        occupiedRoomIds.add(b.assignedClassroomId);
-        incrementRoomEvents(b.assignedClassroomId);
+        if (!isPending && b.assignedClassroomId) {
+          occupiedRoomIds.add(b.assignedClassroomId);
+          incrementRoomEvents(b.assignedClassroomId);
+        }
+
+        events.push({
+          id: `booking-${b.id}`,
+          sourceId: b.id,
+          category: isPending ? 'PENDING_BOOKING' : 'CONFIRMED_BOOKING',
+          date: b.requestedDate,
+          startTime: b.startTime,
+          endTime: b.endTime,
+          title: b.purpose,
+          subtitle: b.studentName ? `${b.teacherName} مع ${b.studentName}` : b.teacherName,
+          status: b.status,
+          teacherId: b.teacherId,
+          teacherName: b.teacherName,
+          studentName: b.studentName,
+          classroomId: roomId,
+          classroomName: roomName,
+          roomNumber: roomNum,
+        });
+      }
+    }
+
+    if (canViewClassrooms) {
+      for (const rb of data.standaloneRoomBookings) {
+        occupiedRoomIds.add(rb.classroomId);
+        incrementRoomEvents(rb.classroomId);
+
+        events.push({
+          id: `room-booking-${rb.id}`,
+          sourceId: rb.id,
+          category: 'CONFIRMED_BOOKING',
+          date: rb.bookingDate,
+          startTime: rb.startTime,
+          endTime: rb.endTime,
+          title: rb.title,
+          subtitle: `حجز قاعة (${rb.classroomName})`,
+          status: rb.status,
+          classroomId: rb.classroomId,
+          classroomName: rb.classroomName,
+          roomNumber: rb.roomNumber,
+        });
       }
 
-      events.push({
-        id: `booking-${b.id}`,
-        sourceId: b.id,
-        category: isPending ? 'PENDING_BOOKING' : 'CONFIRMED_BOOKING',
-        date: b.requestedDate,
-        startTime: b.startTime,
-        endTime: b.endTime,
-        title: b.purpose,
-        subtitle: b.studentName ? `${b.teacherName} مع ${b.studentName}` : b.teacherName,
-        status: b.status,
-        teacherId: b.teacherId,
-        teacherName: b.teacherName,
-        studentName: b.studentName,
-        classroomId: roomId,
-        classroomName: roomName,
-        roomNumber: roomNum,
-      });
-    }
-
-    for (const rb of data.standaloneRoomBookings) {
-      occupiedRoomIds.add(rb.classroomId);
-      incrementRoomEvents(rb.classroomId);
-
-      events.push({
-        id: `room-booking-${rb.id}`,
-        sourceId: rb.id,
-        category: 'CONFIRMED_BOOKING',
-        date: rb.bookingDate,
-        startTime: rb.startTime,
-        endTime: rb.endTime,
-        title: rb.title,
-        subtitle: `حجز قاعة (${rb.classroomName})`,
-        status: rb.status,
-        classroomId: rb.classroomId,
-        classroomName: rb.classroomName,
-        roomNumber: rb.roomNumber,
-      });
-    }
-
-    for (const m of data.maintenances) {
-      maintenanceRoomIds.add(m.classroomId);
-      const segments = expandMaintenanceDays({
-        startAt: m.startAt,
-        endAt: m.endAt,
-        fromDate,
-        toDate,
-      });
-
-      for (const seg of segments) {
-        events.push({
-          id: `maint-${m.id}-${seg.date}`,
-          sourceId: m.id,
-          category: 'CLASSROOM_MAINTENANCE',
-          date: seg.date,
-          startTime: seg.startTime,
-          endTime: seg.endTime,
-          title: `صيانة: ${m.classroomName}`,
-          subtitle: m.reason,
-          status: ClassroomStatus.MAINTENANCE,
-          classroomId: m.classroomId,
-          classroomName: m.classroomName,
-          roomNumber: m.roomNumber,
+      for (const m of data.maintenances) {
+        maintenanceRoomIds.add(m.classroomId);
+        const segments = expandMaintenanceDays({
+          startAt: m.startAt,
+          endAt: m.endAt,
+          fromDate,
+          toDate,
         });
+
+        for (const seg of segments) {
+          events.push({
+            id: `maint-${m.id}-${seg.date}`,
+            sourceId: m.id,
+            category: 'CLASSROOM_MAINTENANCE',
+            date: seg.date,
+            startTime: seg.startTime,
+            endTime: seg.endTime,
+            title: `صيانة: ${m.classroomName}`,
+            subtitle: m.reason,
+            status: ClassroomStatus.MAINTENANCE,
+            classroomId: m.classroomId,
+            classroomName: m.classroomName,
+            roomNumber: m.roomNumber,
+          });
+        }
       }
     }
 
@@ -164,26 +175,28 @@ export class CalendarService {
       return a.startTime.localeCompare(b.startTime);
     });
 
-    const classroomBreakdown = data.allClassrooms.map((room) => {
-      const inMaint =
-        room.status === ClassroomStatus.MAINTENANCE || maintenanceRoomIds.has(room.id);
-      const isInactive = room.status === ClassroomStatus.INACTIVE;
-      const hasOccupiedSlots = occupiedRoomIds.has(room.id);
+    const classroomBreakdown = canViewClassrooms
+      ? data.allClassrooms.map((room) => {
+          const inMaint =
+            room.status === ClassroomStatus.MAINTENANCE || maintenanceRoomIds.has(room.id);
+          const isInactive = room.status === ClassroomStatus.INACTIVE;
+          const hasOccupiedSlots = occupiedRoomIds.has(room.id);
 
-      const state: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'INACTIVE' = isInactive
-        ? 'INACTIVE'
-        : inMaint
-          ? 'MAINTENANCE'
-          : hasOccupiedSlots
-            ? 'OCCUPIED'
-            : 'AVAILABLE';
+          const state: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'INACTIVE' = isInactive
+            ? 'INACTIVE'
+            : inMaint
+              ? 'MAINTENANCE'
+              : hasOccupiedSlots
+                ? 'OCCUPIED'
+                : 'AVAILABLE';
 
-      return {
-        ...room,
-        state,
-        eventsCount: eventsCountByRoom.get(room.id) ?? 0,
-      };
-    });
+          return {
+            ...room,
+            state,
+            eventsCount: eventsCountByRoom.get(room.id) ?? 0,
+          };
+        })
+      : [];
 
     const classroomsSummary = {
       total: classroomBreakdown.length,
@@ -200,8 +213,8 @@ export class CalendarService {
       events,
       classroomsSummary,
       filters: {
-        teachers: data.allTeachers,
-        classrooms: data.allClassrooms,
+        teachers: canViewTeachers ? data.allTeachers : [],
+        classrooms: canViewClassrooms ? data.allClassrooms : [],
       },
     };
   }

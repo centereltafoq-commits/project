@@ -9,11 +9,13 @@ import { TeacherAvailabilitySlot } from './teachers.types';
 interface TeacherAvailabilityTabProps {
   teacherId: string;
   initialSlots: TeacherAvailabilitySlot[];
+  canEdit?: boolean;
 }
 
 export function TeacherAvailabilityTab({
   teacherId,
   initialSlots,
+  canEdit = false,
 }: TeacherAvailabilityTabProps) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
@@ -64,26 +66,30 @@ export function TeacherAvailabilityTab({
             تُستخدم هذه الفترات للتحقق من توافر المدرس عند حجز مواعيد إضافية أو حصص تعويضية
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={addSlot}>
-            <Plus className="h-4 w-4" />
-            إضافة فترة إتاحة
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            isLoading={saveMutation.isPending}
-            onClick={() => saveMutation.mutate()}
-          >
-            <Save className="h-4 w-4" />
-            حفظ الإتاحة
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={addSlot}>
+              <Plus className="h-4 w-4" />
+              إضافة فترة إتاحة
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              isLoading={saveMutation.isPending}
+              onClick={() => saveMutation.mutate()}
+            >
+              <Save className="h-4 w-4" />
+              حفظ الإتاحة
+            </Button>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {slots.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            لم يتم تحديد أوقات إتاحة أسبوعية بعد. اضغط &quot;إضافة فترة إتاحة&quot; للبدء.
+            {canEdit
+              ? 'لم يتم تحديد أوقات إتاحة أسبوعية بعد. اضغط "إضافة فترة إتاحة" للبدء.'
+              : 'لم يتم تحديد أوقات إتاحة أسبوعية لهذا المدرس بعد.'}
           </p>
         ) : (
           slots.map((slot, idx) => (
@@ -92,7 +98,9 @@ export function TeacherAvailabilityTab({
               className="grid grid-cols-1 items-end gap-3 rounded-xl border border-border bg-muted/20 p-3 sm:grid-cols-5"
             >
               <Select
+                searchable
                 label="اليوم"
+                disabled={!canEdit}
                 value={String(slot.dayOfWeek)}
                 onChange={(e) => updateSlot(idx, { dayOfWeek: Number(e.target.value) })}
                 options={ARABIC_DAYS.map((day, dIdx) => ({ value: String(dIdx), label: day }))}
@@ -100,18 +108,21 @@ export function TeacherAvailabilityTab({
               <Input
                 label="من الساعة"
                 type="time"
+                disabled={!canEdit}
                 value={slot.startTime.slice(0, 5)}
                 onChange={(e) => updateSlot(idx, { startTime: e.target.value })}
               />
               <Input
                 label="إلى الساعة"
                 type="time"
+                disabled={!canEdit}
                 value={slot.endTime.slice(0, 5)}
                 onChange={(e) => updateSlot(idx, { endTime: e.target.value })}
               />
               <label className="flex h-10 cursor-pointer items-center gap-2 px-2 text-sm font-semibold">
                 <input
                   type="checkbox"
+                  disabled={!canEdit}
                   checked={slot.isActive}
                   onChange={(e) => updateSlot(idx, { isActive: e.target.checked })}
                   className="h-4 w-4"
@@ -119,15 +130,17 @@ export function TeacherAvailabilityTab({
                 فترة مفعّلة
               </label>
               <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={() => removeSlot(idx)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  حذف
-                </Button>
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    onClick={() => removeSlot(idx)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    حذف
+                  </Button>
+                )}
               </div>
             </div>
           ))

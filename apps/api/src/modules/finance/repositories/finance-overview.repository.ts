@@ -3,12 +3,15 @@ import { asc, eq, ne, sql } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../../database/database.module';
 import {
   assistantMonthlyRecords,
+  assistantPayouts,
   assistants,
   expenses,
   groups,
+  payments,
   studentMonthlyRecords,
   students,
   teacherMonthlyRecords,
+  teacherPayouts,
   teachers,
 } from '../../../database/schemas';
 import { parseMoney, roundMoney } from '../utils/money.util';
@@ -75,7 +78,15 @@ export class FinanceOverviewRepository {
   }
 
   async fetchMonthExecutiveSummary(yearMonth: string) {
-    const [[studentAgg], [teacherAgg], [assistantAgg], [expenseAgg]] = await Promise.all([
+    const [
+      [studentAgg],
+      [paymentsAgg],
+      [teacherAgg],
+      [teacherPayoutAgg],
+      [assistantAgg],
+      [assistantPayoutAgg],
+      [expenseAgg],
+    ] = await Promise.all([
       this.db
         .select({
           totalDue: sql<string>`COALESCE(SUM(${studentMonthlyRecords.totalDue}), 0)`,
@@ -88,6 +99,12 @@ export class FinanceOverviewRepository {
         .where(eq(studentMonthlyRecords.yearMonth, yearMonth)),
       this.db
         .select({
+          totalCollected: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
+        })
+        .from(payments)
+        .where(eq(payments.yearMonth, yearMonth)),
+      this.db
+        .select({
           totalDues: sql<string>`COALESCE(SUM(${teacherMonthlyRecords.totalDues}), 0)`,
           totalPaidOut: sql<string>`COALESCE(SUM(${teacherMonthlyRecords.totalPaidOut}), 0)`,
           remaining: sql<string>`COALESCE(SUM(${teacherMonthlyRecords.remainingBalance}), 0)`,
@@ -98,12 +115,26 @@ export class FinanceOverviewRepository {
         .where(eq(teacherMonthlyRecords.yearMonth, yearMonth)),
       this.db
         .select({
+          totalPaidOut: sql<string>`COALESCE(SUM(${teacherPayouts.amount}), 0)`,
+        })
+        .from(teacherPayouts)
+        .where(eq(teacherPayouts.yearMonth, yearMonth)),
+      this.db
+        .select({
           totalDues: sql<string>`COALESCE(SUM(${assistantMonthlyRecords.totalDues}), 0)`,
           totalPaidOut: sql<string>`COALESCE(SUM(${assistantMonthlyRecords.totalPaidOut}), 0)`,
           remaining: sql<string>`COALESCE(SUM(${assistantMonthlyRecords.remainingBalance}), 0)`,
+          closedCount: sql<number>`COUNT(*) FILTER (WHERE ${assistantMonthlyRecords.isClosed} = true)`,
+          openCount: sql<number>`COUNT(*) FILTER (WHERE ${assistantMonthlyRecords.isClosed} = false)`,
         })
         .from(assistantMonthlyRecords)
         .where(eq(assistantMonthlyRecords.yearMonth, yearMonth)),
+      this.db
+        .select({
+          totalPaidOut: sql<string>`COALESCE(SUM(${assistantPayouts.amount}), 0)`,
+        })
+        .from(assistantPayouts)
+        .where(eq(assistantPayouts.yearMonth, yearMonth)),
       this.db
         .select({
           totalExpenses: sql<string>`COALESCE(SUM(${expenses.amount}), 0)`,
@@ -113,16 +144,29 @@ export class FinanceOverviewRepository {
     ]);
 
     const closedTotal =
-      Number(studentAgg?.closedCount ?? 0) + Number(teacherAgg?.closedCount ?? 0);
+      Number(studentAgg?.closedCount ?? 0) +
+      Number(teacherAgg?.closedCount ?? 0) +
+      Number(assistantAgg?.closedCount ?? 0);
     const openTotal =
-      Number(studentAgg?.openCount ?? 0) + Number(teacherAgg?.openCount ?? 0);
+      Number(studentAgg?.openCount ?? 0) +
+      Number(teacherAgg?.openCount ?? 0) +
+      Number(assistantAgg?.openCount ?? 0);
 
     const studentTotalDue = parseMoney(studentAgg?.totalDue);
-    const studentTotalPaid = parseMoney(studentAgg?.totalPaid);
+    const studentTotalPaid = Math.max(
+      parseMoney(studentAgg?.totalPaid),
+      parseMoney(paymentsAgg?.totalCollected),
+    );
     const teacherTotalDues = parseMoney(teacherAgg?.totalDues);
-    const teacherTotalPaidOut = parseMoney(teacherAgg?.totalPaidOut);
+    const teacherTotalPaidOut = Math.max(
+      parseMoney(teacherAgg?.totalPaidOut),
+      parseMoney(teacherPayoutAgg?.totalPaidOut),
+    );
     const assistantTotalDues = parseMoney(assistantAgg?.totalDues);
-    const assistantTotalPaidOut = parseMoney(assistantAgg?.totalPaidOut);
+    const assistantTotalPaidOut = Math.max(
+      parseMoney(assistantAgg?.totalPaidOut),
+      parseMoney(assistantPayoutAgg?.totalPaidOut),
+    );
     const totalExpenses = parseMoney(expenseAgg?.totalExpenses);
 
     const netCenterProfit = roundMoney(

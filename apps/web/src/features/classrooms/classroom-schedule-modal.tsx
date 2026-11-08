@@ -235,8 +235,8 @@ export function ClassroomScheduleModal({
                                 <span className="font-bold text-foreground truncate max-w-[140px]">
                                   {slot.groupName}
                                 </span>
-                                <Badge variant="info" className="text-[10px] py-0 px-1 font-mono">
-                                  {slot.startTime} - {slot.endTime}
+                                <Badge variant="info" className="text-[10px] py-0 px-1">
+                                  {formatTimeRangeAr(slot.startTime, slot.endTime)}
                                 </Badge>
                               </div>
                               <p className="mt-1 text-[11px] text-muted-foreground truncate">
@@ -388,7 +388,7 @@ export function ClassroomScheduleModal({
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {(g.slotsForThisRoom ?? g.scheduleSlots ?? []).map((s, idx) => (
                         <Badge key={idx} variant="info">
-                          {ARABIC_DAYS[s.dayOfWeek]}: {s.startTime} - {s.endTime}
+                          {ARABIC_DAYS[s.dayOfWeek]}: {formatTimeRangeAr(s.startTime, s.endTime)}
                         </Badge>
                       ))}
                     </div>

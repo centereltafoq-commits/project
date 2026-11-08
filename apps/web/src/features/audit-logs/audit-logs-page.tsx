@@ -153,6 +153,8 @@ export function AuditLogsPage() {
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
+              searchPlaceholder="ابحث في الأقسام..."
               placeholder="كل الأقسام"
               value={entityType}
               onChange={(e) => {

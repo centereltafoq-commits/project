@@ -1,11 +1,14 @@
 import { Link } from 'react-router-dom';
-import { AssistantCalculationMethod } from '@edu-center/shared';
+import { AssistantCalculationMethod, PERMISSIONS } from '@edu-center/shared';
 import { Badge, Card } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatCurrency, formatDateAr, formatYearMonthAr } from '@/lib/formatters';
 import { PAYMENT_METHOD_LABELS } from '../students/students.types';
 import { ASSISTANT_CALC_METHOD_LABELS, AssistantProfileData } from './assistants.types';
 
 export function AssistantMonthlyDuesTab({ data }: { data: AssistantProfileData }) {
+  const { hasPermission } = useAuth();
+  const canViewGroups = hasPermission(PERMISSIONS.GROUPS_VIEW);
   const { groupDues, baseGlobalDue, totalDues } = data.monthlyBreakdown;
   return (
     <Card className="overflow-hidden">
@@ -35,9 +38,13 @@ export function AssistantMonthlyDuesTab({ data }: { data: AssistantProfileData }
                 return (
                   <tr key={d.groupId} className="hover:bg-accent/30">
                     <td className="px-4 py-3 font-bold">
-                      <Link to={`/groups/${d.groupId}`} className="text-primary hover:underline">
-                        {d.groupName}
-                      </Link>
+                      {canViewGroups ? (
+                        <Link to={`/groups/${d.groupId}`} className="text-primary hover:underline">
+                          {d.groupName}
+                        </Link>
+                      ) : (
+                        <span>{d.groupName}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs">
                       {ASSISTANT_CALC_METHOD_LABELS[
@@ -82,6 +89,10 @@ export function AssistantMonthlyDuesTab({ data }: { data: AssistantProfileData }
 }
 
 export function AssistantLinkedGroupsTab({ data }: { data: AssistantProfileData }) {
+  const { hasPermission } = useAuth();
+  const canViewGroups = hasPermission(PERMISSIONS.GROUPS_VIEW);
+  const canSeeRate =
+    hasPermission(PERMISSIONS.FINANCE_VIEW) || hasPermission(PERMISSIONS.ASSISTANTS_MANAGE);
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
@@ -106,9 +117,15 @@ export function AssistantLinkedGroupsTab({ data }: { data: AssistantProfileData 
               data.linkedGroups.map((g) => (
                 <tr key={g.linkId} className="hover:bg-accent/30">
                   <td className="px-4 py-3 font-bold">
-                    <Link to={`/groups/${g.groupId}`} className="text-primary hover:underline">
-                      {g.groupName} ({g.groupCode})
-                    </Link>
+                    {canViewGroups ? (
+                      <Link to={`/groups/${g.groupId}`} className="text-primary hover:underline">
+                        {g.groupName} ({g.groupCode})
+                      </Link>
+                    ) : (
+                      <span>
+                        {g.groupName} ({g.groupCode})
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">{g.teacherName}</td>
                   <td className="px-4 py-3">
@@ -116,7 +133,9 @@ export function AssistantLinkedGroupsTab({ data }: { data: AssistantProfileData 
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {g.overrideCalculationMethod
-                      ? `${ASSISTANT_CALC_METHOD_LABELS[g.overrideCalculationMethod]} (${g.overrideRateValue ?? ''})`
+                      ? canSeeRate && g.overrideRateValue != null
+                        ? `${ASSISTANT_CALC_METHOD_LABELS[g.overrideCalculationMethod]} (${formatCurrency(g.overrideRateValue)})`
+                        : ASSISTANT_CALC_METHOD_LABELS[g.overrideCalculationMethod]
                       : 'حسب الإعداد الافتراضي للمساعد'}
                   </td>
                   <td className="px-4 py-3">

@@ -241,6 +241,8 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
+              clearable
               placeholder="كل حالات الاشتراك"
               value={statusFilter}
               onChange={(e) => {

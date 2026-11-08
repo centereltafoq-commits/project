@@ -180,6 +180,33 @@ export function buildStudentSettlementBatch(
     }
   }
 
+  for (const existing of snap.existingStudentRecords) {
+    const key = `${existing.studentId}:${existing.groupId}`;
+    if (existing.isClosed || uniqueEnrollments.has(key)) continue;
+
+    const currentPaid = Math.max(
+      paidByStudentGroup.get(key) ?? 0,
+      parseMoney(existing.totalPaid),
+    );
+    studentRows.push({
+      studentId: existing.studentId,
+      groupId: existing.groupId,
+      yearMonth,
+      totalGroupSessions: 0,
+      eligibleSessions: 0,
+      presentCount: 0,
+      absentCount: 0,
+      excusedCount: 0,
+      makeupAttendedCount: 0,
+      sessionPriceSnapshot: '0.00',
+      extraMakeupFees: '0.00',
+      totalDue: '0.00',
+      totalPaid: toMoneyString(currentPaid),
+      remainingBalance: '0.00',
+      isClosed: false,
+    });
+  }
+
   return {
     studentRows,
     executedSessionsByGroup,

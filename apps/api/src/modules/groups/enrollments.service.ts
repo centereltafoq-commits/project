@@ -3,11 +3,14 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { EnrollmentStatus } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { MonthlySettlementService } from '../finance/monthly-settlement.service';
 import {
   CreateEnrollmentDto,
   EnrollmentQueryDto,
@@ -22,6 +25,8 @@ export class EnrollmentsService {
     private readonly groupsRepository: GroupsRepository,
     private readonly enrollmentsRepository: EnrollmentsRepository,
     private readonly audit: AuditLogsService,
+    @Optional() private readonly settlementService?: MonthlySettlementService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   async listEnrollments(groupId: string, query: EnrollmentQueryDto) {
@@ -89,6 +94,22 @@ export class EnrollmentsService {
       entityId: created.id,
       afterData: created,
     });
+
+    if (this.settlementService) {
+      const now = new Date();
+      const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const startYm = startDate.slice(0, 7);
+      const months = Array.from(new Set([currentYm, startYm]));
+      for (const ym of months) {
+        await this.settlementService.recalculateMonth(ym);
+      }
+    }
+    try {
+      await Promise.all([
+        this.cache?.invalidatePrefix('dashboard:summary:'),
+        this.cache?.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
 
     return created;
   }
@@ -158,6 +179,23 @@ export class EnrollmentsService {
       beforeData: existing,
       afterData: updated,
     });
+
+    if (this.settlementService) {
+      const now = new Date();
+      const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const months = new Set<string>([currentYm]);
+      if (existing.startDate) months.add(existing.startDate.slice(0, 7));
+      if (dto.startDate) months.add(dto.startDate.slice(0, 7));
+      for (const ym of months) {
+        await this.settlementService.recalculateMonth(ym);
+      }
+    }
+    try {
+      await Promise.all([
+        this.cache?.invalidatePrefix('dashboard:summary:'),
+        this.cache?.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
 
     return updated;
   }

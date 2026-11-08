@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Edit3, Eye, Plus, RotateCcw } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
@@ -27,6 +27,8 @@ import {
 export function TeachersPage() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+  const canViewAllTeachers = hasPermission(PERMISSIONS.TEACHERS_VIEW);
+  const canViewOwnTeacher = hasPermission(PERMISSIONS.TEACHERS_VIEW_OWN);
   const canManageTeachers = hasPermission(PERMISSIONS.TEACHERS_MANAGE);
 
   const [page, setPage] = React.useState(1);
@@ -42,8 +44,15 @@ export function TeachersPage() {
   const [quickViewTeacher, setQuickViewTeacher] = React.useState<TeacherRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
 
+  const { data: ownProfile, isLoading: ownLoading } = useQuery<{ teacher: { id: string } }>({
+    queryKey: ['teacher-own-profile-redirect'],
+    enabled: !canViewAllTeachers && canViewOwnTeacher,
+    queryFn: async () => (await apiClient.get('/teachers/me/profile')).data,
+  });
+
   const { data, isLoading } = useQuery<PaginatedResult<TeacherRow>>({
     queryKey: ['teachers', page, limit, debouncedSearch, statusFilter, debouncedSpec],
+    enabled: canViewAllTeachers,
     queryFn: async () => {
       const res = await apiClient.get('/teachers', {
         params: {
@@ -57,6 +66,20 @@ export function TeachersPage() {
       return res.data;
     },
   });
+
+  if (!canViewAllTeachers && canViewOwnTeacher) {
+    if (ownLoading) {
+      return <div className="h-32 animate-pulse rounded-xl bg-muted" />;
+    }
+    if (ownProfile?.teacher?.id) {
+      return <Navigate to={`/teachers/${ownProfile.teacher.id}`} replace />;
+    }
+    return (
+      <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+        لا يوجد ملف مدرس مرتبط بحسابك الحالي. يرجى مراجعة إدارة السنتر.
+      </div>
+    );
+  }
 
   const columns: TableColumn<TeacherRow>[] = [
     {
@@ -202,6 +225,7 @@ export function TeachersPage() {
               className="w-44"
             />
             <Select
+              searchable
               placeholder="كل حالات التعاقد"
               value={statusFilter}
               onChange={(e) => {

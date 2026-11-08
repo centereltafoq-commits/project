@@ -22,17 +22,19 @@ import { CollectPaymentModal } from '../modals/collect-payment-modal';
 
 interface StudentBillingTabProps {
   yearMonth: string;
+  isMonthClosed?: boolean;
   lookups?: FinanceLookups;
   onShowReceipt: (receipt: PaymentRow) => void;
 }
 
 export function StudentBillingTab({
   yearMonth,
+  isMonthClosed = false,
   lookups,
   onShowReceipt,
 }: StudentBillingTabProps) {
   const { hasPermission } = useAuth();
-  const canCollect = hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
+  const canCollect = hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT) && !isMonthClosed;
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -267,18 +269,20 @@ export function StudentBillingTab({
           </div>
         }
         actions={
-          <Button
-            size="sm"
-            variant="success"
-            className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-sm"
-            onClick={() => {
-              setSelectedRecord(null);
-              setCollectOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            تسجيل دفعة / إيصال
-          </Button>
+          canCollect ? (
+            <Button
+              size="sm"
+              variant="success"
+              className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-sm"
+              onClick={() => {
+                setSelectedRecord(null);
+                setCollectOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              تسجيل دفعة / إيصال
+            </Button>
+          ) : null
         }
       />
 

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, ilike, or, sql, SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, ne, or, sql, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   assistants,
@@ -9,6 +9,7 @@ import {
   groupAssistants,
   groups,
   groupTeachers,
+  students,
   teachers,
 } from '../../database/schemas';
 import { normalizePagination } from '../../common/utils/pagination.util';
@@ -170,5 +171,70 @@ export class GroupsRepository {
       teachers: linkedTeachers,
       assistants: linkedAssistants,
     };
+  }
+
+  async getLookups() {
+    const [teacherList, assistantList, studentList] = await Promise.all([
+      this.db
+        .select({
+          id: teachers.id,
+          teacherCode: teachers.teacherCode,
+          fullName: teachers.fullName,
+          specialization: teachers.specialization,
+        })
+        .from(teachers)
+        .where(eq(teachers.employmentStatus, 'ACTIVE'))
+        .orderBy(asc(teachers.fullName))
+        .limit(1000),
+      this.db
+        .select({
+          id: assistants.id,
+          assistantCode: assistants.assistantCode,
+          fullName: assistants.fullName,
+          calculationMethod: assistants.calculationMethod,
+          rateValue: assistants.rateValue,
+        })
+        .from(assistants)
+        .where(eq(assistants.status, 'ACTIVE'))
+        .orderBy(asc(assistants.fullName))
+        .limit(1000),
+      this.db
+        .select({
+          id: students.id,
+          studentCode: students.studentCode,
+          fullName: students.fullName,
+          phone: students.phone,
+          gradeLevel: students.gradeLevel,
+        })
+        .from(students)
+        .where(eq(students.status, 'ACTIVE'))
+        .orderBy(asc(students.fullName))
+        .limit(2000),
+    ]);
+
+    return {
+      teachers: teacherList,
+      assistants: assistantList,
+      students: studentList,
+    };
+  }
+
+  async findActiveGroupsByTeacher(teacherId: string, excludeGroupId?: string) {
+    const conditions: SQL[] = [
+      eq(groups.isActive, true),
+      eq(groups.primaryTeacherId, teacherId),
+    ];
+    if (excludeGroupId) {
+      conditions.push(ne(groups.id, excludeGroupId));
+    }
+
+    return this.db
+      .select({
+        id: groups.id,
+        name: groups.name,
+        scheduleSlots: groups.scheduleSlots,
+      })
+      .from(groups)
+      .where(and(...conditions));
   }
 }

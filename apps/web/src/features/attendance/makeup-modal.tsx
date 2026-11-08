@@ -188,6 +188,7 @@ export function MakeupModal({
             }))}
           />
           <Select
+            searchable
             label="حالة الحصة التعويضية"
             value={status}
             onChange={(e) => setStatus(e.target.value as MakeupStatus)}

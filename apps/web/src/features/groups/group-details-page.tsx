@@ -34,6 +34,9 @@ export function GroupDetailsPage() {
   const { hasPermission } = useAuth();
   const canManageGroups = hasPermission(PERMISSIONS.GROUPS_MANAGE);
   const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+  const canSeeSplit = canViewFinance || canManageGroups;
+  const canViewTeachers = hasPermission(PERMISSIONS.TEACHERS_VIEW);
+  const canViewAssistants = hasPermission(PERMISSIONS.ASSISTANTS_VIEW);
   const [editOpen, setEditOpen] = React.useState(false);
 
   const { data: group, isLoading } = useQuery<GroupDetailData>({
@@ -78,7 +81,7 @@ export function GroupDetailsPage() {
         }
       />
 
-      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${canViewFinance ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${canSeeSplit ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         <StatCard
           title="الطلاب النشطون بالمجموعة"
           value={`${group.activeStudentsCount} / ${group.maxStudents}`}
@@ -100,13 +103,15 @@ export function GroupDetailsPage() {
           icon={Calculator}
           tone="success"
         />
-        {canViewFinance && (
+        {canSeeSplit && (
           <StatCard
             title="تقسيم العائد (مدرس / سنتر)"
             value={
               pol?.revenueSplitMethod === 'CUSTOM_PERCENTAGE'
                 ? `${Number(pol.teacherPercentage)}% للمدرس`
-                : `${formatCurrency(pol?.teacherSharePerStudent)} / ${formatCurrency(pol?.centerSharePerStudent)}`
+                : pol?.revenueSplitMethod === 'FIXED_PER_SESSION'
+                  ? `${formatCurrency(pol.teacherSharePerStudent)} / حصة`
+                  : `${formatCurrency(pol?.teacherSharePerStudent)} / ${formatCurrency(pol?.centerSharePerStudent)}`
             }
             subtitle={
               pol ? SPLIT_METHOD_LABELS[pol.revenueSplitMethod] : 'لم تحدد سياسة'
@@ -117,7 +122,7 @@ export function GroupDetailsPage() {
         )}
       </div>
 
-      <div className={`grid grid-cols-1 gap-4 ${canViewFinance ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+      <div className={`grid grid-cols-1 gap-4 ${canSeeSplit ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <Card>
           <CardHeader>
             <CardTitle>المدرسون والمساعدون</CardTitle>
@@ -125,12 +130,16 @@ export function GroupDetailsPage() {
           <CardContent className="space-y-3 text-sm">
             <div>
               <span className="text-muted-foreground">المدرس الأساسي: </span>
-              <Link
-                to={`/teachers/${group.primaryTeacherId}`}
-                className="font-bold text-primary hover:underline"
-              >
-                {group.primaryTeacherName}
-              </Link>
+              {canViewTeachers ? (
+                <Link
+                  to={`/teachers/${group.primaryTeacherId}`}
+                  className="font-bold text-primary hover:underline"
+                >
+                  {group.primaryTeacherName}
+                </Link>
+              ) : (
+                <span className="font-bold text-foreground">{group.primaryTeacherName}</span>
+              )}
             </div>
             <div>
               <p className="mb-1.5 text-xs font-bold text-muted-foreground">المساعدون المرتبطون:</p>
@@ -138,18 +147,24 @@ export function GroupDetailsPage() {
                 <p className="text-xs text-muted-foreground">لا يوجد مساعدون مرتبطون</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
-                  {group.assistants.map((a) => (
-                    <Link key={a.linkId} to={`/assistants/${a.assistantId}`}>
-                      <Badge variant="purple">{a.fullName}</Badge>
-                    </Link>
-                  ))}
+                  {group.assistants.map((a) =>
+                    canViewAssistants ? (
+                      <Link key={a.linkId} to={`/assistants/${a.assistantId}`}>
+                        <Badge variant="purple">{a.fullName}</Badge>
+                      </Link>
+                    ) : (
+                      <Badge key={a.linkId} variant="purple">
+                        {a.fullName}
+                      </Badge>
+                    ),
+                  )}
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {canViewFinance && (
+        {canSeeSplit && (
           <Card>
             <CardHeader>
               <CardTitle>قواعد الغياب والمحاسبة</CardTitle>

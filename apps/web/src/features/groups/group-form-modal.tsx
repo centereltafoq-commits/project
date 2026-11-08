@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Building2 } from 'lucide-react';
 import {
   AssistantCalculationMethod,
   FullMonthAbsencePolicy,
   GroupRevenueSplitMethod,
-  PaginatedResult,
 } from '@edu-center/shared';
-import { Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
+import { Badge, Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { GRADE_LEVEL_OPTIONS } from '../students/students.types';
@@ -60,26 +60,28 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
   const [slots, setSlots] = React.useState<GroupScheduleSlotItem[]>([]);
   const [assistantLinks, setAssistantLinks] = React.useState<AssistantDraftLink[]>([]);
 
-  const { data: teachersData } = useQuery<PaginatedResult<{ id: string; fullName: string }>>({
-    queryKey: ['teachers-lookup'],
+  const { data: lookupsData } = useQuery<{
+    teachers: Array<{ id: string; fullName: string; specialization?: string }>;
+    assistants: Array<{ id: string; fullName: string }>;
+  }>({
+    queryKey: ['groups-lookups'],
     enabled: open,
-    queryFn: async () => (await apiClient.get('/teachers', { params: { limit: 100 } })).data,
-  });
-  const { data: roomsData } = useQuery<
-    PaginatedResult<{ id: string; name: string; roomNumber: string }>
-  >({
-    queryKey: ['classrooms-lookup'],
-    enabled: open,
-    queryFn: async () => (await apiClient.get('/classrooms', { params: { limit: 100 } })).data,
-  });
-  const { data: assistantsData } = useQuery<PaginatedResult<{ id: string; fullName: string }>>({
-    queryKey: ['assistants-lookup'],
-    enabled: open,
-    queryFn: async () => (await apiClient.get('/assistants', { params: { limit: 100 } })).data,
+    queryFn: async () => (await apiClient.get('/groups/lookups')).data,
   });
 
   React.useEffect(() => {
     if (!group) {
+      setForm({
+        groupCode: '',
+        name: '',
+        subject: '',
+        gradeLevel: gradeOptions[0]?.value ?? 'الثالث الثانوي',
+        primaryTeacherId: '',
+        defaultClassroomId: '',
+        maxStudents: '50',
+        isActive: true,
+        notes: '',
+      });
       setPolicyForm(DEFAULT_POLICY);
       setSlots([]);
       setAssistantLinks([]);
@@ -126,16 +128,17 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
         subject: form.subject.trim(),
         gradeLevel: form.gradeLevel,
         primaryTeacherId: form.primaryTeacherId,
-        defaultClassroomId: form.defaultClassroomId || null,
+        defaultClassroomId: isEdit ? group?.defaultClassroomId ?? null : null,
         monthlySessionsCount: Number(policyForm.monthlySessionsCount),
         monthlyPrice: Number(policyForm.monthlyPrice),
         maxStudents: Number(form.maxStudents),
         isActive: form.isActive,
         notes: form.notes || undefined,
         scheduleSlots: slots.map((s) => ({
-          ...s,
           dayOfWeek: Number(s.dayOfWeek),
-          classroomId: s.classroomId || null,
+          startTime: s.startTime.slice(0, 5),
+          endTime: s.endTime.slice(0, 5),
+          classroomId: isEdit ? s.classroomId ?? null : null,
         })),
         financialPolicy: {
           revenueSplitMethod: policyForm.revenueSplitMethod,
@@ -161,6 +164,11 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['groups-lookups'] });
+      queryClient.invalidateQueries({ queryKey: ['classroom-unallocated-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['classroom-allocated-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['finance'] });
       if (group) queryClient.invalidateQueries({ queryKey: ['group-detail', group.id] });
       notify(isEdit ? 'تم تحديث بيانات المجموعة والسياسة المالية' : 'تم إنشاء المجموعة بنجاح');
       onOpenChange(false);
@@ -194,24 +202,25 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
             placeholder="اختر المدرس"
             value={form.primaryTeacherId}
             onChange={(e) => setForm({ ...form, primaryTeacherId: e.target.value })}
-            options={(teachersData?.data ?? []).map((t) => ({ value: t.id, label: t.fullName }))}
-          />
-          <Select
-            label="القاعة الافتراضية (اختياري - تُنظم من إدارة القاعات)"
-            searchable
-            searchPlaceholder="ابحث باسم أو رقم القاعة..."
-            placeholder="بدون قاعة (تُنظم وتحدد لاحقاً من إدارة القاعات)"
-            value={form.defaultClassroomId}
-            onChange={(e) => setForm({ ...form, defaultClassroomId: e.target.value })}
-            options={[
-              { value: '', label: 'بدون قاعة (تُنظم وتحدد لاحقاً من إدارة القاعات)' },
-              ...(roomsData?.data ?? []).map((r) => ({
-                value: r.id,
-                label: `${r.name} (${r.roomNumber})`,
-              })),
-            ]}
+            options={(lookupsData?.teachers ?? []).map((t) => ({ value: t.id, label: t.fullName }))}
           />
           <Input label="الحد الأقصى للطلاب" type="number" min={1} required value={form.maxStudents} onChange={(e) => setForm({ ...form, maxStudents: e.target.value })} />
+          <div className="flex flex-col justify-end">
+            <div className="flex h-10 items-center justify-between rounded-xl border border-primary/25 bg-primary/5 px-3 text-xs">
+              <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                <Building2 className="h-3.5 w-3.5 text-primary" />
+                القاعة والتسكين:
+              </span>
+              {isEdit && group?.defaultClassroomName ? (
+                <Badge variant="info">{group.defaultClassroomName}</Badge>
+              ) : (
+                <span className="text-muted-foreground">تُنظم يدوياً من «إدارة القاعات»</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-xs text-muted-foreground">
+          ملاحظة التنظيم: لا يتم إسناد قاعة تلقائياً عند إنشاء المجموعة؛ بعد الحفظ يتم تسكين المجموعة وتنظيم مواعيدها في القاعة المناسبة من شاشة <strong className="text-foreground">إدارة القاعات</strong>.
         </div>
         <GroupFinancialPolicyFields values={policyForm} onChange={(patch) => setPolicyForm((prev) => ({ ...prev, ...patch }))} />
         <GroupScheduleAssistantsEditor
@@ -219,8 +228,7 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
           onSlotsChange={setSlots}
           assistantLinks={assistantLinks}
           onAssistantLinksChange={setAssistantLinks}
-          assistantOptions={(assistantsData?.data ?? []).map((a) => ({ value: a.id, label: a.fullName }))}
-          classroomOptions={(roomsData?.data ?? []).map((r) => ({ value: r.id, label: `${r.name} (${r.roomNumber})` }))}
+          assistantOptions={(lookupsData?.assistants ?? []).map((a) => ({ value: a.id, label: a.fullName }))}
         />
         <Textarea label="ملاحظات المجموعة" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         <div className="flex justify-end gap-2 pt-2">

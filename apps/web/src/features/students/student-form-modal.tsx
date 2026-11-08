@@ -138,6 +138,7 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
             onChange={(d) => setForm({ ...form, registrationDate: d })}
           />
           <Select
+            searchable
             label="حالة ملف الطالب"
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as StudentStatus })}

@@ -31,14 +31,40 @@ export class ReportsService {
     private readonly cache: CacheService,
   ) {}
 
-  async getFilterOptions(): Promise<ReportFilterOptionsResponse> {
+  async getFilterOptions(actor?: AuthenticatedUser): Promise<ReportFilterOptionsResponse> {
     const cacheKey = 'reports:filter-options';
-    const cached = await this.cache.get<ReportFilterOptionsResponse>(cacheKey);
-    if (cached) return cached;
+    let result = await this.cache.get<ReportFilterOptionsResponse>(cacheKey);
+    if (!result) {
+      result = await this.academicRepo.getFilterOptions();
+      await this.cache.set(cacheKey, result, 60);
+    }
 
-    const result = await this.academicRepo.getFilterOptions();
-    await this.cache.set(cacheKey, result, 60);
-    return result;
+    if (!actor || actor.roleCode === SystemRole.OWNER) {
+      return result;
+    }
+
+    const perms = actor.permissions ?? [];
+    const canSeeGroups =
+      perms.includes(PERMISSIONS.GROUPS_VIEW) ||
+      perms.includes(PERMISSIONS.ATTENDANCE_VIEW) ||
+      perms.includes(PERMISSIONS.FINANCE_VIEW) ||
+      perms.includes(PERMISSIONS.CLASSROOMS_VIEW);
+    const canSeeTeachers =
+      perms.includes(PERMISSIONS.TEACHERS_VIEW) ||
+      perms.includes(PERMISSIONS.FINANCE_VIEW) ||
+      perms.includes(PERMISSIONS.BOOKINGS_VIEW) ||
+      perms.includes(PERMISSIONS.ATTENDANCE_VIEW);
+    const canSeeStudents =
+      perms.includes(PERMISSIONS.STUDENTS_VIEW) ||
+      perms.includes(PERMISSIONS.FINANCE_VIEW) ||
+      perms.includes(PERMISSIONS.ATTENDANCE_VIEW) ||
+      perms.includes(PERMISSIONS.BOOKINGS_VIEW);
+
+    return {
+      groups: canSeeGroups ? result.groups : [],
+      teachers: canSeeTeachers ? result.teachers : [],
+      students: canSeeStudents ? result.students : [],
+    };
   }
 
   async generateReport(

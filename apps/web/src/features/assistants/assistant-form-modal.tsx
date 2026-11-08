@@ -126,12 +126,14 @@ export function AssistantFormModal({
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
           <Select
+            searchable
             label="حالة العمل"
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as 'ACTIVE' | 'INACTIVE' })}
             options={ASSISTANT_STATUS_OPTIONS}
           />
           <Select
+            searchable
             label="طريقة احتساب المستحقات الافتراضية"
             required
             value={form.calculationMethod}

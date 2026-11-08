@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gte, isNull, lte, ne, or } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { BookingStatus, EnrollmentStatus, SessionStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
@@ -47,8 +47,10 @@ export class BookingsConflictRepository {
     studentId?: string | null;
     classroomId?: string | null;
   }): Promise<ConflictContextData> {
-    const dayStart = new Date(`${params.date}T00:00:00.000Z`);
-    const dayEnd = new Date(`${params.date}T23:59:59.999Z`);
+    const dayStart = new Date(`${params.date}T00:00:00`);
+    const dayEnd = new Date(`${params.date}T23:59:59.999`);
+    const [qy, qm, qd] = params.date.split('-').map(Number);
+    const dayOfWeek = new Date(Date.UTC(qy!, qm! - 1, qd!)).getUTCDay();
     const bookingSlotFields = {
       id: bookingRequests.id,
       startTime: bookingRequests.startTime,
@@ -71,6 +73,8 @@ export class BookingsConflictRepository {
       roomMaintenances,
       roomBookings,
       roomSessions,
+      teacherRecurringGroups,
+      roomRecurringGroups,
     ] = await Promise.all([
       this.db
         .select(bookingSlotFields)
@@ -184,59 +188,167 @@ export class BookingsConflictRepository {
               ),
             )
         : Promise.resolve([]),
+      this.db
+        .select({
+          id: groups.id,
+          name: groups.name,
+          scheduleSlots: groups.scheduleSlots,
+        })
+        .from(groups)
+        .where(and(eq(groups.isActive, true), eq(groups.primaryTeacherId, params.teacherId))),
+      params.classroomId
+        ? this.db
+            .select({
+              id: groups.id,
+              name: groups.name,
+              defaultClassroomId: groups.defaultClassroomId,
+              scheduleSlots: groups.scheduleSlots,
+            })
+            .from(groups)
+            .where(
+              and(
+                eq(groups.isActive, true),
+                or(
+                  eq(groups.defaultClassroomId, params.classroomId),
+                  sql`EXISTS (
+                    SELECT 1 FROM jsonb_array_elements(COALESCE(${groups.scheduleSlots}, '[]'::jsonb)) AS slot
+                    WHERE (slot->>'classroomId') = ${params.classroomId}
+                  )`,
+                ),
+              ),
+            )
+        : Promise.resolve([]),
     ]);
+
+    const mergedTeacherSessions: TimeSlotItem[] = [...teacherSessions];
+    for (const grp of teacherRecurringGroups) {
+      for (const slot of grp.scheduleSlots ?? []) {
+        if (Number(slot.dayOfWeek) !== dayOfWeek) continue;
+        const alreadyPresent = mergedTeacherSessions.some(
+          (s) => s.startTime === slot.startTime && s.endTime === slot.endTime && s.label === grp.name,
+        );
+        if (!alreadyPresent) {
+          mergedTeacherSessions.push({
+            id: `recurring-tch-${grp.id}-${slot.startTime}`,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            label: grp.name,
+          });
+        }
+      }
+    }
+
+    const mergedRoomSessions: TimeSlotItem[] = [...roomSessions];
+    if (params.classroomId) {
+      for (const grp of roomRecurringGroups) {
+        for (const slot of grp.scheduleSlots ?? []) {
+          const belongsToRoom =
+            slot.classroomId === params.classroomId ||
+            (!slot.classroomId && grp.defaultClassroomId === params.classroomId);
+          if (!belongsToRoom || Number(slot.dayOfWeek) !== dayOfWeek) continue;
+          const alreadyPresent = mergedRoomSessions.some(
+            (s) =>
+              s.startTime === slot.startTime && s.endTime === slot.endTime && s.label === grp.name,
+          );
+          if (!alreadyPresent) {
+            mergedRoomSessions.push({
+              id: `recurring-room-${grp.id}-${slot.startTime}`,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              label: grp.name,
+            });
+          }
+        }
+      }
+    }
 
     return {
       teacherConfirmedBookings: teacherBookings,
-      teacherSessions,
+      teacherSessions: mergedTeacherSessions,
       studentConfirmedBookings: studentBookings,
       studentGroupSessions: studentSessions,
       classroom: classroomRow,
       classroomMaintenances: roomMaintenances,
       classroomBookings: roomBookings,
-      classroomSessions: roomSessions,
+      classroomSessions: mergedRoomSessions,
     };
   }
 
   async fetchAllClassroomsDayContext(date: string) {
-    const dayStart = new Date(`${date}T00:00:00.000Z`);
-    const dayEnd = new Date(`${date}T23:59:59.999Z`);
+    const dayStart = new Date(`${date}T00:00:00`);
+    const dayEnd = new Date(`${date}T23:59:59.999`);
+    const [qy, qm, qd] = date.split('-').map(Number);
+    const dayOfWeek = new Date(Date.UTC(qy!, qm! - 1, qd!)).getUTCDay();
 
-    const [allClassrooms, maintenances, roomBookings, roomSessions] = await Promise.all([
-      this.db.select().from(classrooms).orderBy(asc(classrooms.roomNumber)),
-      this.db
-        .select()
-        .from(classroomMaintenances)
-        .where(
-          and(
-            lte(classroomMaintenances.startAt, dayEnd),
-            gte(classroomMaintenances.endAt, dayStart),
+    const [allClassrooms, maintenances, roomBookings, roomSessions, activeGroups] =
+      await Promise.all([
+        this.db.select().from(classrooms).orderBy(asc(classrooms.roomNumber)),
+        this.db
+          .select()
+          .from(classroomMaintenances)
+          .where(
+            and(
+              lte(classroomMaintenances.startAt, dayEnd),
+              gte(classroomMaintenances.endAt, dayStart),
+            ),
           ),
-        ),
-      this.db
-        .select()
-        .from(classroomBookings)
-        .where(
-          and(
-            eq(classroomBookings.bookingDate, date),
-            eq(classroomBookings.status, BookingStatus.CONFIRMED),
+        this.db
+          .select()
+          .from(classroomBookings)
+          .where(
+            and(
+              eq(classroomBookings.bookingDate, date),
+              eq(classroomBookings.status, BookingStatus.CONFIRMED),
+            ),
           ),
-        ),
-      this.db
-        .select({
-          id: sessions.id,
-          classroomId: sessions.classroomId,
-          startTime: sessions.startTime,
-          endTime: sessions.endTime,
-          groupName: groups.name,
-        })
-        .from(sessions)
-        .innerJoin(groups, eq(sessions.groupId, groups.id))
-        .where(
-          and(eq(sessions.sessionDate, date), ne(sessions.status, SessionStatus.CANCELLED)),
-        ),
-    ]);
+        this.db
+          .select({
+            id: sessions.id,
+            classroomId: sessions.classroomId,
+            startTime: sessions.startTime,
+            endTime: sessions.endTime,
+            groupName: groups.name,
+          })
+          .from(sessions)
+          .innerJoin(groups, eq(sessions.groupId, groups.id))
+          .where(
+            and(eq(sessions.sessionDate, date), ne(sessions.status, SessionStatus.CANCELLED)),
+          ),
+        this.db
+          .select({
+            id: groups.id,
+            name: groups.name,
+            defaultClassroomId: groups.defaultClassroomId,
+            scheduleSlots: groups.scheduleSlots,
+          })
+          .from(groups)
+          .where(eq(groups.isActive, true)),
+      ]);
 
-    return { allClassrooms, maintenances, roomBookings, roomSessions };
+    const mergedRoomSessions = [...roomSessions];
+    for (const grp of activeGroups) {
+      for (const slot of grp.scheduleSlots ?? []) {
+        const roomId = slot.classroomId ?? grp.defaultClassroomId;
+        if (!roomId || Number(slot.dayOfWeek) !== dayOfWeek) continue;
+        const alreadyPresent = mergedRoomSessions.some(
+          (s) =>
+            s.classroomId === roomId &&
+            s.startTime === slot.startTime &&
+            s.endTime === slot.endTime &&
+            s.groupName === grp.name,
+        );
+        if (!alreadyPresent) {
+          mergedRoomSessions.push({
+            id: `recurring-room-${grp.id}-${slot.startTime}`,
+            classroomId: roomId,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            groupName: grp.name,
+          });
+        }
+      }
+    }
+
+    return { allClassrooms, maintenances, roomBookings, roomSessions: mergedRoomSessions };
   }
 }

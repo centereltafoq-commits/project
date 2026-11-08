@@ -32,9 +32,14 @@ export class BookingsController {
   ) {}
 
   @Get('lookups')
-  @RequirePermissions(PERMISSIONS.BOOKINGS_VIEW)
-  async getLookups() {
-    return this.bookingsService.getLookups();
+  @RequireAnyPermissions(
+    PERMISSIONS.BOOKINGS_VIEW,
+    PERMISSIONS.BOOKINGS_CREATE,
+    PERMISSIONS.BOOKINGS_APPROVE_ADMIN,
+    PERMISSIONS.BOOKINGS_APPROVE_TEACHER,
+  )
+  async getLookups(@CurrentUser() actor: AuthenticatedUser) {
+    return this.bookingsService.getLookups(actor);
   }
 
   @Get()
@@ -66,8 +71,9 @@ export class BookingsController {
   async getAvailableClassrooms(
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: AvailableClassroomsQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.reviewService.getAvailableClassrooms(id, query);
+    return this.reviewService.getAvailableClassrooms(id, query, actor);
   }
 
   @Post(':id/review')

@@ -251,6 +251,7 @@ export function ClassroomsPage() {
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select
+              searchable
               placeholder="كل الحالات"
               value={statusFilter}
               onChange={(e) => {
@@ -307,7 +308,9 @@ export function ClassroomsPage() {
         open={Boolean(scheduleRoom)}
         onOpenChange={(o) => !o && setScheduleRoom(null)}
         classroom={scheduleRoom}
-        onOpenAllocation={() => setAllocationRoom(scheduleRoom)}
+        onOpenAllocation={
+          canManageClassrooms ? () => setAllocationRoom(scheduleRoom) : undefined
+        }
       />
 
       <ClassroomAllocationModal

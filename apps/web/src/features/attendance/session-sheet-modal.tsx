@@ -161,6 +161,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
             </div>
             <Input
               placeholder="عنوان الدرس المشروح في هذه الحصة..."
+              disabled={!canRecord}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
             />

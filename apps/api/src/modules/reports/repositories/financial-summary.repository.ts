@@ -80,8 +80,7 @@ export class FinancialSummaryRepository {
     const totalReceivables = Number(stuRow?.totalReceivables ?? 0);
     const totalCollected = Number(payRow?.collected ?? 0);
     const teacherShare = Number(teacherShareRow?.teacher_share ?? 0);
-    const rawCenterShare = Number(teacherShareRow?.center_share ?? 0);
-    const centerShare = rawCenterShare > 0 ? rawCenterShare : Number((totalRevenue - teacherShare).toFixed(2));
+    const centerShare = Number((totalRevenue - teacherShare).toFixed(2));
     const teacherPaid = Number(teacherPaidRow?.paid ?? 0);
     const assistantDuesSum = Number(assistantDueRow?.assistant_dues ?? 0);
     const assistantPaid = Number(assistantPaidRow?.paid ?? 0);

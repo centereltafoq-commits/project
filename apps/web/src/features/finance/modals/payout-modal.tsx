@@ -85,6 +85,10 @@ export function PayoutModal({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['assistant-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['report-data'] });
       onOpenChange(false);
       notify(
         isTeacher ? 'تم تسجيل صرفية المدرس بنجاح' : 'تم تسجيل صرفية المساعد بنجاح',
@@ -144,6 +148,7 @@ export function PayoutModal({
             onChange={(e) => setAmount(e.target.value)}
           />
           <Select
+            searchable
             label="وسيلة الصرف"
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}

@@ -3,9 +3,11 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { ClassroomStatus } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import {
@@ -26,7 +28,17 @@ export class ClassroomsService {
     private readonly repository: ClassroomsRepository,
     private readonly availabilityRepository: ClassroomsAvailabilityRepository,
     private readonly audit: AuditLogsService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
+
+  private async invalidateCaches() {
+    try {
+      await Promise.all([
+        this.cache?.invalidatePrefix('dashboard:summary:'),
+        this.cache?.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
+  }
 
   async list(query: ClassroomQueryDto) {
     const { rows, total, page, limit } = await this.repository.findPaginated(query);
@@ -92,6 +104,7 @@ export class ClassroomsService {
       afterData: created,
     });
 
+    await this.invalidateCaches();
     return created;
   }
 
@@ -130,6 +143,7 @@ export class ClassroomsService {
       afterData: updated,
     });
 
+    await this.invalidateCaches();
     return updated;
   }
 
@@ -160,6 +174,7 @@ export class ClassroomsService {
       afterData: created,
     });
 
+    await this.invalidateCaches();
     return created;
   }
 
@@ -178,6 +193,7 @@ export class ClassroomsService {
       beforeData: deleted,
     });
 
+    await this.invalidateCaches();
     return { success: true };
   }
 
@@ -239,6 +255,23 @@ export class ClassroomsService {
     const otherGroups = existingAllocated.filter((g) => g.id !== dto.groupId);
 
     const targetSlots = dto.slots ?? group.scheduleSlots ?? [];
+    for (let i = 0; i < targetSlots.length; i++) {
+      const slotA = targetSlots[i]!;
+      if (slotA.startTime >= slotA.endTime) {
+        throw new BadRequestException('وقت نهاية الحصة يجب أن يكون بعد وقت البداية');
+      }
+      for (let j = i + 1; j < targetSlots.length; j++) {
+        const slotB = targetSlots[j]!;
+        if (
+          Number(slotA.dayOfWeek) === Number(slotB.dayOfWeek) &&
+          slotA.startTime < slotB.endTime &&
+          slotA.endTime > slotB.startTime
+        ) {
+          throw new BadRequestException('يوجد تداخل بين مواعيد نفس المجموعة في نفس اليوم');
+        }
+      }
+    }
+
     // Only verify slots intended for THIS classroom
     const slotsForThisRoom = targetSlots.filter(
       (s) => !s.classroomId || s.classroomId === classroomId,
@@ -255,6 +288,27 @@ export class ClassroomsService {
             const dayName = ARABIC_DAYS[slotA.dayOfWeek] ?? String(slotA.dayOfWeek);
             throw new ConflictException(
               `تعارض في جدول القاعة: القاعة مشغولة بالفعل بالمجموعة (${other.name}) يوم (${dayName}) من ${slotB.startTime} إلى ${slotB.endTime}`,
+            );
+          }
+        }
+      }
+    }
+
+    const allActiveGroups = (await this.repository.findAllActiveGroups?.()) ?? [];
+    const otherTeacherGroups = allActiveGroups.filter(
+      (g) => g.id !== dto.groupId && g.primaryTeacherId === group.primaryTeacherId,
+    );
+    for (const slotA of targetSlots) {
+      for (const other of otherTeacherGroups) {
+        for (const slotB of other.scheduleSlots ?? []) {
+          if (
+            Number(slotA.dayOfWeek) === Number(slotB.dayOfWeek) &&
+            slotA.startTime < slotB.endTime &&
+            slotA.endTime > slotB.startTime
+          ) {
+            const dayName = ARABIC_DAYS[slotA.dayOfWeek] ?? String(slotA.dayOfWeek);
+            throw new ConflictException(
+              `تعارض في جدول المدرس: المدرس مرتبط بالفعل بالمجموعة (${other.name}) يوم (${dayName}) من ${slotB.startTime} إلى ${slotB.endTime}`,
             );
           }
         }
@@ -282,6 +336,8 @@ export class ClassroomsService {
         updateUpcomingSessions: dto.updateUpcomingSessions ?? true,
       },
     });
+
+    await this.invalidateCaches();
 
     return {
       success: true,
@@ -314,6 +370,8 @@ export class ClassroomsService {
         groupId,
       },
     });
+
+    await this.invalidateCaches();
 
     return { success: true };
   }

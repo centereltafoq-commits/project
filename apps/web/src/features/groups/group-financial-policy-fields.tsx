@@ -29,6 +29,13 @@ export function GroupFinancialPolicyFields({
       ? Number(values.monthlyPrice || 0) / Number(values.monthlySessionsCount)
       : 0;
 
+  const isCustomPercentage =
+    values.revenueSplitMethod === GroupRevenueSplitMethod.CUSTOM_PERCENTAGE;
+  const isFixedPerSession =
+    values.revenueSplitMethod === GroupRevenueSplitMethod.FIXED_PER_SESSION;
+  const isFixedAbsenceFee =
+    values.fullMonthAbsencePolicy === FullMonthAbsencePolicy.CHARGE_FIXED_RESERVATION_FEE;
+
   return (
     <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -58,6 +65,8 @@ export function GroupFinancialPolicyFields({
           onChange={(e) => onChange({ monthlyPrice: e.target.value })}
         />
         <Select
+          searchable
+          required
           label="طريقة تقسيم العائد"
           value={values.revenueSplitMethod}
           onChange={(e) =>
@@ -65,32 +74,82 @@ export function GroupFinancialPolicyFields({
           }
           options={REVENUE_SPLIT_OPTIONS}
         />
-        <Input
-          label="نصيب المدرس عن الطالب (ج.م)"
-          type="number"
-          min={0}
-          step="0.01"
-          value={values.teacherSharePerStudent}
-          onChange={(e) => onChange({ teacherSharePerStudent: e.target.value })}
-        />
-        <Input
-          label="نصيب السنتر عن الطالب (ج.م)"
-          type="number"
-          min={0}
-          step="0.01"
-          value={values.centerSharePerStudent}
-          onChange={(e) => onChange({ centerSharePerStudent: e.target.value })}
-        />
-        <Input
-          label="نسبة المدرس المئوية (%)"
-          type="number"
-          min={0}
-          max={100}
-          step="0.01"
-          value={values.teacherPercentage}
-          onChange={(e) => onChange({ teacherPercentage: e.target.value })}
-        />
+
+        {isCustomPercentage ? (
+          <div className="sm:col-span-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Input
+              label="نسبة المدرس المئوية (%)"
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              required
+              value={values.teacherPercentage}
+              onChange={(e) => onChange({ teacherPercentage: e.target.value })}
+            />
+            <div className="flex items-end">
+              <div className="flex h-9 w-full items-center justify-between rounded-lg border border-border bg-card px-3 text-xs">
+                <span className="text-muted-foreground">نسبة السنتر المتبقية:</span>
+                <strong className="font-bold text-foreground">
+                  {Math.max(0, Math.min(100, 100 - Number(values.teacherPercentage || 0))).toFixed(2)}%
+                </strong>
+              </div>
+            </div>
+          </div>
+        ) : isFixedPerSession ? (
+          <div className="sm:col-span-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Input
+              label="أجر المدرس الثابت عن كل حصة منفذة (ج.م)"
+              type="number"
+              min={0}
+              step="0.01"
+              required
+              value={values.teacherSharePerStudent}
+              onChange={(e) => onChange({ teacherSharePerStudent: e.target.value })}
+            />
+            <div className="flex items-end">
+              <div className="flex h-9 w-full items-center rounded-lg border border-border bg-card px-3 text-xs text-muted-foreground">
+                يحصل السنتر تلقائياً على ما تبقى من إجمالي إيراد المجموعة الشهري.
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Input
+              label="نصيب المدرس عن الطالب (ج.م)"
+              type="number"
+              min={0}
+              step="0.01"
+              required
+              value={values.teacherSharePerStudent}
+              onChange={(e) => onChange({ teacherSharePerStudent: e.target.value })}
+            />
+            <Input
+              label="نصيب السنتر عن الطالب (ج.م)"
+              type="number"
+              min={0}
+              step="0.01"
+              required
+              value={values.centerSharePerStudent}
+              onChange={(e) => onChange({ centerSharePerStudent: e.target.value })}
+            />
+            <div className="flex items-end">
+              <div className="flex h-9 w-full items-center justify-between rounded-lg border border-border bg-card px-3 text-xs">
+                <span className="text-muted-foreground">مجموع الحصتين:</span>
+                <strong className="font-bold text-foreground">
+                  {formatCurrency(
+                    Number(values.teacherSharePerStudent || 0) +
+                      Number(values.centerSharePerStudent || 0),
+                  )}
+                </strong>
+              </div>
+            </div>
+          </>
+        )}
+
         <Select
+          searchable
+          required
           label="سياسة غياب الشهر بالكامل"
           value={values.fullMonthAbsencePolicy}
           onChange={(e) =>
@@ -98,14 +157,16 @@ export function GroupFinancialPolicyFields({
           }
           options={FULL_ABSENCE_POLICY_OPTIONS}
         />
-        <Input
-          label="رسوم حجز مقعد عند الغياب الكامل"
-          type="number"
-          min={0}
-          step="0.01"
-          value={values.fullAbsenceFixedFee}
-          onChange={(e) => onChange({ fullAbsenceFixedFee: e.target.value })}
-        />
+        {isFixedAbsenceFee && (
+          <Input
+            label="رسوم حجز مقعد عند الغياب الكامل"
+            type="number"
+            min={0}
+            step="0.01"
+            value={values.fullAbsenceFixedFee}
+            onChange={(e) => onChange({ fullAbsenceFixedFee: e.target.value })}
+          />
+        )}
         <label className="flex h-10 cursor-pointer items-center gap-2 self-end text-xs font-bold">
           <input
             type="checkbox"

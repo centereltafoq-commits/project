@@ -340,7 +340,11 @@ export class ClassroomsRepository {
     const baseSlots = slots ?? group.scheduleSlots ?? [];
     const updatedSlots = baseSlots.map((s) => ({
       ...s,
-      classroomId: slots ? (s.classroomId ?? classroomId) : classroomId,
+      classroomId: slots
+        ? (s.classroomId ?? classroomId)
+        : s.classroomId && s.classroomId !== group.defaultClassroomId
+          ? s.classroomId
+          : classroomId,
     }));
 
     await this.db

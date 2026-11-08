@@ -267,8 +267,8 @@ export class AttendanceRepository {
         params.startTime.length === 5 ? `${params.startTime}:00` : params.startTime.slice(0, 8);
       const normEnd =
         params.endTime.length === 5 ? `${params.endTime}:00` : params.endTime.slice(0, 8);
-      const reqStart = new Date(`${params.date}T${normStart}Z`);
-      const reqEnd = new Date(`${params.date}T${normEnd}Z`);
+      const reqStart = new Date(`${params.date}T${normStart}`);
+      const reqEnd = new Date(`${params.date}T${normEnd}`);
 
       const maintOverlap = await this.db
         .select({ id: classroomMaintenances.id, reason: classroomMaintenances.reason })

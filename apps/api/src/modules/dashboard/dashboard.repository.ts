@@ -105,7 +105,7 @@ export class DashboardRepository {
         .where(eq(sessions.sessionDate, todayDate)),
       this.db
         .select({
-          totalSessions: sql<number>`COUNT(*)::int`,
+          totalSessions: sql<number>`COUNT(*) FILTER (WHERE ${sessions.status} != 'CANCELLED')::int`,
           executedSessions: sql<number>`COUNT(*) FILTER (WHERE ${sessions.status} = 'COMPLETED' OR (${sessions.sessionDate} <= ${todayDate} AND ${sessions.status} != 'CANCELLED'))::int`,
           scheduledSessions: sql<number>`COUNT(*) FILTER (WHERE ${sessions.status} = 'SCHEDULED' AND ${sessions.sessionDate} > ${todayDate})::int`,
         })

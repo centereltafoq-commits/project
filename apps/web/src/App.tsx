@@ -176,7 +176,13 @@ export function App() {
               <Route
                 path="attendance"
                 element={
-                  <PermissionGuardRoute permission={PERMISSIONS.ATTENDANCE_VIEW}>
+                  <PermissionGuardRoute
+                    anyPermissions={[
+                      PERMISSIONS.ATTENDANCE_VIEW,
+                      PERMISSIONS.SESSIONS_VIEW,
+                      PERMISSIONS.MAKEUP_MANAGE,
+                    ]}
+                  >
                     <AttendancePage />
                   </PermissionGuardRoute>
                 }
@@ -224,7 +230,9 @@ export function App() {
               <Route
                 path="users"
                 element={
-                  <PermissionGuardRoute permission={PERMISSIONS.USERS_VIEW}>
+                  <PermissionGuardRoute
+                    anyPermissions={[PERMISSIONS.USERS_VIEW, PERMISSIONS.ROLES_MANAGE]}
+                  >
                     <UsersPage />
                   </PermissionGuardRoute>
                 }

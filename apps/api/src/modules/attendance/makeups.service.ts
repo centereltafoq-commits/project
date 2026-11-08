@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { MakeupStatus } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { MonthlySettlementService } from '../finance/monthly-settlement.service';
 import { AttendanceRepository } from './attendance.repository';
 import { CreateMakeupDto, MakeupQueryDto, UpdateMakeupDto } from './dto/makeup.dto';
 import { MakeupsRepository } from './makeups.repository';
@@ -13,6 +15,8 @@ export class MakeupsService {
     private readonly repository: AttendanceRepository,
     private readonly makeupsRepository: MakeupsRepository,
     private readonly audit: AuditLogsService,
+    @Optional() private readonly settlementService?: MonthlySettlementService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   async listMakeups(query: MakeupQueryDto) {
@@ -63,6 +67,16 @@ export class MakeupsService {
       entityId: created.id,
       afterData: created,
     });
+
+    if (this.settlementService) {
+      await this.settlementService.recalculateMonth(originalSession.yearMonth);
+    }
+    try {
+      await Promise.all([
+        this.cache?.invalidatePrefix('dashboard:summary:'),
+        this.cache?.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
 
     return created;
   }
@@ -115,6 +129,19 @@ export class MakeupsService {
       beforeData: existing,
       afterData: updated,
     });
+
+    if (this.settlementService) {
+      const originalSession = await this.repository.findSessionById(existing.originalSessionId);
+      if (originalSession) {
+        await this.settlementService.recalculateMonth(originalSession.yearMonth);
+      }
+    }
+    try {
+      await Promise.all([
+        this.cache?.invalidatePrefix('dashboard:summary:'),
+        this.cache?.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
 
     return updated;
   }

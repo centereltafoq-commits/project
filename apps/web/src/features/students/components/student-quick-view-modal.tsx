@@ -9,7 +9,9 @@ import {
   Phone,
   User,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Modal } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatDateAr } from '@/lib/formatters';
 import { STUDENT_STATUS_META, StudentRow } from '../students.types';
 
@@ -27,6 +29,8 @@ export function StudentQuickViewModal({
   onEdit,
 }: StudentQuickViewModalProps) {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canUpdateStudent = hasPermission(PERMISSIONS.STUDENTS_UPDATE);
 
   if (!student) return null;
 
@@ -141,18 +145,22 @@ export function StudentQuickViewModal({
 
         {/* أزرار الإجراءات في أسفل النافذة */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onOpenChange(false);
-              onEdit(student);
-            }}
-            className="gap-1.5"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            تعديل البيانات
-          </Button>
+          {canUpdateStudent ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onOpenChange(false);
+                onEdit(student);
+              }}
+              className="gap-1.5"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              تعديل البيانات
+            </Button>
+          ) : (
+            <span />
+          )}
 
           <Button
             variant="primary"

@@ -9,6 +9,7 @@ import {
   ExpensesQueryDto,
   UpdateExpenseDto,
 } from './dto/expenses.dto';
+import { MonthlySettlementService } from './monthly-settlement.service';
 import { ExpensesRepository, NewExpenseRow } from './repositories/expenses.repository';
 import { parseMoney, roundMoney, toMoneyString } from './utils/money.util';
 
@@ -16,6 +17,7 @@ import { parseMoney, roundMoney, toMoneyString } from './utils/money.util';
 export class ExpensesService {
   constructor(
     private readonly repository: ExpensesRepository,
+    private readonly monthlySettlementService: MonthlySettlementService,
     private readonly auditLogsService: AuditLogsService,
     private readonly cache: CacheService,
   ) {}
@@ -32,6 +34,7 @@ export class ExpensesService {
   async create(dto: CreateExpenseDto, actor: AuthenticatedUser) {
     const cleanAmount = roundMoney(dto.amount);
     const derivedYearMonth = dto.yearMonth || dto.expenseDate.slice(0, 7);
+    await this.monthlySettlementService.assertMonthOpen(derivedYearMonth);
 
     const created = await this.repository.create({
       category: dto.category,
@@ -54,7 +57,10 @@ export class ExpensesService {
     });
 
     try {
-      await this.cache.invalidatePrefix('dashboard:summary:');
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
     } catch {}
 
     return created;
@@ -65,6 +71,8 @@ export class ExpensesService {
     if (!existing) {
       throw new NotFoundException('سجل المصروف غير موجود');
     }
+
+    await this.monthlySettlementService.assertMonthOpen(existing.yearMonth);
 
     const patch: Partial<NewExpenseRow> = {};
     if (dto.category !== undefined) patch.category = dto.category;
@@ -77,6 +85,9 @@ export class ExpensesService {
       }
     }
     if (dto.yearMonth !== undefined) patch.yearMonth = dto.yearMonth;
+    if (patch.yearMonth && patch.yearMonth !== existing.yearMonth) {
+      await this.monthlySettlementService.assertMonthOpen(patch.yearMonth);
+    }
     if (dto.paymentMethod !== undefined) patch.paymentMethod = dto.paymentMethod;
     if (dto.notes !== undefined) patch.notes = dto.notes.trim() || null;
 
@@ -93,7 +104,10 @@ export class ExpensesService {
     });
 
     try {
-      await this.cache.invalidatePrefix('dashboard:summary:');
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
     } catch {}
 
     return updated;
@@ -104,6 +118,8 @@ export class ExpensesService {
     if (!existing) {
       throw new NotFoundException('سجل المصروف غير موجود');
     }
+
+    await this.monthlySettlementService.assertMonthOpen(existing.yearMonth);
 
     await this.repository.delete(id);
 
@@ -117,7 +133,10 @@ export class ExpensesService {
     });
 
     try {
-      await this.cache.invalidatePrefix('dashboard:summary:');
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
     } catch {}
 
     return { deleted: true, id };

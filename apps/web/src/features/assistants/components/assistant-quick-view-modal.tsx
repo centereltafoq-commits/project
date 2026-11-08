@@ -9,8 +9,9 @@ import {
   Phone,
   Users,
 } from 'lucide-react';
-import { AssistantCalculationMethod } from '@edu-center/shared';
+import { AssistantCalculationMethod, PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Modal } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatCurrency } from '@/lib/formatters';
 import {
   ASSISTANT_CALC_METHOD_LABELS,
@@ -31,6 +32,10 @@ export function AssistantQuickViewModal({
   onEdit,
 }: AssistantQuickViewModalProps) {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageAssistants = hasPermission(PERMISSIONS.ASSISTANTS_MANAGE);
+  const canSeeRate =
+    hasPermission(PERMISSIONS.FINANCE_VIEW) || canManageAssistants;
 
   if (!assistant) return null;
 
@@ -105,18 +110,20 @@ export function AssistantQuickViewModal({
         </div>
 
         {/* القيمة والمجموعات المرتبطة */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-border bg-card p-3.5">
-            <span className="text-xs font-bold text-muted-foreground block flex items-center gap-1.5">
-              <Coins className="h-3.5 w-3.5 text-emerald-600" />
-              القيمة / النسبة المالية
-            </span>
-            <p className="mt-1 text-base font-black text-emerald-600 dark:text-emerald-400">
-              {isPercent
-                ? `${Number(assistant.rateValue)}%`
-                : formatCurrency(assistant.rateValue)}
-            </p>
-          </div>
+        <div className={`grid grid-cols-1 gap-3 ${canSeeRate ? 'sm:grid-cols-2' : ''}`}>
+          {canSeeRate && (
+            <div className="rounded-xl border border-border bg-card p-3.5">
+              <span className="text-xs font-bold text-muted-foreground block flex items-center gap-1.5">
+                <Coins className="h-3.5 w-3.5 text-emerald-600" />
+                القيمة / النسبة المالية
+              </span>
+              <p className="mt-1 text-base font-black text-emerald-600 dark:text-emerald-400">
+                {isPercent
+                  ? `${Number(assistant.rateValue)}%`
+                  : formatCurrency(assistant.rateValue)}
+              </p>
+            </div>
+          )}
 
           <div className="rounded-xl border border-border bg-card p-3.5">
             <span className="text-xs font-bold text-muted-foreground block flex items-center gap-1.5">
@@ -130,7 +137,7 @@ export function AssistantQuickViewModal({
         </div>
 
         {/* ملاحظات الاحتساب المخصصة إن وجدت */}
-        {assistant.customFormulaNote && (
+        {canSeeRate && assistant.customFormulaNote && (
           <div className="rounded-xl border border-border bg-muted/20 p-3 text-xs">
             <span className="font-bold text-muted-foreground block mb-1">
               صيغة / ملاحظات الحساب المخصصة:
@@ -141,18 +148,22 @@ export function AssistantQuickViewModal({
 
         {/* أزرار الإجراءات في أسفل النافذة */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onOpenChange(false);
-              onEdit(assistant);
-            }}
-            className="gap-1.5"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            تعديل البيانات
-          </Button>
+          {canManageAssistants ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onOpenChange(false);
+                onEdit(assistant);
+              }}
+              className="gap-1.5"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              تعديل البيانات
+            </Button>
+          ) : (
+            <span />
+          )}
 
           <Button
             variant="primary"

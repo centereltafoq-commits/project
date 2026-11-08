@@ -73,6 +73,8 @@ export function BookingsFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select
+        searchable
+        clearable
         placeholder="كل الحالات"
         value={statusFilter}
         onChange={(e) => onStatusChange(e.target.value)}
@@ -86,6 +88,8 @@ export function BookingsFilters({
         className="w-36"
       />
       <Select
+        searchable
+        clearable
         placeholder="كل الأنواع"
         value={typeFilter}
         onChange={(e) => onTypeChange(e.target.value)}

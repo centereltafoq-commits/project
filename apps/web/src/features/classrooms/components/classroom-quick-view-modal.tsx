@@ -8,7 +8,9 @@ import {
   Users,
   Wrench,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Modal } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { formatDateAr } from '@/lib/formatters';
 import { CLASSROOM_STATUS_META, ClassroomRow } from '../classrooms.types';
 
@@ -29,6 +31,9 @@ export function ClassroomQuickViewModal({
   onOpenSchedule,
   onOpenMaintenance,
 }: ClassroomQuickViewModalProps) {
+  const { hasPermission } = useAuth();
+  const canManageClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_MANAGE);
+
   if (!classroom) return null;
 
   const statusMeta = CLASSROOM_STATUS_META[classroom.status] ?? {
@@ -61,20 +66,22 @@ export function ClassroomQuickViewModal({
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                onEdit(classroom);
-              }}
-              className="gap-1 text-xs"
-            >
-              <Edit3 className="h-3.5 w-3.5" />
-              تعديل
-            </Button>
-          </div>
+          {canManageClassrooms && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  onOpenChange(false);
+                  onEdit(classroom);
+                }}
+                className="gap-1 text-xs"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+                تعديل
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* السعة والمقاعد */}

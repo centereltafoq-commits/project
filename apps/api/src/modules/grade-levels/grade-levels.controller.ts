@@ -26,13 +26,25 @@ export class GradeLevelsController {
   constructor(private readonly gradeLevelsService: GradeLevelsService) {}
 
   @Get()
-  @RequireAnyPermissions(PERMISSIONS.GROUPS_VIEW, PERMISSIONS.STUDENTS_VIEW)
+  @RequireAnyPermissions(
+    PERMISSIONS.GROUPS_VIEW,
+    PERMISSIONS.GROUPS_MANAGE,
+    PERMISSIONS.STUDENTS_VIEW,
+    PERMISSIONS.STUDENTS_CREATE,
+    PERMISSIONS.STUDENTS_UPDATE,
+  )
   async list(@Query() query: GradeLevelQueryDto) {
     return this.gradeLevelsService.list(query);
   }
 
   @Get(':id')
-  @RequireAnyPermissions(PERMISSIONS.GROUPS_VIEW, PERMISSIONS.STUDENTS_VIEW)
+  @RequireAnyPermissions(
+    PERMISSIONS.GROUPS_VIEW,
+    PERMISSIONS.GROUPS_MANAGE,
+    PERMISSIONS.STUDENTS_VIEW,
+    PERMISSIONS.STUDENTS_CREATE,
+    PERMISSIONS.STUDENTS_UPDATE,
+  )
   async getById(@Param('id', ParseUUIDPipe) id: string) {
     return this.gradeLevelsService.getById(id);
   }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
@@ -54,7 +54,31 @@ export class MonthlySettlementService {
     return createPaginatedResult(rows, total, page, limit);
   }
 
+  async assertMonthOpen(yearMonth: string): Promise<void> {
+    const summary = await this.overviewRepo.fetchMonthExecutiveSummary(yearMonth);
+    if (summary.isMonthClosed) {
+      throw new ConflictException(
+        `الشهر المالي (${yearMonth}) مغلق نهائياً ولا يمكن إضافة أو تعديل معاملات مالية عليه`,
+      );
+    }
+  }
+
   async recalculateMonth(yearMonth: string, actor?: AuthenticatedUser) {
+    const currentSummary = await this.overviewRepo.fetchMonthExecutiveSummary(yearMonth);
+    if (currentSummary.isMonthClosed) {
+      if (actor) {
+        throw new ConflictException(
+          `الشهر المالي (${yearMonth}) مغلق نهائياً ولا يمكن إعادة احتسابه`,
+        );
+      }
+      return {
+        yearMonth,
+        updatedStudentRecords: 0,
+        updatedTeacherRecords: 0,
+        updatedAssistantRecords: 0,
+      };
+    }
+
     const snap = await this.readRepo.fetchMonthSettlementSnapshot(yearMonth);
     const studentBatch = buildStudentSettlementBatch(yearMonth, snap);
     const staffBatch = buildStaffSettlementBatch(yearMonth, snap, studentBatch);
@@ -88,13 +112,17 @@ export class MonthlySettlementService {
     }
 
     try {
-      await this.cache.invalidatePrefix('dashboard:summary:');
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
     } catch {}
 
     return summary;
   }
 
   async closeMonth(yearMonth: string, actor: AuthenticatedUser) {
+    await this.assertMonthOpen(yearMonth);
     await this.recalculateMonth(yearMonth);
     const lockSummary = await this.writeRepo.lockMonthRecords(yearMonth);
 
@@ -108,7 +136,10 @@ export class MonthlySettlementService {
     });
 
     try {
-      await this.cache.invalidatePrefix('dashboard:summary:');
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
     } catch {}
 
     return {

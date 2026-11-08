@@ -98,19 +98,23 @@ export class StudentsService {
       actor.roleCode === SystemRole.OWNER ||
       Boolean(actor.permissions?.includes(PERMISSIONS.FINANCE_VIEW));
 
-    const { breakdown, monthTotals } = canViewFinance
-      ? computeStudentMonthlyBreakdown(yearMonth, bundle)
+    const computed = computeStudentMonthlyBreakdown(yearMonth, bundle);
+    const breakdown = canViewFinance
+      ? computed.breakdown
+      : computed.breakdown.map((g) => ({
+          ...g,
+          sessionPrice: 0,
+          totalDue: 0,
+          totalPaid: 0,
+          remaining: 0,
+        }));
+    const monthTotals = canViewFinance
+      ? computed.monthTotals
       : {
-          breakdown: [],
-          monthTotals: {
-            totalDue: 0,
-            totalPaid: 0,
-            balance: 0,
-            attendanceCount: 0,
-            absenceCount: 0,
-            excusedCount: 0,
-            makeupCount: 0,
-          },
+          ...computed.monthTotals,
+          totalDue: 0,
+          totalPaid: 0,
+          remaining: 0,
         };
 
     return {

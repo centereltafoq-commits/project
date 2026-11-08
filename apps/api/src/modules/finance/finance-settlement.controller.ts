@@ -4,7 +4,10 @@ import {
   AuthenticatedUser,
   CurrentUser,
 } from '../../common/decorators/current-user.decorator';
-import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import {
+  RequireAnyPermissions,
+  RequirePermissions,
+} from '../../common/decorators/permissions.decorator';
 import {
   AssistantRecordsQueryDto,
   StudentRecordsQueryDto,
@@ -33,7 +36,12 @@ export class FinanceSettlementController {
   }
 
   @Post('recalculate-month')
-  @RequirePermissions(PERMISSIONS.FINANCE_CLOSE_MONTH)
+  @RequireAnyPermissions(
+    PERMISSIONS.FINANCE_VIEW,
+    PERMISSIONS.FINANCE_COLLECT_PAYMENT,
+    PERMISSIONS.FINANCE_PAYOUTS,
+    PERMISSIONS.FINANCE_CLOSE_MONTH,
+  )
   async recalculateMonth(
     @Body() dto: YearMonthBodyDto,
     @CurrentUser() actor: AuthenticatedUser,

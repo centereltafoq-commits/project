@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -126,24 +127,50 @@ export class TeachersService {
 
   async getProfile(id: string, requestedYearMonth?: string, actor?: AuthenticatedUser) {
     const teacher = await this.getById(id);
-    const yearMonth = requestedYearMonth || this.getCurrentYearMonth();
-    const bundle = await this.profileRepository.fetchProfileBundle(id, yearMonth);
     const isOwner = actor?.roleCode === SystemRole.OWNER;
     const isOwnTeacher = Boolean(actor?.id && teacher.userId === actor.id);
+    const canViewAllTeachers =
+      !actor || isOwner || Boolean(actor.permissions?.includes(PERMISSIONS.TEACHERS_VIEW));
+
+    if (!canViewAllTeachers && !isOwnTeacher) {
+      throw new ForbiddenException('لا تملك صلاحية عرض ملف مدرس آخر');
+    }
+
+    const yearMonth = requestedYearMonth || this.getCurrentYearMonth();
+    const bundle = await this.profileRepository.fetchProfileBundle(id, yearMonth);
     const hasFinanceView = Boolean(actor?.permissions?.includes(PERMISSIONS.FINANCE_VIEW));
     const canViewFinance = !actor || isOwner || isOwnTeacher || hasFinanceView;
 
+    const fullSummary = computeTeacherMonthlySummary(yearMonth, bundle);
     const monthlyBreakdown = canViewFinance
-      ? computeTeacherMonthlySummary(yearMonth, bundle)
+      ? fullSummary
       : {
-          yearMonth,
-          groupBreakdowns: [],
-          totalShareEarned: 0,
-          totalPayoutsPaid: 0,
-          netBalanceDue: 0,
+          groups: fullSummary.groups.map((g) => ({
+            ...g,
+            grossRevenue: 0,
+            teacherShare: 0,
+            centerShare: 0,
+          })),
+          totals: {
+            groupsCount: fullSummary.totals.groupsCount,
+            executedSessionsCount: fullSummary.totals.executedSessionsCount,
+            totalDues: 0,
+            totalPayouts: 0,
+            remainingBalance: 0,
+            isClosed: fullSummary.totals.isClosed,
+          },
         };
 
-    const scheduleSlots = bundle.assignedGroups
+    const assignedGroups = canViewFinance
+      ? bundle.assignedGroups
+      : bundle.assignedGroups.map((g) => ({
+          ...g,
+          teacherSharePerStudent: '0.00',
+          centerSharePerStudent: '0.00',
+          teacherPercentage: '0.00',
+        }));
+
+    const scheduleSlots = assignedGroups
       .filter((g) => g.isActive)
       .flatMap((g) =>
         (g.scheduleSlots || []).map((slot) => ({
@@ -160,7 +187,7 @@ export class TeachersService {
     return {
       teacher,
       yearMonth,
-      assignedGroups: bundle.assignedGroups,
+      assignedGroups,
       scheduleSlots,
       availability: bundle.availability,
       monthlyBreakdown,

@@ -12,8 +12,9 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react';
-import { GroupRevenueSplitMethod } from '@edu-center/shared';
+import { GroupRevenueSplitMethod, PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Modal } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { ARABIC_DAYS, formatCurrency, formatTimeRangeAr } from '@/lib/formatters';
 import {
   FULL_ABSENCE_POLICY_LABELS,
@@ -35,6 +36,9 @@ export function GroupQuickViewModal({
   onEdit,
 }: GroupQuickViewModalProps) {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageGroups = hasPermission(PERMISSIONS.GROUPS_MANAGE);
+  const canSeeSplit = hasPermission(PERMISSIONS.FINANCE_VIEW) || canManageGroups;
 
   if (!group) return null;
 
@@ -79,18 +83,20 @@ export function GroupQuickViewModal({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                onEdit(group);
-              }}
-              className="gap-1.5 text-xs"
-            >
-              <Edit3 className="h-3.5 w-3.5" />
-              تعديل المجموعة
-            </Button>
+            {canManageGroups && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  onOpenChange(false);
+                  onEdit(group);
+                }}
+                className="gap-1.5 text-xs"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+                تعديل المجموعة
+              </Button>
+            )}
             <Button
               size="sm"
               onClick={() => {
@@ -190,7 +196,7 @@ export function GroupQuickViewModal({
             التسعير وسياسة الإيرادات
           </h4>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className={`grid grid-cols-2 ${canSeeSplit ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-2.5`}>
             <div className="rounded-lg bg-muted/40 p-2.5">
               <span className="text-[11px] text-muted-foreground block">الاشتراك الشهري</span>
               <span className="text-sm font-bold text-foreground">{formatCurrency(group.monthlyPrice)}</span>
@@ -203,16 +209,20 @@ export function GroupQuickViewModal({
               <span className="text-[11px] text-muted-foreground block">سعر الحصة المحسوب</span>
               <span className="text-sm font-bold text-emerald-600">{formatCurrency(group.calculatedSessionPrice)}</span>
             </div>
-            <div className="rounded-lg bg-muted/40 p-2.5">
-              <span className="text-[11px] text-muted-foreground block">تقسيم العائد</span>
-              <span className="text-xs font-bold text-foreground">
-                {group.revenueSplitMethod === GroupRevenueSplitMethod.CUSTOM_PERCENTAGE
-                  ? `${group.teacherPercentage ?? 0}% للمدرس`
-                  : group.teacherSharePerStudent && group.centerSharePerStudent
-                  ? `${formatCurrency(group.teacherSharePerStudent)} / ${formatCurrency(group.centerSharePerStudent)}`
-                  : splitLabel}
-              </span>
-            </div>
+            {canSeeSplit && (
+              <div className="rounded-lg bg-muted/40 p-2.5">
+                <span className="text-[11px] text-muted-foreground block">تقسيم العائد</span>
+                <span className="text-xs font-bold text-foreground">
+                  {group.revenueSplitMethod === GroupRevenueSplitMethod.CUSTOM_PERCENTAGE
+                    ? `${group.teacherPercentage ?? 0}% للمدرس`
+                    : group.revenueSplitMethod === GroupRevenueSplitMethod.FIXED_PER_SESSION
+                    ? `${formatCurrency(group.teacherSharePerStudent)} / حصة`
+                    : group.teacherSharePerStudent && group.centerSharePerStudent
+                    ? `${formatCurrency(group.teacherSharePerStudent)} / ${formatCurrency(group.centerSharePerStudent)}`
+                    : splitLabel}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="pt-2 border-t border-border/60 text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-2">

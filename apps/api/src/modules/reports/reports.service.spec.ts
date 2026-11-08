@@ -160,4 +160,25 @@ describe('ReportsService - Access Control and Permissions Enforcement', () => {
     const result = await service.generateReport('financial-summary', {}, owner);
     expect(result.reportType).toBe('financial-summary');
   });
+
+  it('filters getFilterOptions arrays according to actor permissions', async () => {
+    mockAcademicRepo.getFilterOptions.mockResolvedValueOnce({
+      groups: [{ id: 'g-1', label: 'Group 1' }],
+      teachers: [{ id: 't-1', label: 'Teacher 1' }],
+      students: [{ id: 's-1', label: 'Student 1' }],
+    });
+
+    const restrictedActor: AuthenticatedUser = {
+      id: 'emp-1',
+      email: 'emp@test.com',
+      fullName: 'Employee',
+      roleCode: SystemRole.ATTENDANCE_EMPLOYEE,
+      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.STUDENTS_VIEW],
+    };
+
+    const filtered = await service.getFilterOptions(restrictedActor);
+    expect(filtered.students).toHaveLength(1);
+    expect(filtered.groups).toHaveLength(0);
+    expect(filtered.teachers).toHaveLength(0);
+  });
 });

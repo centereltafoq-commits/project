@@ -237,6 +237,8 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
               className="w-52"
             />
             <Select
+              searchable
+              clearable
               placeholder="كل الحالات"
               value={statusFilter}
               onChange={(e) => {
