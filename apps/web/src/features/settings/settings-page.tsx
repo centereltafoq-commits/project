@@ -15,8 +15,14 @@ import {
   Trash2,
   Link2,
   Loader2,
+  Printer,
+  RefreshCw,
+  Server,
+  Wifi,
+  Power,
 } from 'lucide-react';
 import {
+  Badge,
   Button,
   Card,
   CardContent,
@@ -28,6 +34,8 @@ import {
 } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { extractErrorMessage } from '@/lib/api-client';
+import { useDesktop } from '@/hooks/use-desktop';
+import { DesktopConnectionModal } from '@/components/desktop-connection-modal';
 import { settingsApi } from './settings-api';
 import { useCenterSettings } from './center-settings-context';
 import { NewAcademicYearModal } from './components/new-academic-year-modal';
@@ -35,6 +43,17 @@ import { NewAcademicYearModal } from './components/new-academic-year-modal';
 export function SettingsPage() {
   const { notify } = useToast();
   const { settings, refetch, isLoading } = useCenterSettings();
+  const {
+    isDesktop,
+    config,
+    serverStatus,
+    localIps,
+    printers,
+    saveConfig,
+    startServer,
+    stopServer,
+    reloadPrinters,
+  } = useDesktop();
 
   const [form, setForm] = React.useState({
     centerName: '',
@@ -48,6 +67,7 @@ export function SettingsPage() {
 
   const [isSaving, setIsSaving] = React.useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
+  const [isConnectionWizardOpen, setIsConnectionWizardOpen] = React.useState(false);
   const [logoPreviewError, setLogoPreviewError] = React.useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = React.useState(false);
   const [isDragOver, setIsDragOver] = React.useState(false);
@@ -396,6 +416,198 @@ export function SettingsPage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Dedicated Desktop & Hardware Card */}
+          {isDesktop && (
+            <Card className="border-primary/40 shadow-sm">
+              <CardHeader className="border-b border-border">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Printer className="h-5 w-5 text-primary" />
+                    <CardTitle>إعدادات أجهزة السنتر والطباعة الحرارية (Desktop & Hardware)</CardTitle>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => setIsConnectionWizardOpen(true)}
+                  >
+                    <Wifi className="h-3.5 w-3.5" />
+                    <span>معالج إعداد اتصال الشبكة (LAN)</span>
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+                {/* Thermal Printer Settings */}
+                <div className="space-y-4 rounded-xl border border-border bg-muted/10 p-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-foreground">طابعة الإيصالات الحرارية (Thermal POS Printer)</h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={reloadPrinters}
+                      className="h-8 gap-1 text-xs text-muted-foreground"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span>تحديث قائمة الطابعات</span>
+                    </Button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="thermal-printer-select" className="text-xs font-semibold text-muted-foreground block">
+                      طابعة إيصالات السداد الحرارية الافتراضية
+                    </label>
+                    <select
+                      id="thermal-printer-select"
+                      aria-label="طابعة إيصالات السداد الحرارية الافتراضية"
+                      value={config?.defaultThermalPrinter || ''}
+                      onChange={async (e) => {
+                        const val = e.target.value;
+                        try {
+                          await saveConfig({ defaultThermalPrinter: val });
+                          notify('تم حفظ طابعة الإيصالات الافتراضية بنجاح', 'success');
+                        } catch {
+                          notify('فشل حفظ إعدادات الطابعة', 'error');
+                        }
+                      }}
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">(طابعة النظام الافتراضية)</option>
+                      {printers.map((p) => (
+                        <option key={p.name} value={p.name}>
+                          {p.displayName || p.name} {p.isDefault ? '★ (افتراضية ويندوز)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Direct Silent Printing Toggle */}
+                  <label className="flex items-start gap-3 cursor-pointer select-none rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/20">
+                    <input
+                      type="checkbox"
+                      aria-label="تفعيل الطباعة الصامتة المباشرة لإيصالات السداد (بدون نافذة المتصفح)"
+                      checked={Boolean(config?.directPrintEnabled)}
+                      onChange={async (e) => {
+                        const checked = e.target.checked;
+                        try {
+                          await saveConfig({ directPrintEnabled: checked });
+                          notify('تم تحديث وضع الطباعة المباشرة', 'success');
+                        } catch {
+                          notify('فشل حفظ وضع الطباعة', 'error');
+                        }
+                      }}
+                      className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-foreground block">
+                        تفعيل الطباعة الصامتة المباشرة لإيصالات السداد (بدون نافذة المتصفح)
+                      </span>
+                      <span className="text-[11px] text-muted-foreground block mt-0.5">
+                        إرسال الإيصال المالي مقاس 80 مم فوراً إلى الطابعة الحرارية مباشرة دون فتح نافذة الطباعة المنبثقة.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Server Mode Section */}
+                {config?.serverMode === 'server' && (
+                  <div className="space-y-4 rounded-xl border border-border bg-muted/10 p-4">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                      <div className="flex items-center gap-2">
+                        <Server className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">حالة السيرفر الرئيسي وقاعدة البيانات</h4>
+                      </div>
+                      <Badge variant={serverStatus?.running ? 'success' : 'danger'}>
+                        {serverStatus?.running ? `يعمل (منفذ ${serverStatus.port || 4000})` : 'متوقف'}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant={serverStatus?.running ? 'outline' : 'primary'}
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await startServer();
+                            notify('تم تشغيل/إعادة تشغيل السيرفر بنجاح', 'success');
+                          } catch {
+                            notify('فشل بدء تشغيل السيرفر', 'error');
+                          }
+                        }}
+                        className="gap-1.5 text-xs"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span>إعادة تشغيل السيرفر</span>
+                      </Button>
+
+                      {serverStatus?.running && (
+                        <Button
+                          type="button"
+                          variant="danger"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await stopServer();
+                              notify('تم إيقاف السيرفر', 'info');
+                            } catch {
+                              notify('فشل إيقاف السيرفر', 'error');
+                            }
+                          }}
+                          className="gap-1.5 text-xs"
+                        >
+                          <Power className="h-3.5 w-3.5" />
+                          <span>إيقاف السيرفر</span>
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Local IPs */}
+                    <div className="space-y-2 pt-2 border-t border-border">
+                      <span className="block text-xs font-semibold text-muted-foreground">
+                        عناوين IP المحلية لربط أجهزة الاستقبال (Reception Devices):
+                      </span>
+                      {localIps.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {localIps.map((ip) => {
+                            const url = `http://${ip}:${serverStatus?.port || 4000}`;
+                            return (
+                              <div
+                                key={ip}
+                                className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-xs"
+                              >
+                                <span className="font-mono text-foreground font-semibold" dir="ltr">
+                                  {url}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-[11px]"
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText(url);
+                                    notify('تم نسخ عنوان السيرفر', 'info');
+                                  }}
+                                >
+                                  نسخ
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          لم يتم رصد أي عناوين IP نشطة على الشبكة المحلية حالياً.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar Info & Danger Zone Card (1 Col) */}
@@ -489,6 +701,14 @@ export function SettingsPage() {
         open={isResetModalOpen}
         onOpenChange={setIsResetModalOpen}
       />
+
+      {/* Desktop LAN Connection Modal */}
+      {isDesktop && (
+        <DesktopConnectionModal
+          open={isConnectionWizardOpen}
+          onOpenChange={setIsConnectionWizardOpen}
+        />
+      )}
     </div>
   );
 }

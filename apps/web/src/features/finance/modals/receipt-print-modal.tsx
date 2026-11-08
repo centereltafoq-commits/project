@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { CheckCircle2, Printer, Building2 } from 'lucide-react';
+import { CheckCircle2, Printer, Building2, Loader2 } from 'lucide-react';
 import { Badge, Button, Modal } from '@/design-system';
 import { useCenterSettings } from '@/features/settings/center-settings-context';
+import { useDesktop } from '@/hooks/use-desktop';
 import {
   formatCurrency,
   formatDateAr,
@@ -14,9 +15,62 @@ interface ReceiptPrintModalProps {
   onClose: () => void;
 }
 
+function buildThermalReceiptHtml(receipt: PaymentRow, settings: any, currencySymbol: string): string {
+  const centerName = settings?.centerName || 'سنتر النخبة التعليمي';
+  const phone = settings?.phone ? `<div style="font-size: 11px; margin-top: 2px;">هاتف: ${settings.phone}</div>` : '';
+  const allocationsHtml = receipt.allocations && receipt.allocations.length > 0
+    ? `
+      <div style="margin: 8px 0; border-top: 1px dashed #444; border-bottom: 1px dashed #444; padding: 4px 0;">
+        <table style="width: 100%; font-size: 11px; text-align: right; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="padding: 2px 0; text-align: right;">المجموعة</th>
+              <th style="padding: 2px 0; text-align: left;">المبلغ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${receipt.allocations.map((a) => `
+              <tr>
+                <td style="padding: 2px 0;">${a.groupName}</td>
+                <td style="padding: 2px 0; text-align: left; font-weight: bold;">${a.allocatedAmount} ${currencySymbol}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `
+    : '';
+
+  return `
+    <div style="text-align: center; font-family: sans-serif; font-size: 12px; line-height: 1.4; color: #000; padding: 4px;">
+      <h3 style="margin: 0 0 4px 0; font-size: 15px; font-weight: bold;">${centerName}</h3>
+      <div style="font-size: 11px; color: #333;">إيصال تحصيل رسوم دراسية</div>
+      ${phone}
+      <div style="margin: 6px 0; border-top: 1px dashed #000;"></div>
+      <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+        <span>رقم الإيصال: <strong>${receipt.receiptNumber}</strong></span>
+        <span>التاريخ: ${receipt.paymentDate ? String(receipt.paymentDate).slice(0, 10) : ''}</span>
+      </div>
+      <div style="text-align: right; margin: 4px 0; font-size: 12px;">
+        <div>الطالب: <strong>${receipt.studentName}</strong> (${receipt.studentCode})</div>
+        <div>وسيلة الدفع: ${PAYMENT_METHOD_LABELS[receipt.paymentMethod] || receipt.paymentMethod}</div>
+        ${receipt.receivedByName ? `<div>المحصّل: ${receipt.receivedByName}</div>` : ''}
+      </div>
+      ${allocationsHtml}
+      <div style="margin: 8px 0; padding: 6px; background-color: #f0f0f0; border-radius: 4px; text-align: center; font-size: 14px; font-weight: bold;">
+        المبلغ: ${receipt.amount} ${currencySymbol}
+      </div>
+      ${receipt.notes ? `<div style="font-size: 10px; text-align: right; color: #555;">ملاحظات: ${receipt.notes}</div>` : ''}
+      <div style="margin-top: 8px; font-size: 10px; color: #666; text-align: center;">شكراً لكم • مع تمنياتنا بالتفوق</div>
+    </div>
+  `;
+}
+
 export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) {
   const { settings } = useCenterSettings();
+  const { isDesktop, config, printReceipt } = useDesktop();
   const [logoError, setLogoError] = React.useState(false);
+  const [isPrinting, setIsPrinting] = React.useState(false);
   const currencySymbol = settings.currencySymbol || 'ج.م';
 
   React.useEffect(() => {
@@ -24,6 +78,28 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
   }, [settings.logoUrl]);
 
   if (!receipt) return null;
+
+  const handlePrint = async () => {
+    if (isDesktop && config?.directPrintEnabled) {
+      setIsPrinting(true);
+      try {
+        const html = buildThermalReceiptHtml(receipt, settings, currencySymbol);
+        const res = await printReceipt({
+          printerName: config.defaultThermalPrinter || '',
+          htmlContent: html,
+        });
+        if (!res.success) {
+          window.print();
+        }
+      } catch (e) {
+        window.print();
+      } finally {
+        setIsPrinting(false);
+      }
+    } else {
+      window.print();
+    }
+  };
 
   return (
     <Modal
@@ -141,8 +217,8 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
           <Button variant="outline" onClick={onClose}>
             إغلاق
           </Button>
-          <Button onClick={() => window.print()}>
-            <Printer className="h-4 w-4" />
+          <Button onClick={handlePrint} disabled={isPrinting}>
+            {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
             طباعة الإيصال
           </Button>
         </div>

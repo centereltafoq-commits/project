@@ -988,7 +988,7 @@ git commit -m "feat(desktop): implement IPC handlers and secure preload context 
   - `DesktopConnectionModal` presenting Arabic setup UI for selecting Server or Client mode.
   - Printer configuration block in Settings page for selecting default thermal receipt printer.
 
-- [ ] **Step 1: Write failing unit test for `useDesktop` hook**
+- [x] **Step 1: Write failing unit test for `useDesktop` hook**
 
 ```typescript
 // apps/web/src/hooks/use-desktop.spec.ts
@@ -1021,31 +1021,31 @@ describe('useDesktop Hook', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cmd.exe /c npx vitest run apps/web/src/hooks/use-desktop.spec.ts`  
 Expected: FAIL
 
-- [ ] **Step 3: Implement `apps/web/src/hooks/use-desktop.ts` and `apps/web/src/components/desktop-connection-modal.tsx`**
+- [x] **Step 3: Implement `apps/web/src/hooks/use-desktop.ts` and `apps/web/src/components/desktop-connection-modal.tsx`**
 
 Implement the hook and the connection modal in Arabic:
 - If `isDesktop` is true and `config.isFirstLaunch` or connection failed, display `DesktopConnectionModal`.
 - Allow toggling "هذا الجهاز هو السيرفر الرئيسي" (starts local server and shows IP to share).
 - Allow typing server URL with instant "فحص الاتصال" (Test Ping).
 
-- [ ] **Step 4: Integrate printer selection in `apps/web/src/features/settings/settings-page.tsx`**
+- [x] **Step 4: Integrate printer selection in `apps/web/src/features/settings/settings-page.tsx`**
 
 When `isDesktop` is true, render a card:
 - "إعدادات أجهزة السنتر والطباعة الحرارية"
 - Combobox to choose the default thermal printer from `printers`.
 - Toggle "تفعيل الطباعة الصامتة المباشرة لإيصالات القبض (بدون نافذة المتصفح)".
 
-- [ ] **Step 5: Run tests to verify passing**
+- [x] **Step 5: Run tests to verify passing**
 
 Run: `cmd.exe /c npx vitest run apps/web/src/hooks/use-desktop.spec.ts`  
 Expected: PASS
 
-- [ ] **Step 6: Commit changes**
+- [x] **Step 6: Commit changes**
 
 ```bash
 git add apps/web/src/hooks/use-desktop.ts apps/web/src/hooks/use-desktop.spec.ts apps/web/src/components/desktop-connection-modal.tsx apps/web/src/features/settings/settings-page.tsx

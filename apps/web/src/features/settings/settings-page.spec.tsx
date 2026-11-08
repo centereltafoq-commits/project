@@ -129,4 +129,55 @@ describe('SettingsPage Component', () => {
 
     expect(screen.getByPlaceholderText('https://example.com/logo.png')).toBeInTheDocument();
   });
+
+  it('renders Desktop & Hardware card when running in desktop mode', async () => {
+    const mockSaveConfig = vi.fn().mockResolvedValue({});
+    (window as any).desktopApi = {
+      isDesktop: true,
+      platform: 'win32',
+      version: '1.0.0',
+      getConfig: vi.fn().mockResolvedValue({
+        serverMode: 'server',
+        serverUrl: 'http://localhost:4000',
+        defaultThermalPrinter: 'POS-80-Thermal',
+        directPrintEnabled: true,
+        isFirstLaunch: false,
+      }),
+      getServerStatus: vi.fn().mockResolvedValue({ running: true, port: 4000 }),
+      getLocalIps: vi.fn().mockResolvedValue(['192.168.1.15']),
+      getPrinters: vi.fn().mockResolvedValue([
+        { name: 'POS-80-Thermal', displayName: 'POS 80mm Printer', isDefault: true, status: 0 },
+        { name: 'PDF-Printer', displayName: 'PDF Printer', isDefault: false, status: 0 },
+      ]),
+      saveConfig: mockSaveConfig,
+      testConnection: vi.fn().mockResolvedValue({ ok: true }),
+      startServer: vi.fn().mockResolvedValue({ success: true }),
+      stopServer: vi.fn().mockResolvedValue({ success: true }),
+      printReceipt: vi.fn().mockResolvedValue({ success: true }),
+    };
+
+    renderComponent();
+
+    expect(
+      await screen.findByText('إعدادات أجهزة السنتر والطباعة الحرارية (Desktop & Hardware)'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/طابعة إيصالات السداد الحرارية الافتراضية/i)).toBeInTheDocument();
+    expect(
+      screen.getByText('تفعيل الطباعة الصامتة المباشرة لإيصالات السداد (بدون نافذة المتصفح)'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('يعمل (منفذ 4000)')).toBeInTheDocument();
+    expect(screen.getByText('http://192.168.1.15:4000')).toBeInTheDocument();
+
+    // Toggle direct printing
+    const toggleCheckbox = screen.getByLabelText(
+      'تفعيل الطباعة الصامتة المباشرة لإيصالات السداد (بدون نافذة المتصفح)',
+    );
+    fireEvent.click(toggleCheckbox);
+
+    await waitFor(() => {
+      expect(mockSaveConfig).toHaveBeenCalledWith({ directPrintEnabled: false });
+    });
+
+    delete (window as any).desktopApi;
+  });
 });
