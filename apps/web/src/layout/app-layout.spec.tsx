@@ -169,6 +169,17 @@ describe('AppLayout Navigation Sidebar RBAC', () => {
     fireEvent.click(headerToggleBtn);
     expect(sidebar.className).not.toContain('lg:w-20');
     expect(window.localStorage.getItem('edu_sidebar_collapsed')).toBe('false');
+
+    // Also test expanding via sidebar mini-logo button
+    const toggleAgainBtn = screen.getByTestId('sidebar-toggle-btn');
+    fireEvent.click(toggleAgainBtn);
+    expect(sidebar.className).toContain('lg:w-20');
+
+    const logoExpandBtn = screen.getByTestId('sidebar-logo-expand-btn');
+    expect(logoExpandBtn).toBeInTheDocument();
+    fireEvent.click(logoExpandBtn);
+    expect(sidebar.className).not.toContain('lg:w-20');
+    expect(window.localStorage.getItem('edu_sidebar_collapsed')).toBe('false');
   });
 
   it('restores collapsed state from localStorage on initial render', () => {

@@ -106,9 +106,10 @@ export function AppLayout() {
         <div
           className={cn(
             'flex h-16 items-center border-b border-border transition-all duration-300',
-            collapsed ? 'px-3 justify-between lg:justify-center' : 'px-5 justify-between',
+            collapsed ? 'px-3 justify-center' : 'px-5 justify-between',
           )}
         >
+          {/* Expanded state on desktop & full state on mobile */}
           <div className={cn('flex items-center gap-2.5 min-w-0', collapsed && 'lg:hidden')}>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm">
               {settings.logoUrl && !logoError ? (
@@ -132,40 +133,47 @@ export function AppLayout() {
             </div>
           </div>
 
-          {/* Collapsed state mini-logo on desktop */}
-          {collapsed && (
-            <div
-              className="hidden lg:flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm"
-              title={settings.centerName || 'سنتر النخبة التعليمي'}
+          {/* Desktop toggle button when expanded */}
+          {!collapsed && (
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              title="طي القائمة الجانبية"
+              aria-label="طي القائمة الجانبية"
+              data-testid="sidebar-toggle-btn"
             >
-              {settings.logoUrl && !logoError ? (
-                <img
-                  src={settings.logoUrl}
-                  alt={settings.centerName}
-                  className="h-full w-full object-cover"
-                  onError={() => setLogoError(true)}
-                />
-              ) : (
-                <GraduationCap className="h-5 w-5" />
-              )}
-            </div>
+              <PanelRightClose className="h-4 w-4" />
+            </button>
           )}
 
-          {/* Desktop toggle button in sidebar header */}
-          <button
-            type="button"
-            onClick={() => setCollapsed((c) => !c)}
-            className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title={collapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية'}
-            aria-label={collapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية'}
-            data-testid="sidebar-toggle-btn"
-          >
-            {collapsed ? (
-              <PanelRightOpen className="h-4 w-4" />
-            ) : (
-              <PanelRightClose className="h-4 w-4" />
-            )}
-          </button>
+          {/* Collapsed state single interactive mini-logo on desktop */}
+          {collapsed && (
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              className="group relative hidden lg:flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer"
+              title="توسيع القائمة الجانبية"
+              aria-label="توسيع القائمة الجانبية"
+              data-testid="sidebar-logo-expand-btn"
+            >
+              <div className="flex h-full w-full items-center justify-center group-hover:opacity-0 transition-opacity">
+                {settings.logoUrl && !logoError ? (
+                  <img
+                    src={settings.logoUrl}
+                    alt={settings.centerName}
+                    className="h-full w-full object-cover"
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <GraduationCap className="h-5 w-5" />
+                )}
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-primary-foreground">
+                <PanelRightOpen className="h-4 w-4" />
+              </div>
+            </button>
+          )}
 
           {/* Mobile close button */}
           <button onClick={() => setMobileOpen(false)} className="lg:hidden shrink-0">
