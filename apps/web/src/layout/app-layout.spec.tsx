@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { PERMISSIONS, SystemRole } from '@edu-center/shared';
 import * as authContextModule from '@/features/auth/auth-context';
 import * as centerSettingsModule from '@/features/settings/center-settings-context';
@@ -128,5 +128,73 @@ describe('AppLayout Navigation Sidebar RBAC', () => {
     );
 
     expect(screen.queryByRole('link', { name: /إعدادات النظام/i })).not.toBeInTheDocument();
+  });
+
+  it('toggles sidebar collapse state and persists to localStorage', () => {
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      user: {
+        id: 'owner-1',
+        fullName: 'المالك الرئيسي',
+        email: 'owner@center.com',
+        roleCode: SystemRole.OWNER,
+        roleNameAr: 'مالك النظام',
+        permissions: Object.values(PERMISSIONS),
+      },
+      logout: vi.fn(),
+      hasPermission: () => true,
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <AppLayout />
+      </MemoryRouter>,
+    );
+
+    const sidebar = screen.getByTestId('app-sidebar');
+    expect(sidebar.className).toContain('w-72');
+    expect(sidebar.className).not.toContain('lg:w-20');
+
+    const toggleBtn = screen.getByTestId('sidebar-toggle-btn');
+    expect(toggleBtn).toBeInTheDocument();
+
+    fireEvent.click(toggleBtn);
+
+    expect(sidebar.className).toContain('lg:w-20');
+    expect(window.localStorage.getItem('edu_sidebar_collapsed')).toBe('true');
+
+    // Click again to expand via header toggle button
+    const headerToggleBtn = screen.getByTestId('header-sidebar-toggle-btn');
+    expect(headerToggleBtn).toBeInTheDocument();
+    fireEvent.click(headerToggleBtn);
+    expect(sidebar.className).not.toContain('lg:w-20');
+    expect(window.localStorage.getItem('edu_sidebar_collapsed')).toBe('false');
+  });
+
+  it('restores collapsed state from localStorage on initial render', () => {
+    window.localStorage.setItem('edu_sidebar_collapsed', 'true');
+
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      user: {
+        id: 'owner-1',
+        fullName: 'المالك الرئيسي',
+        email: 'owner@center.com',
+        roleCode: SystemRole.OWNER,
+        roleNameAr: 'مالك النظام',
+        permissions: Object.values(PERMISSIONS),
+      },
+      logout: vi.fn(),
+      hasPermission: () => true,
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <AppLayout />
+      </MemoryRouter>,
+    );
+
+    const sidebar = screen.getByTestId('app-sidebar');
+    expect(sidebar.className).toContain('lg:w-20');
   });
 });

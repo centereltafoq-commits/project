@@ -1,6 +1,15 @@
 import * as React from 'react';
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
-import { GraduationCap, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import {
+  GraduationCap,
+  LogOut,
+  Menu,
+  Moon,
+  PanelRightClose,
+  PanelRightOpen,
+  Sun,
+  X,
+} from 'lucide-react';
 import { SystemRole } from '@edu-center/shared';
 import { Badge, Button } from '@/design-system';
 import { cn } from '@/lib/cn';
@@ -13,6 +22,15 @@ export function AppLayout() {
   const { settings } = useCenterSettings();
   const [logoError, setLogoError] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(() => {
+    try {
+      return typeof localStorage !== 'undefined'
+        ? localStorage.getItem('edu_sidebar_collapsed') === 'true'
+        : false;
+    } catch {
+      return false;
+    }
+  });
   const [dark, setDark] = React.useState(() => {
     try {
       return typeof localStorage !== 'undefined' ? localStorage.getItem('edu_theme') === 'dark' : false;
@@ -24,6 +42,16 @@ export function AppLayout() {
   React.useEffect(() => {
     setLogoError(false);
   }, [settings?.logoUrl]);
+
+  React.useEffect(() => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('edu_sidebar_collapsed', String(collapsed));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [collapsed]);
 
   React.useEffect(() => {
     try {
@@ -68,14 +96,21 @@ export function AppLayout() {
       )}
 
       <aside
+        data-testid="app-sidebar"
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card transition-transform lg:static lg:translate-x-0 no-print',
+          'fixed inset-y-0 right-0 z-50 flex flex-col border-l border-border bg-card transition-all duration-300 ease-in-out lg:static lg:translate-x-0 no-print',
+          collapsed ? 'w-72 lg:w-20' : 'w-72',
           mobileOpen ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-border px-5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground">
+        <div
+          className={cn(
+            'flex h-16 items-center border-b border-border transition-all duration-300',
+            collapsed ? 'px-3 justify-between lg:justify-center' : 'px-5 justify-between',
+          )}
+        >
+          <div className={cn('flex items-center gap-2.5 min-w-0', collapsed && 'lg:hidden')}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm">
               {settings.logoUrl && !logoError ? (
                 <img
                   src={settings.logoUrl}
@@ -96,12 +131,49 @@ export function AppLayout() {
               </p>
             </div>
           </div>
+
+          {/* Collapsed state mini-logo on desktop */}
+          {collapsed && (
+            <div
+              className="hidden lg:flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm"
+              title={settings.centerName || 'سنتر النخبة التعليمي'}
+            >
+              {settings.logoUrl && !logoError ? (
+                <img
+                  src={settings.logoUrl}
+                  alt={settings.centerName}
+                  className="h-full w-full object-cover"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <GraduationCap className="h-5 w-5" />
+              )}
+            </div>
+          )}
+
+          {/* Desktop toggle button in sidebar header */}
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            title={collapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية'}
+            aria-label={collapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية'}
+            data-testid="sidebar-toggle-btn"
+          >
+            {collapsed ? (
+              <PanelRightOpen className="h-4 w-4" />
+            ) : (
+              <PanelRightClose className="h-4 w-4" />
+            )}
+          </button>
+
+          {/* Mobile close button */}
           <button onClick={() => setMobileOpen(false)} className="lg:hidden shrink-0">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <nav className={cn('flex-1 space-y-1 overflow-y-auto p-3 transition-all', collapsed && 'lg:p-2')}>
           {visibleNav.map((item) => {
             const Icon = item.icon;
             return (
@@ -110,9 +182,11 @@ export function AppLayout() {
                 to={item.to}
                 end={item.to === '/'}
                 onClick={() => setMobileOpen(false)}
+                title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors',
+                    'flex items-center gap-3 rounded-xl py-2.5 text-sm font-semibold transition-all',
+                    collapsed ? 'px-3.5 lg:justify-center lg:px-0' : 'px-3.5',
                     isActive
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -120,23 +194,46 @@ export function AppLayout() {
                 }
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span>{item.label}</span>
+                <span className={cn('truncate transition-opacity', collapsed && 'lg:hidden')}>
+                  {item.label}
+                </span>
               </NavLink>
             );
           })}
         </nav>
 
-        <div className="border-t border-border p-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div
+          className={cn(
+            'border-t border-border p-4 transition-all',
+            collapsed && 'lg:p-2.5 lg:flex lg:flex-col lg:items-center',
+          )}
+        >
+          <div className={cn('mb-3 flex items-center justify-between', collapsed && 'lg:hidden')}>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">{user.fullName}</p>
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             </div>
             <Badge variant="info">{user.roleNameAr}</Badge>
           </div>
-          <Button variant="outline" size="sm" className="w-full" onClick={logout}>
-            <LogOut className="h-4 w-4" />
-            تسجيل الخروج
+
+          {collapsed && (
+            <div
+              className="hidden lg:flex mb-2 h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-foreground"
+              title={`${user.fullName} (${user.roleNameAr})`}
+            >
+              {user.fullName.slice(0, 1)}
+            </div>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn('w-full', collapsed && 'lg:w-9 lg:h-9 lg:p-0 lg:justify-center')}
+            onClick={logout}
+            title="تسجيل الخروج"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            <span className={cn(collapsed && 'lg:hidden')}>تسجيل الخروج</span>
           </Button>
         </div>
       </aside>
@@ -151,6 +248,21 @@ export function AppLayout() {
               onClick={() => setMobileOpen(true)}
             >
               <Menu className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:flex text-muted-foreground hover:text-foreground"
+              onClick={() => setCollapsed((c) => !c)}
+              title={collapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية'}
+              aria-label={collapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية'}
+              data-testid="header-sidebar-toggle-btn"
+            >
+              {collapsed ? (
+                <PanelRightOpen className="h-5 w-5" />
+              ) : (
+                <PanelRightClose className="h-5 w-5" />
+              )}
             </Button>
             <span className="text-sm font-semibold text-muted-foreground">
               فرع الإدارة الرئيسي • نظام التشغيل المحاسبي والأكاديمي
