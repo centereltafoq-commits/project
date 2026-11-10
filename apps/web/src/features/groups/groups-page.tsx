@@ -73,13 +73,14 @@ export function GroupsPage() {
     {
       key: 'name',
       header: 'المجموعة',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[160px] max-w-[220px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
-        <div>
-          <p className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer">
+        <div onClick={() => navigate(`/groups/${row.id}`)}>
+          <p className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer line-clamp-1 leading-snug">
             {row.name}
           </p>
-          <span className="inline-block mt-0.5 rounded bg-primary/10 px-1.5 py-0.2 font-mono text-[11px] font-bold text-primary">
+          <span className="inline-block mt-0.5 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
             {row.groupCode}
           </span>
         </div>
@@ -88,10 +89,11 @@ export function GroupsPage() {
     {
       key: 'subjectGrade',
       header: 'المادة والصف',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[105px] max-w-[135px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
         <div>
-          <p className="font-semibold text-foreground text-xs">{row.subject}</p>
+          <p className="font-semibold text-foreground text-xs leading-snug">{row.subject}</p>
           <p className="text-[11px] text-muted-foreground">{row.gradeLevel}</p>
         </div>
       ),
@@ -99,9 +101,10 @@ export function GroupsPage() {
     {
       key: 'teacher',
       header: 'المدرس الأساسي',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[105px] max-w-[135px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
-        <span className="font-semibold text-foreground text-xs">
+        <span className="font-semibold text-foreground text-xs line-clamp-1">
           {row.primaryTeacherName || '—'}
         </span>
       ),
@@ -109,7 +112,8 @@ export function GroupsPage() {
     {
       key: 'schedule',
       header: 'المواعيد والقاعة',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[125px] max-w-[165px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => {
         const slotsCount = row.scheduleSlots?.length ?? 0;
         const daysText = row.scheduleSlots?.length
@@ -118,12 +122,12 @@ export function GroupsPage() {
 
         return (
           <div className="text-xs">
-            <span className="font-medium text-foreground flex items-center gap-1">
+            <span className="font-medium text-foreground flex items-center gap-1 line-clamp-1">
               <Calendar className="h-3 w-3 text-primary shrink-0" />
-              {daysText ? `${daysText}${slotsCount > 2 ? ` (+${slotsCount - 2})` : ''}` : 'لم تُحدد مواعيد'}
+              {daysText ? `${daysText}${slotsCount > 2 ? ` (+${slotsCount - 2})` : ''}` : 'لم تُحدد'}
             </span>
             {row.defaultClassroomName && (
-              <span className="text-[11px] text-muted-foreground block">
+              <span className="text-[10px] text-muted-foreground block line-clamp-1">
                 {row.defaultClassroomName}
               </span>
             )}
@@ -133,22 +137,27 @@ export function GroupsPage() {
     },
     {
       key: 'students',
-      header: 'المشتركون / السعة',
-      className: 'whitespace-nowrap',
+      header: 'المشتركون',
+      className: 'whitespace-nowrap text-center px-2',
+      headerClassName: 'text-center px-2',
       render: (row) => (
-        <Badge variant={row.activeStudentsCount >= row.maxStudents ? 'danger' : 'purple'}>
-          {row.activeStudentsCount} / {row.maxStudents} طالب
+        <Badge
+          variant={row.activeStudentsCount >= row.maxStudents ? 'danger' : 'purple'}
+          className="text-[11px] px-2 py-0.5"
+        >
+          {row.activeStudentsCount} / {row.maxStudents}
         </Badge>
       ),
     },
     {
       key: 'monthlyPrice',
       header: 'الاشتراك',
-      className: 'whitespace-nowrap',
+      className: 'whitespace-nowrap px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
         <div>
           <p className="font-bold text-foreground text-xs">{formatCurrency(row.monthlyPrice)}</p>
-          <p className="text-[11px] text-emerald-600 font-medium">
+          <p className="text-[10px] text-emerald-600 font-medium">
             {formatCurrency(row.calculatedSessionPrice)} / حصة
           </p>
         </div>
@@ -157,9 +166,10 @@ export function GroupsPage() {
     {
       key: 'status',
       header: 'الحالة',
-      className: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-center px-2',
+      headerClassName: 'text-center px-2',
       render: (row) => (
-        <Badge variant={row.isActive ? 'success' : 'neutral'}>
+        <Badge variant={row.isActive ? 'success' : 'neutral'} className="text-[11px] px-2 py-0.5">
           {row.isActive ? 'نشطة' : 'متوقفة'}
         </Badge>
       ),
@@ -167,42 +177,44 @@ export function GroupsPage() {
     {
       key: 'actions',
       header: 'إجراءات',
-      className: 'whitespace-nowrap text-left pl-4',
+      className: 'whitespace-nowrap text-left pl-3 pr-2',
+      headerClassName: 'text-left pl-3 pr-2',
       render: (row) => (
-        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
           <Button
             size="sm"
             variant="outline"
-            className="h-8 gap-1 px-2.5 text-xs font-bold"
-            onClick={() => {
-              setQuickViewGroup(row);
-              setQuickViewOpen(true);
-            }}
+            className="h-7.5 gap-1 px-2 text-xs font-bold"
+            onClick={() => navigate(`/groups/${row.id}`)}
+            title="التفاصيل والطلاب"
           >
-            <Eye className="h-3.5 w-3.5 text-primary" />
-            تفاصيل
+            <Users className="h-3.5 w-3.5 text-primary" />
+            التفاصيل
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => navigate(`/groups/${row.id}`)}
+            className="h-7.5 w-7.5 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+            onClick={() => {
+              setQuickViewGroup(row);
+              setQuickViewOpen(true);
+            }}
+            title="نظرة سريعة"
           >
-            <Users className="h-3.5 w-3.5 text-primary" />
-            الطلاب
+            <Eye className="h-3.5 w-3.5" />
           </Button>
           {canManageGroups && (
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              className="h-7.5 w-7.5 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
               onClick={() => {
                 setEditingGroupId(row.id);
                 setModalOpen(true);
               }}
+              title="تعديل بيانات المجموعة"
             >
               <Edit3 className="h-3.5 w-3.5" />
-              تعديل
             </Button>
           )}
         </div>
