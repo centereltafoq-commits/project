@@ -76,16 +76,17 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'date',
       header: 'التاريخ والوقت',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[130px] max-w-[165px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => {
         const d = new Date(`${row.sessionDate}T00:00:00`);
         const dayName = Number.isNaN(d.getTime()) ? '' : ARABIC_DAYS[d.getDay()];
         return (
           <div>
-            <div className="font-bold text-foreground text-xs hover:text-primary transition-colors cursor-pointer">
+            <div className="font-bold text-foreground text-xs hover:text-primary transition-colors cursor-pointer line-clamp-1 leading-snug">
               {dayName} — {formatDateAr(row.sessionDate)}
             </div>
-            <div className="text-[11px] text-muted-foreground font-mono">
+            <div className="text-[10px] text-muted-foreground font-mono">
               {formatTimeRangeAr(row.startTime, row.endTime)}
             </div>
           </div>
@@ -95,12 +96,13 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'group',
       header: 'المجموعة والمادة',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[150px] max-w-[220px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
         <div>
-          <div className="font-bold text-foreground text-xs">{row.groupName}</div>
-          <div className="text-[11px] text-muted-foreground">
-            <span className="font-mono">{row.groupCode}</span> • {row.subject}
+          <div className="font-bold text-foreground text-xs line-clamp-1 leading-snug">{row.groupName}</div>
+          <div className="text-[10px] text-muted-foreground line-clamp-1">
+            <span className="font-mono font-bold text-primary">{row.groupCode}</span> • {row.subject}
           </div>
         </div>
       ),
@@ -108,11 +110,12 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'teacher',
       header: 'المدرس / القاعة',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[120px] max-w-[160px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
         <div>
-          <div className="font-medium text-foreground text-xs">{row.teacherName}</div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="font-medium text-foreground text-xs line-clamp-1">{row.teacherName}</div>
+          <div className="text-[10px] text-muted-foreground line-clamp-1">
             {row.classroomName ? `${row.classroomName} (${row.roomNumber})` : 'بدون قاعة'}
           </div>
         </div>
@@ -121,38 +124,45 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'attendanceCount',
       header: 'ملخص الرصد',
-      className: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-center px-2',
+      headerClassName: 'text-center px-2',
       render: (row) =>
         row.recordedCount > 0 ? (
-          <Badge variant="purple" className="text-xs">
+          <Badge variant="purple" className="text-[11px] px-2 py-0.5">
             حضور {row.presentCount} من {row.recordedCount}
           </Badge>
         ) : (
-          <span className="text-xs text-muted-foreground">لم يُرصد بعد</span>
+          <span className="text-[11px] text-muted-foreground">لم يُرصد بعد</span>
         ),
     },
     {
       key: 'status',
       header: 'الحالة',
-      className: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-center px-2',
+      headerClassName: 'text-center px-2',
       render: (row) => {
         const meta = SESSION_STATUS_META[row.status] ?? {
           label: row.status,
           variant: 'neutral' as const,
         };
-        return <Badge variant={meta.variant}>{meta.label}</Badge>;
+        return (
+          <Badge variant={meta.variant} className="text-[11px] px-2 py-0.5">
+            {meta.label}
+          </Badge>
+        );
       },
     },
     {
       key: 'actions',
       header: 'إجراءات',
-      className: 'whitespace-nowrap text-left pl-4',
+      className: 'whitespace-nowrap text-left pl-3 pr-2',
+      headerClassName: 'text-left pl-3 pr-2',
       render: (row) => (
         <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
           <Button
             size="sm"
             variant="outline"
-            className="h-8 gap-1.5 px-3 text-xs font-bold"
+            className="h-7.5 gap-1.5 px-2.5 text-xs font-bold"
             onClick={() => setActiveSheetSessionId(row.id)}
           >
             <ClipboardList className="h-3.5 w-3.5 text-primary" />

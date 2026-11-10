@@ -79,23 +79,25 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
     {
       key: 'student',
       header: 'الطالب',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[110px] max-w-[150px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
         <div>
-          <div className="font-bold text-foreground text-xs">{row.studentName}</div>
-          <div className="font-mono text-[11px] text-muted-foreground">{row.studentCode}</div>
+          <div className="font-bold text-foreground text-xs line-clamp-1">{row.studentName}</div>
+          <div className="font-mono text-[10px] text-muted-foreground">{row.studentCode}</div>
         </div>
       ),
     },
     {
       key: 'original',
       header: 'الحصة الأصلية وتاريخ الغياب',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[140px] max-w-[200px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
         <div>
-          <div className="font-semibold text-foreground text-xs">{row.groupName}</div>
-          <div className="text-[11px] text-muted-foreground">
-            غياب بتاريخ: {formatDateAr(row.absenceDate)}
+          <div className="font-semibold text-foreground text-xs line-clamp-1 leading-snug">{row.groupName}</div>
+          <div className="text-[10px] text-muted-foreground line-clamp-1">
+            غياب: {formatDateAr(row.absenceDate)}
           </div>
         </div>
       ),
@@ -103,13 +105,14 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
     {
       key: 'scheduledAt',
       header: 'موعد التعويض والقاعة',
-      className: 'whitespace-nowrap',
+      className: 'min-w-[130px] max-w-[170px] px-2.5',
+      headerClassName: 'px-2.5',
       render: (row) => (
         <div>
-          <div className="font-medium text-foreground text-xs">
+          <div className="font-medium text-foreground text-xs line-clamp-1">
             {row.scheduledAt ? formatDateTimeAr(row.scheduledAt) : 'غير محدد بعد'}
           </div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground line-clamp-1">
             {row.classroomName ? `${row.classroomName} (${row.roomNumber})` : 'بدون قاعة'}
           </div>
         </div>
@@ -118,52 +121,57 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
     {
       key: 'fee',
       header: 'التكلفة',
-      className: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-center px-2',
+      headerClassName: 'text-center px-2',
       render: (row) =>
         row.isFree ? (
-          <Badge variant="success" className="text-xs">مجاني</Badge>
+          <Badge variant="success" className="text-[11px] px-2 py-0.5">مجاني</Badge>
         ) : (
-          <Badge variant="warning" className="text-xs">{formatCurrency(row.extraFee)}</Badge>
+          <Badge variant="warning" className="text-[11px] px-2 py-0.5">{formatCurrency(row.extraFee)}</Badge>
         ),
     },
     {
       key: 'status',
       header: 'الحالة',
-      className: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-center px-2',
+      headerClassName: 'text-center px-2',
       render: (row) => {
         const meta = MAKEUP_STATUS_META[row.status] ?? {
           label: row.status,
           variant: 'neutral' as const,
         };
-        return <Badge variant={meta.variant}>{meta.label}</Badge>;
+        return <Badge variant={meta.variant} className="text-[11px] px-2 py-0.5">{meta.label}</Badge>;
       },
     },
     {
       key: 'actions',
       header: 'إجراءات',
-      className: 'whitespace-nowrap text-left pl-4',
+      className: 'whitespace-nowrap text-left pl-3 pr-2',
+      headerClassName: 'text-left pl-3 pr-2',
       render: (row) =>
         canManageMakeup ? (
-          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
             {row.status !== MakeupStatus.COMPLETED && row.status !== MakeupStatus.CANCELLED && (
               <Button
                 size="sm"
                 variant="success"
-                className="h-8 gap-1 px-2.5 text-xs font-semibold"
+                className="h-7.5 gap-1 px-2 text-xs font-semibold"
                 onClick={() => completeMutation.mutate(row.id)}
+                title="إثبات الحضور"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                إثبات الحضور
+                حضور
               </Button>
             )}
             <Button
               size="sm"
               variant="outline"
-              className="h-8 gap-1 px-2.5 text-xs font-semibold"
+              className="h-7.5 gap-1 px-2 text-xs font-semibold"
               onClick={() => {
                 setEditingRow(row);
                 setModalOpen(true);
               }}
+              title="تعديل موعد التعويض"
             >
               <Edit3 className="h-3.5 w-3.5" />
               تعديل
