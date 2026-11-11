@@ -13,7 +13,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { CacheService } from '../../common/cache/cache.module';
+import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { UploadedMulterFile } from '../../common/types/multer.types';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { UsersRepository } from '../users/users.repository';
 import { BackupsRepository } from './backups.repository';
 import { GoogleDriveDriver } from './drivers/google-drive.driver';
@@ -34,6 +36,7 @@ export class BackupsService {
     private readonly usersRepository: UsersRepository,
     private readonly config: ConfigService,
     private readonly cacheService: CacheService,
+    private readonly auditLogsService: AuditLogsService,
   ) {
     this.storageDir = path.resolve(process.cwd(), 'storage', 'backups');
     if (!fs.existsSync(this.storageDir)) {
@@ -76,8 +79,20 @@ export class BackupsService {
     return this.sanitizePublicSettings(raw);
   }
 
-  async updateSettings(dto: UpdateBackupSettingsDto) {
+  async updateSettings(dto: UpdateBackupSettingsDto, actor?: AuthenticatedUser) {
+    const previous = await this.repository.getSettings();
     const updated = await this.repository.updateSettings(dto);
+
+    await this.auditLogsService.record({
+      actorUserId: actor?.id ?? null,
+      actorName: actor?.fullName ?? null,
+      action: 'BACKUP_SETTINGS_UPDATE',
+      entityType: 'BACKUP',
+      entityId: 'settings',
+      beforeData: this.sanitizePublicSettings(previous),
+      afterData: this.sanitizePublicSettings(updated),
+    });
+
     return this.sanitizePublicSettings(updated);
   }
 
@@ -93,7 +108,10 @@ export class BackupsService {
     return record;
   }
 
-  async createBackup(triggerType: 'MANUAL' | 'SCHEDULED' = 'MANUAL') {
+  async createBackup(
+    triggerType: 'MANUAL' | 'SCHEDULED' = 'MANUAL',
+    actor?: AuthenticatedUser,
+  ) {
     const settings = await this.repository.getSettings();
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -204,6 +222,23 @@ export class BackupsService {
         status: 'SUCCESS',
       });
 
+      await this.auditLogsService.record({
+        actorUserId: actor?.id ?? null,
+        actorName:
+          actor?.fullName ??
+          (triggerType === 'SCHEDULED' ? 'النسخ التلقائي المجدول' : 'النظام'),
+        action: 'BACKUP_CREATE',
+        entityType: 'BACKUP',
+        entityId: updated.id,
+        afterData: {
+          fileName: updated.fileName,
+          fileSizeBytes: updated.fileSizeBytes,
+          triggerType: updated.triggerType,
+          status: updated.status,
+          destinations: updated.destinations,
+        },
+      });
+
       await this.enforceRetentionPolicy(settings.retentionCount);
       return updated;
     } catch (err: any) {
@@ -250,7 +285,7 @@ export class BackupsService {
 
   async uploadBackupFile(
     file: UploadedMulterFile,
-    actorUserId?: string,
+    actor?: AuthenticatedUser | string,
   ) {
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('ملف النسخة الاحتياطية فارغ أو مفقود');
@@ -346,11 +381,33 @@ export class BackupsService {
       status: 'SUCCESS',
     });
 
+    const actorId = typeof actor === 'object' ? actor?.id : actor;
+    const actorName = typeof actor === 'object' ? actor?.fullName : null;
+
+    await this.auditLogsService.record({
+      actorUserId: actorId ?? null,
+      actorName: actorName ?? null,
+      action: 'BACKUP_UPLOAD',
+      entityType: 'BACKUP',
+      entityId: record.id,
+      afterData: {
+        fileName: record.fileName,
+        fileSizeBytes: record.fileSizeBytes,
+        triggerType: record.triggerType,
+      },
+    });
+
     return record;
   }
 
-  async restoreBackup(id: string, passwordPlain: string, actorUserId: string) {
-    await this.verifyAdminPassword(actorUserId, passwordPlain);
+  async restoreBackup(
+    id: string,
+    passwordPlain: string,
+    actor?: AuthenticatedUser | string,
+  ) {
+    const actorId = typeof actor === 'object' ? actor?.id : actor;
+    const actorName = typeof actor === 'object' ? actor?.fullName : null;
+    await this.verifyAdminPassword(actorId!, passwordPlain);
     const record = await this.getRecordById(id);
     if (!fs.existsSync(record.filePath)) {
       throw new NotFoundException('ملف النسخة الاحتياطية غير موجود على القرص الصلب');
@@ -368,17 +425,48 @@ export class BackupsService {
 
     await this.executeRestore(record.filePath);
     await this.cacheService.invalidatePrefix('');
+
+    await this.auditLogsService.record({
+      actorUserId: actorId ?? null,
+      actorName: actorName ?? null,
+      action: 'BACKUP_RESTORE',
+      entityType: 'BACKUP',
+      entityId: record.id,
+      afterData: {
+        fileName: record.fileName,
+        restoredAt: new Date().toISOString(),
+      },
+    });
+
     return { success: true, message: `تمت استعادة قاعدة البيانات بنجاح من النسخة (${record.fileName})` };
   }
 
-  async restoreFromBuffer(buffer: Buffer, passwordPlain: string, actorUserId: string) {
-    await this.verifyAdminPassword(actorUserId, passwordPlain);
+  async restoreFromBuffer(
+    buffer: Buffer,
+    passwordPlain: string,
+    actor?: AuthenticatedUser | string,
+  ) {
+    const actorId = typeof actor === 'object' ? actor?.id : actor;
+    const actorName = typeof actor === 'object' ? actor?.fullName : null;
+    await this.verifyAdminPassword(actorId!, passwordPlain);
     const tempFile = path.join(this.storageDir, `temp-restore-${Date.now()}.sql.gz`);
     fs.writeFileSync(tempFile, buffer);
 
     try {
       await this.executeRestore(tempFile);
       await this.cacheService.invalidatePrefix('');
+
+      await this.auditLogsService.record({
+        actorUserId: actorId ?? null,
+        actorName: actorName ?? null,
+        action: 'BACKUP_RESTORE',
+        entityType: 'BACKUP',
+        afterData: {
+          source: 'buffer_upload',
+          restoredAt: new Date().toISOString(),
+        },
+      });
+
       return { success: true, message: 'تمت استعادة قاعدة البيانات من الملف المرفوع بنجاح' };
     } finally {
       if (fs.existsSync(tempFile)) {
@@ -450,11 +538,23 @@ export class BackupsService {
     });
   }
 
-  async disconnectGoogle() {
+  async disconnectGoogle(actor?: AuthenticatedUser) {
+    const previous = await this.repository.getSettings();
     const updated = await this.repository.updateSettings({
       googleDriveEnabled: false,
       googleDriveTokens: null,
     });
+
+    await this.auditLogsService.record({
+      actorUserId: actor?.id ?? null,
+      actorName: actor?.fullName ?? null,
+      action: 'BACKUP_DISCONNECT_GOOGLE',
+      entityType: 'BACKUP',
+      entityId: 'settings',
+      beforeData: { googleDriveEnabled: previous.googleDriveEnabled },
+      afterData: { googleDriveEnabled: false },
+    });
+
     return this.sanitizePublicSettings(updated);
   }
 }

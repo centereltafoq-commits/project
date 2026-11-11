@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { PERMISSIONS } from '@edu-center/shared';
+import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import {
   RequireAnyPermissions,
   RequirePermissions,
@@ -51,8 +52,11 @@ export class GradeLevelsController {
 
   @Post()
   @RequirePermissions(PERMISSIONS.GROUPS_MANAGE)
-  async create(@Body() dto: CreateGradeLevelDto) {
-    return this.gradeLevelsService.create(dto);
+  async create(
+    @Body() dto: CreateGradeLevelDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.gradeLevelsService.create(dto, actor);
   }
 
   @Patch(':id')
@@ -60,14 +64,19 @@ export class GradeLevelsController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateGradeLevelDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.gradeLevelsService.update(id, dto);
+    return this.gradeLevelsService.update(id, dto, actor);
   }
 
   @Delete(':id')
   @RequirePermissions(PERMISSIONS.GROUPS_MANAGE)
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.gradeLevelsService.remove(id);
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.gradeLevelsService.remove(id, actor);
   }
 }
+
 

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../common/cache/cache.module';
+import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { UploadedMulterFile } from '../../common/types/multer.types';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { BackupsService } from '../backups/backups.service';
@@ -29,6 +30,20 @@ export class SettingsService {
     private readonly configService: ConfigService,
   ) {}
 
+  private extractActorInfo(actor?: string | AuthenticatedUser): {
+    actorUserId?: string;
+    actorName?: string;
+  } {
+    if (!actor) return {};
+    if (typeof actor === 'object') {
+      return {
+        actorUserId: actor.id,
+        actorName: actor.fullName,
+      };
+    }
+    return { actorUserId: actor };
+  }
+
   async getSettings(): Promise<SystemSettingsRecord> {
     const cached = await this.cacheService.get<SystemSettingsRecord>(SETTINGS_CACHE_KEY);
     if (cached) {
@@ -42,8 +57,9 @@ export class SettingsService {
 
   async updateSettings(
     dto: UpdateSettingsDto,
-    actorUserId?: string,
+    actor?: string | AuthenticatedUser,
   ): Promise<SystemSettingsRecord> {
+    const { actorUserId, actorName } = this.extractActorInfo(actor);
     const previous = await this.getSettings();
     if (
       previous.logoUrl &&
@@ -67,6 +83,7 @@ export class SettingsService {
 
     await this.auditLogsService.record({
       actorUserId,
+      actorName,
       action: 'system.settings_update',
       entityType: 'SETTINGS',
       entityId: 'default',
@@ -87,8 +104,9 @@ export class SettingsService {
 
   async uploadLogo(
     file: UploadedMulterFile,
-    actorUserId?: string,
+    actor?: string | AuthenticatedUser,
   ): Promise<{ logoUrl: string; fileName: string }> {
+    const { actorUserId, actorName } = this.extractActorInfo(actor);
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('ملف الصورة مفقود أو غير صالح');
     }
@@ -146,6 +164,7 @@ export class SettingsService {
 
     await this.auditLogsService.record({
       actorUserId,
+      actorName,
       action: 'system.settings_logo_uploaded',
       entityType: 'SETTINGS',
       entityId: 'default',
@@ -157,8 +176,9 @@ export class SettingsService {
   }
 
   async removeLogo(
-    actorUserId?: string,
+    actor?: string | AuthenticatedUser,
   ): Promise<{ success: boolean; message: string }> {
+    const { actorUserId, actorName } = this.extractActorInfo(actor);
     const previous = await this.getSettings();
     if (previous.logoUrl && previous.logoUrl.startsWith('/api/settings/logo/')) {
       const oldFilename = path.basename(previous.logoUrl);
@@ -177,6 +197,7 @@ export class SettingsService {
 
     await this.auditLogsService.record({
       actorUserId,
+      actorName,
       action: 'system.settings_logo_removed',
       entityType: 'SETTINGS',
       entityId: 'default',
@@ -189,13 +210,14 @@ export class SettingsService {
 
   async resetAcademicYear(
     dto: ResetAcademicYearDto,
-    actorUserId?: string,
+    actor?: string | AuthenticatedUser,
   ): Promise<{
     success: boolean;
     backupId: string;
     purgeStudents: boolean;
     message: string;
   }> {
+    const { actorUserId, actorName } = this.extractActorInfo(actor);
     const expectedPin =
       this.configService.get<string>('annualResetPin') ||
       process.env.ANNUAL_RESET_PIN ||
@@ -205,6 +227,7 @@ export class SettingsService {
     if (!isPinValid) {
       await this.auditLogsService.record({
         actorUserId,
+        actorName,
         action: 'system.annual_reset_failed_pin',
         entityType: 'SYSTEM',
         entityId: 'default',
@@ -220,7 +243,10 @@ export class SettingsService {
     );
 
     // 1. Mandatory Pre-Purge Full Backup
-    const backupRecord = await this.backupsService.createBackup('MANUAL');
+    const backupRecord =
+      typeof actor === 'object' && actor
+        ? await this.backupsService.createBackup('MANUAL', actor)
+        : await this.backupsService.createBackup('MANUAL');
     this.logger.log(
       `Pre-purge full backup completed successfully with ID: ${backupRecord.id}`,
     );
@@ -243,6 +269,7 @@ export class SettingsService {
     // 5. Audit Logging
     await this.auditLogsService.record({
       actorUserId,
+      actorName,
       action: 'system.annual_reset',
       entityType: 'SYSTEM',
       entityId: 'default',

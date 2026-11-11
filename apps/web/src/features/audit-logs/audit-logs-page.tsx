@@ -64,16 +64,18 @@ export function AuditLogsPage() {
       className: 'whitespace-nowrap',
       render: (r) => {
         const actionMeta = translateAuditAction(r.action);
-        return <Badge variant={actionMeta.variant} className="text-xs">{actionMeta.label}</Badge>;
+        const actionLabel = r.actionAr || actionMeta.label;
+        return <Badge variant={actionMeta.variant} className="text-xs">{actionLabel}</Badge>;
       },
     },
     {
       key: 'entityType',
       header: 'القسم / الكيان',
       className: 'whitespace-nowrap',
-      render: (r) => (
-        <Badge variant="neutral" className="text-xs">{translateAuditEntity(r.entityType)}</Badge>
-      ),
+      render: (r) => {
+        const entityLabel = r.entityTypeAr || translateAuditEntity(r.entityType);
+        return <Badge variant="neutral" className="text-xs">{entityLabel}</Badge>;
+      },
     },
     {
       key: 'entityId',
@@ -169,15 +171,20 @@ export function AuditLogsPage() {
                 { value: 'STUDENT', label: 'الطلاب' },
                 { value: 'TEACHER', label: 'المدرسون' },
                 { value: 'ASSISTANT', label: 'المساعدون' },
-                { value: 'GROUP', label: 'المجموعات' },
+                { value: 'GROUP', label: 'المجموعات الدراسية' },
+                { value: 'GRADE_LEVEL', label: 'الصفوف الدراسية' },
                 { value: 'ENROLLMENT', label: 'الاشتراكات' },
                 { value: 'ATTENDANCE', label: 'الحضور والغياب' },
-                { value: 'PAYMENT', label: 'المدفوعات' },
+                { value: 'MAKEUP_SESSION', label: 'الحصص التعويضية' },
+                { value: 'PAYMENT', label: 'مدفوعات الطلاب' },
+                { value: 'PAYOUT', label: 'صرف مستحقات المدرسين والمساعدين' },
                 { value: 'EXPENSE', label: 'المصروفات' },
-                { value: 'monthly_settlement', label: 'التسويات المالية الشهرية' },
+                { value: 'MONTHLY_SETTLEMENT', label: 'التسويات المالية الشهرية' },
                 { value: 'BOOKING', label: 'الحجوزات' },
-                { value: 'CLASSROOM', label: 'القاعات' },
+                { value: 'CLASSROOM', label: 'القاعات الدراسية' },
+                { value: 'CLASSROOM_MAINTENANCE', label: 'صيانة القاعات' },
                 { value: 'BACKUP', label: 'النسخ الاحتياطي' },
+                { value: 'SETTINGS', label: 'إعدادات النظام' },
               ]}
             />
             {hasActiveFilters && (

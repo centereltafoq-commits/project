@@ -40,8 +40,11 @@ export class BackupsController {
 
   @Patch('settings')
   @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
-  async updateSettings(@Body() dto: UpdateBackupSettingsDto) {
-    return this.backupsService.updateSettings(dto);
+  async updateSettings(
+    @Body() dto: UpdateBackupSettingsDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.backupsService.updateSettings(dto, actor);
   }
 
   @Get()
@@ -52,8 +55,8 @@ export class BackupsController {
 
   @Post('trigger')
   @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
-  async triggerManualBackup() {
-    return this.backupsService.createBackup('MANUAL');
+  async triggerManualBackup(@CurrentUser() actor: AuthenticatedUser) {
+    return this.backupsService.createBackup('MANUAL', actor);
   }
 
   @Post('upload')
@@ -70,7 +73,7 @@ export class BackupsController {
     if (!file) {
       throw new BadRequestException('يرجى اختيار ملف النسخة الاحتياطية لرفعه');
     }
-    return this.backupsService.uploadBackupFile(file, user?.id);
+    return this.backupsService.uploadBackupFile(file, user);
   }
 
   @Get(':id/download')
@@ -110,13 +113,13 @@ export class BackupsController {
     @Body() dto: RestoreBackupDto,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.backupsService.restoreBackup(id, dto.password, actor.id);
+    return this.backupsService.restoreBackup(id, dto.password, actor);
   }
 
   @Delete('google/disconnect')
   @RequirePermissions(PERMISSIONS.BACKUPS_MANAGE)
-  async disconnectGoogle() {
-    return this.backupsService.disconnectGoogle();
+  async disconnectGoogle(@CurrentUser() actor: AuthenticatedUser) {
+    return this.backupsService.disconnectGoogle(actor);
   }
 }
 

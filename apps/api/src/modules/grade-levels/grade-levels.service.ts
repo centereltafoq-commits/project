@@ -4,12 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { CreateGradeLevelDto, GradeLevelQueryDto, UpdateGradeLevelDto } from './dto/grade-level.dto';
 import { GradeLevelsRepository } from './grade-levels.repository';
 
 @Injectable()
 export class GradeLevelsService {
-  constructor(private readonly gradeLevelsRepository: GradeLevelsRepository) {}
+  constructor(
+    private readonly gradeLevelsRepository: GradeLevelsRepository,
+    private readonly audit: AuditLogsService,
+  ) {}
 
   async list(query: GradeLevelQueryDto) {
     return this.gradeLevelsRepository.findAll(query.activeOnly);
@@ -23,16 +28,27 @@ export class GradeLevelsService {
     return gradeLevel;
   }
 
-  async create(dto: CreateGradeLevelDto) {
+  async create(dto: CreateGradeLevelDto, actor?: AuthenticatedUser) {
     const existing = await this.gradeLevelsRepository.findByName(dto.name);
     if (existing) {
       throw new ConflictException('يوجد صف دراسي مسجل مسبقاً بهذا الاسم');
     }
 
-    return this.gradeLevelsRepository.create(dto);
+    const created = await this.gradeLevelsRepository.create(dto);
+
+    await this.audit.record({
+      actorUserId: actor?.id ?? null,
+      actorName: actor?.fullName ?? null,
+      action: 'CREATE_GRADE_LEVEL',
+      entityType: 'GRADE_LEVEL',
+      entityId: created.id,
+      afterData: created,
+    });
+
+    return created;
   }
 
-  async update(id: string, dto: UpdateGradeLevelDto) {
+  async update(id: string, dto: UpdateGradeLevelDto, actor?: AuthenticatedUser) {
     const gradeLevel = await this.getById(id);
 
     if (dto.name && dto.name !== gradeLevel.name) {
@@ -42,10 +58,22 @@ export class GradeLevelsService {
       }
     }
 
-    return this.gradeLevelsRepository.update(id, dto);
+    const updated = await this.gradeLevelsRepository.update(id, dto);
+
+    await this.audit.record({
+      actorUserId: actor?.id ?? null,
+      actorName: actor?.fullName ?? null,
+      action: 'UPDATE_GRADE_LEVEL',
+      entityType: 'GRADE_LEVEL',
+      entityId: id,
+      beforeData: gradeLevel,
+      afterData: updated,
+    });
+
+    return updated;
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor?: AuthenticatedUser) {
     const gradeLevel = await this.getById(id);
 
     const usage = await this.gradeLevelsRepository.countUsage(gradeLevel.name);
@@ -55,7 +83,19 @@ export class GradeLevelsService {
       );
     }
 
-    return this.gradeLevelsRepository.delete(id);
+    const res = await this.gradeLevelsRepository.delete(id);
+
+    await this.audit.record({
+      actorUserId: actor?.id ?? null,
+      actorName: actor?.fullName ?? null,
+      action: 'DELETE_GRADE_LEVEL',
+      entityType: 'GRADE_LEVEL',
+      entityId: id,
+      beforeData: gradeLevel,
+    });
+
+    return res;
   }
 }
+
 

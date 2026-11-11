@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { UsersModule } from '../users/users.module';
 import { BackupsController } from './backups.controller';
 import { BackupsRepository } from './backups.repository';
@@ -8,7 +9,7 @@ import { GoogleDriveDriver } from './drivers/google-drive.driver';
 import { LocalStorageDriver } from './drivers/local-storage.driver';
 
 @Module({
-  imports: [UsersModule],
+  imports: [UsersModule, AuditLogsModule],
   controllers: [BackupsController],
   providers: [
     BackupsRepository,
@@ -20,4 +21,5 @@ import { LocalStorageDriver } from './drivers/local-storage.driver';
   exports: [BackupsService],
 })
 export class BackupsModule {}
+
 

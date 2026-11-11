@@ -11,6 +11,7 @@ describe('BackupsService - Upload & Integrity', () => {
   let mockUsersRepo: any;
   let mockCache: any;
   let mockConfig: any;
+  let mockAudit: any;
   let tempTestDir: string;
 
   beforeEach(() => {
@@ -40,6 +41,10 @@ describe('BackupsService - Upload & Integrity', () => {
       getOrThrow: vi.fn().mockReturnValue('postgres://user:pass@localhost:5432/edu_center'),
     };
 
+    mockAudit = {
+      record: vi.fn().mockResolvedValue(undefined),
+    };
+
     service = new BackupsService(
       mockRepo,
       {} as any,
@@ -47,6 +52,7 @@ describe('BackupsService - Upload & Integrity', () => {
       mockUsersRepo,
       mockConfig,
       mockCache,
+      mockAudit,
     );
 
     // Override storageDir to our test temp directory

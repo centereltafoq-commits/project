@@ -1,14 +1,22 @@
-import { Clock, Eye, Globe, Key, Shield, User } from 'lucide-react';
+import * as React from 'react';
+import { Clock, Eye, Globe, Key, Shield, User, Code2, ListFilter } from 'lucide-react';
 import { Badge, Button, Modal } from '@/design-system';
 import { formatDateTimeAr } from '@/lib/formatters';
-import { translateAuditAction, translateAuditEntity } from '@/lib/translations';
+import {
+  translateAuditAction,
+  translateAuditEntity,
+  translatePayloadKey,
+  translatePayloadValue,
+} from '@/lib/translations';
 
 export interface AuditLogRow {
   id: string;
   actorUserId?: string | null;
   actorName: string | null;
   action: string;
+  actionAr?: string;
   entityType: string;
+  entityTypeAr?: string;
   entityId: string | null;
   beforeData?: unknown;
   afterData?: unknown;
@@ -23,6 +31,143 @@ interface AuditLogQuickViewModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function RenderItemValue({ val, keyName }: { val: unknown; keyName?: string }) {
+  if (val === null || val === undefined) return <span className="text-muted-foreground">—</span>;
+
+  if (Array.isArray(val)) {
+    if (val.length === 0) return <span className="text-muted-foreground">فارغ</span>;
+    const isPrimitiveArray = val.every((item) => typeof item !== 'object' || item === null);
+    if (isPrimitiveArray) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          {val.map((item, idx) => (
+            <span
+              key={idx}
+              className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground"
+            >
+              {translatePayloadValue(item, keyName)}
+            </span>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-1.5 w-full">
+        {val.map((item, idx) => (
+          <div key={idx} className="rounded-md border border-border/70 bg-muted/40 p-2 text-xs">
+            <span className="text-[10px] font-bold text-muted-foreground block mb-1">
+              عنصر #{idx + 1}
+            </span>
+            <RenderItemValue val={item} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof val === 'object') {
+    const entries = Object.entries(val as Record<string, unknown>);
+    if (entries.length === 0) return <span className="text-muted-foreground">فارغ</span>;
+    return (
+      <div className="divide-y divide-border/40 rounded-md border border-border/70 bg-card p-1 text-xs w-full">
+        {entries.map(([subKey, subVal]) => (
+          <div key={subKey} className="flex items-start justify-between gap-2 p-1.5">
+            <span className="font-semibold text-muted-foreground whitespace-nowrap text-[11px]">
+              {translatePayloadKey(subKey)}:
+            </span>
+            <span className="font-medium text-foreground text-left break-all" dir="auto">
+              <RenderItemValue val={subVal} keyName={subKey} />
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <span className="font-medium text-foreground text-left break-all" dir="auto">
+      {translatePayloadValue(val, keyName)}
+    </span>
+  );
+}
+
+function PayloadBlock({
+  title,
+  colorClass,
+  data,
+}: {
+  title: string;
+  colorClass: string;
+  data: unknown;
+}) {
+  const [showRaw, setShowRaw] = React.useState(false);
+  const isComplex = data !== null && typeof data === 'object';
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className={`text-xs font-bold ${colorClass}`}>{title}</span>
+        {isComplex && (
+          <button
+            type="button"
+            onClick={() => setShowRaw(!showRaw)}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium underline transition-colors cursor-pointer"
+          >
+            {showRaw ? (
+              <>
+                <ListFilter className="h-3 w-3" />
+                عرض مبسط
+              </>
+            ) : (
+              <>
+                <Code2 className="h-3 w-3" />
+                عرض كود JSON
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {showRaw || !isComplex ? (
+        <pre
+          className="max-h-52 overflow-auto text-[11px] font-mono bg-card p-2 rounded-lg border border-border text-foreground text-left"
+          dir="ltr"
+        >
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      ) : Array.isArray(data) ? (
+        <div className="max-h-52 overflow-auto space-y-2 rounded-lg border border-border bg-card p-2">
+          {data.length === 0 ? (
+            <p className="text-xs text-muted-foreground">لا توجد عناصر</p>
+          ) : (
+            data.map((item, idx) => (
+              <div key={idx} className="rounded border border-border/70 p-2 text-xs bg-muted/30">
+                <span className="text-[10px] font-bold text-muted-foreground block mb-1">
+                  عنصر #{idx + 1}
+                </span>
+                <RenderItemValue val={item} />
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="max-h-52 overflow-auto divide-y divide-border/60 rounded-lg border border-border bg-card">
+          {Object.entries(data as Record<string, unknown>).map(([key, val]) => (
+            <div key={key} className="flex items-start justify-between gap-3 p-2 text-xs">
+              <span className="font-semibold text-muted-foreground whitespace-nowrap">
+                {translatePayloadKey(key)}:
+              </span>
+              <span className="font-medium text-foreground text-left break-all" dir="auto">
+                <RenderItemValue val={val} keyName={key} />
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AuditLogQuickViewModal({
   log,
   open,
@@ -31,7 +176,8 @@ export function AuditLogQuickViewModal({
   if (!log) return null;
 
   const actionMeta = translateAuditAction(log.action);
-  const entityLabel = translateAuditEntity(log.entityType);
+  const actionLabel = log.actionAr || actionMeta.label;
+  const entityLabel = log.entityTypeAr || translateAuditEntity(log.entityType);
 
   return (
     <Modal
@@ -46,11 +192,11 @@ export function AuditLogQuickViewModal({
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 rounded-xl border border-border bg-muted/30 p-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Badge variant={actionMeta.variant}>{actionMeta.label}</Badge>
+              <Badge variant={actionMeta.variant}>{actionLabel}</Badge>
               <Badge variant="neutral">{entityLabel}</Badge>
             </div>
             <h3 className="text-base font-bold text-foreground">
-              بواسطة: <span className="font-extrabold text-primary">{log.actorName || 'النظام التلقائي'}</span>
+              بواسطة: <span className="font-extrabold text-primary">{log.actorName || 'النظام'}</span>
             </h3>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
               <Clock className="h-3.5 w-3.5 text-primary" />
@@ -64,17 +210,20 @@ export function AuditLogQuickViewModal({
           <div className="rounded-xl border border-border bg-card p-3">
             <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
               <Shield className="h-3.5 w-3.5 text-primary" />
-              كود العملية
+              العملية المنفذة
             </span>
-            <p className="mt-1 font-mono text-xs font-bold text-foreground break-all">
-              {log.action}
+            <p className="mt-1 text-xs font-bold text-foreground break-all">
+              {actionLabel}
             </p>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {log.action}
+            </span>
           </div>
 
           <div className="rounded-xl border border-border bg-card p-3">
             <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
               <Key className="h-3.5 w-3.5 text-purple-600" />
-              معرّف السجل (Entity ID)
+              معرّف السجل ({entityLabel})
             </span>
             <p className="mt-1 font-mono text-xs font-semibold text-foreground break-all">
               {log.entityId || '—'}
@@ -95,32 +244,29 @@ export function AuditLogQuickViewModal({
         {/* التغييرات والبيانات المرفقة */}
         {(log.beforeData != null || log.afterData != null || log.metadata != null) && (
           <div className="space-y-3 pt-2">
-            <h4 className="text-xs font-bold text-muted-foreground">بيانات العملية المسجلة (Payload):</h4>
+            <h4 className="text-xs font-bold text-muted-foreground">تفاصيل بيانات العملية (Payload):</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {log.beforeData != null && (
-                <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1">
-                  <span className="text-[11px] font-bold text-rose-600">البيانات السابقة (Before):</span>
-                  <pre className="max-h-48 overflow-auto text-[11px] font-mono bg-card p-2 rounded-lg border border-border text-foreground text-left" dir="ltr">
-                    {JSON.stringify(log.beforeData, null, 2)}
-                  </pre>
-                </div>
+                <PayloadBlock
+                  title="البيانات السابقة (Before)"
+                  colorClass="text-rose-600"
+                  data={log.beforeData}
+                />
               )}
               {log.afterData != null && (
-                <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1">
-                  <span className="text-[11px] font-bold text-emerald-600">البيانات بعد التعديل (After):</span>
-                  <pre className="max-h-48 overflow-auto text-[11px] font-mono bg-card p-2 rounded-lg border border-border text-foreground text-left" dir="ltr">
-                    {JSON.stringify(log.afterData, null, 2)}
-                  </pre>
-                </div>
+                <PayloadBlock
+                  title="البيانات بعد التعديل (After)"
+                  colorClass="text-emerald-600"
+                  data={log.afterData}
+                />
               )}
             </div>
             {log.metadata != null && (
-              <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1">
-                <span className="text-[11px] font-bold text-primary">بيانات إضافية (Metadata):</span>
-                <pre className="max-h-40 overflow-auto text-[11px] font-mono bg-card p-2 rounded-lg border border-border text-foreground text-left" dir="ltr">
-                  {JSON.stringify(log.metadata, null, 2)}
-                </pre>
-              </div>
+              <PayloadBlock
+                title="بيانات ومعلومات إضافية (Metadata)"
+                colorClass="text-primary"
+                data={log.metadata}
+              />
             )}
           </div>
         )}

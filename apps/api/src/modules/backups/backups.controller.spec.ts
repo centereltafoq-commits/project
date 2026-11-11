@@ -69,7 +69,7 @@ describe('BackupsController', () => {
 
       const res = await controller.uploadBackup(mockFile, actor);
       expect(res).toBe(mockRecord);
-      expect(service.uploadBackupFile).toHaveBeenCalledWith(mockFile, 'user-uuid-1');
+      expect(service.uploadBackupFile).toHaveBeenCalledWith(mockFile, actor);
     });
 
     it('throws BadRequestException if file is missing in uploadBackup', async () => {
@@ -91,7 +91,7 @@ describe('BackupsController', () => {
       expect(service.restoreBackup).toHaveBeenCalledWith(
         '00000000-0000-0000-0000-000000000001',
         'pass',
-        'user-uuid-1',
+        actor,
       );
     });
   });

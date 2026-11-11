@@ -116,15 +116,55 @@ export class AuthService {
     };
   }
 
-  async logout(rawRefreshToken?: string) {
-    if (!rawRefreshToken) return;
-    try {
-      const decoded = await this.jwtService.verifyAsync<{ jti: string }>(rawRefreshToken, {
-        secret: this.config.getOrThrow<string>('jwtRefreshSecret'),
+  async logout(
+    rawRefreshToken?: string,
+    actor?: { id?: string; fullName?: string },
+    meta?: { ipAddress?: string; userAgent?: string; bearerToken?: string },
+  ) {
+    let userId = actor?.id;
+    let userName = actor?.fullName;
+
+    if (rawRefreshToken) {
+      try {
+        const decoded = await this.jwtService.verifyAsync<{ sub: string; jti: string }>(rawRefreshToken, {
+          secret: this.config.getOrThrow<string>('jwtRefreshSecret'),
+        });
+        await this.authRepository.revokeRefreshToken(decoded.jti);
+        if (!userId && decoded?.sub) {
+          userId = decoded.sub;
+        }
+      } catch {
+        // Ignore expired/invalid refresh token on logout
+      }
+    }
+
+    if (!userId && meta?.bearerToken) {
+      try {
+        const decoded = this.jwtService.decode(meta.bearerToken) as { sub?: string };
+        if (decoded?.sub) {
+          userId = decoded.sub;
+        }
+      } catch {
+        // ignore invalid token decode
+      }
+    }
+
+    if (userId && !userName) {
+      const user = await this.usersRepository.findByIdWithRole(userId);
+      if (user) {
+        userName = user.fullName;
+      }
+    }
+
+    if (userId) {
+      await this.audit.record({
+        actorUserId: userId,
+        actorName: userName || 'مستخدم',
+        action: 'LOGOUT',
+        entityType: 'AUTH',
+        entityId: userId,
+        ipAddress: meta?.ipAddress,
       });
-      await this.authRepository.revokeRefreshToken(decoded.jti);
-    } catch {
-      // Ignore expired/invalid refresh token on logout
     }
   }
 

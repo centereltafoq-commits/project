@@ -56,9 +56,20 @@ export class AuthController {
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
     const token = req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined;
-    await this.authService.logout(token);
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+
+    await this.authService.logout(token, user, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      bearerToken,
+    });
     res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth' });
     return { success: true };
   }

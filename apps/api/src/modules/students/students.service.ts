@@ -72,10 +72,13 @@ export class StudentsService {
       ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
     });
 
+    const isArchiving =
+      dto.status === StudentStatus.ARCHIVED && existing.status !== StudentStatus.ARCHIVED;
+
     await this.audit.record({
       actorUserId: actor.id,
       actorName: actor.fullName,
-      action: 'UPDATE_STUDENT',
+      action: isArchiving ? 'ARCHIVE_STUDENT' : 'UPDATE_STUDENT',
       entityType: 'STUDENT',
       entityId: id,
       beforeData: existing,
@@ -86,7 +89,20 @@ export class StudentsService {
   }
 
   async archive(id: string, actor: AuthenticatedUser) {
-    return this.update(id, { status: StudentStatus.ARCHIVED }, actor);
+    const existing = await this.getById(id);
+    const updated = await this.repository.update(id, { status: StudentStatus.ARCHIVED });
+
+    await this.audit.record({
+      actorUserId: actor.id,
+      actorName: actor.fullName,
+      action: 'ARCHIVE_STUDENT',
+      entityType: 'STUDENT',
+      entityId: id,
+      beforeData: existing,
+      afterData: updated,
+    });
+
+    return updated;
   }
 
   async getProfile(id: string, requestedYearMonth?: string, actor?: AuthenticatedUser) {
