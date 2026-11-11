@@ -25,12 +25,22 @@ describe('Audit Translations & Utilities', () => {
     expect(getActionArabicLabel('system.settings_update')).toBe('تحديث إعدادات النظام والهوية');
     expect(getActionArabicLabel('CREATE_GRADE_LEVEL')).toBe('إضافة صف دراسي جديد');
     expect(getActionArabicLabel('FINANCE_COLLECT_PAYMENT')).toBe('تحصيل مدفوعات طالب');
+    expect(getActionArabicLabel('CANCEL_SINGLE_BOOKING')).toBe('إلغاء موعد حجز');
+    expect(getActionArabicLabel('REVIEW_BOOKING_CONFIRMED')).toBe('تأكيد طلب الحجز وتخصيص قاعة');
+    expect(getActionArabicLabel('CREATE_CLASSROOM_MAINTENANCE')).toBe('تسجيل جدول صيانة قاعة');
+    expect(getActionArabicLabel('FINANCE_TEACHER_PAYOUT')).toBe('صرف مستحقات مدرس');
+    expect(getActionArabicLabel('FINANCE_ASSISTANT_PAYOUT')).toBe('صرف مستحقات مساعد');
   });
 
   it('translates unknown/compound actions gracefully using decomposed words', () => {
     const label = getActionArabicLabel('CREATE_CUSTOM_UNKNOWN');
     expect(label).toContain('إنشاء');
     expect(label).not.toBe('');
+
+    const decompSingle = getActionArabicLabel('UPDATE_SINGLE_SCHEDULE');
+    expect(decompSingle).toContain('تعديل');
+    expect(decompSingle).toContain('فردي');
+    expect(decompSingle).toContain('جدولة');
   });
 
   it('translates entities accurately in Arabic', () => {

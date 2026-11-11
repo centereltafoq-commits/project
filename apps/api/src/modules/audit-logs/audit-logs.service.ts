@@ -71,7 +71,7 @@ export class AuditLogsService {
         ...r,
         actionAr,
         entityTypeAr,
-        actorName: r.actorName || 'النظام',
+        actorName: (r as any).actorName || (r as any).actor_name || 'النظام',
       };
     });
     return createPaginatedResult(enrichedRows, total, page, limit);

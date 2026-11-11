@@ -67,7 +67,7 @@ export class SettingsController {
     @Body() dto: UpdateSettingsDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.settingsService.updateSettings(dto, user?.id);
+    return this.settingsService.updateSettings(dto, user);
   }
 
   @Post('logo')
@@ -86,7 +86,7 @@ export class SettingsController {
     if (!file) {
       throw new BadRequestException('يرجى اختيار ملف الصورة لرفعه');
     }
-    return this.settingsService.uploadLogo(file, user?.id);
+    return this.settingsService.uploadLogo(file, user);
   }
 
   @Delete('logo')
@@ -94,7 +94,7 @@ export class SettingsController {
   @Roles(SystemRole.OWNER)
   @RequirePermissions(PERMISSIONS.SETTINGS_MANAGE)
   async removeLogo(@CurrentUser() user: AuthenticatedUser) {
-    return this.settingsService.removeLogo(user?.id);
+    return this.settingsService.removeLogo(user);
   }
 
   @Post('reset-academic-year')
@@ -105,6 +105,6 @@ export class SettingsController {
     @Body() dto: ResetAcademicYearDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.settingsService.resetAcademicYear(dto, user?.id);
+    return this.settingsService.resetAcademicYear(dto, user);
   }
 }

@@ -105,7 +105,7 @@ describe('SettingsController', () => {
 
       const res = await controller.updateSettings(dto, actor);
       expect(res).toBe(mockResult);
-      expect(service.updateSettings).toHaveBeenCalledWith(dto, 'owner-uuid-1');
+      expect(service.updateSettings).toHaveBeenCalledWith(dto, actor);
     });
 
     it('delegates resetAcademicYear to service with actor user ID', async () => {
@@ -125,7 +125,7 @@ describe('SettingsController', () => {
 
       const res = await controller.resetAcademicYear(dto, actor);
       expect(res).toBe(mockResult);
-      expect(service.resetAcademicYear).toHaveBeenCalledWith(dto, 'owner-uuid-1');
+      expect(service.resetAcademicYear).toHaveBeenCalledWith(dto, actor);
     });
 
     it('delegates uploadLogo to service with actor user ID', async () => {
@@ -140,7 +140,7 @@ describe('SettingsController', () => {
 
       const res = await controller.uploadLogo(mockFile, actor);
       expect(res).toBe(mockResult);
-      expect(service.uploadLogo).toHaveBeenCalledWith(mockFile, 'owner-uuid-1');
+      expect(service.uploadLogo).toHaveBeenCalledWith(mockFile, actor);
     });
 
     it('throws BadRequestException if no file passed to uploadLogo', async () => {
@@ -157,7 +157,7 @@ describe('SettingsController', () => {
 
       const res = await controller.removeLogo(actor);
       expect(res).toBe(mockResult);
-      expect(service.removeLogo).toHaveBeenCalledWith('owner-uuid-1');
+      expect(service.removeLogo).toHaveBeenCalledWith(actor);
     });
   });
 });

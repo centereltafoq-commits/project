@@ -317,6 +317,17 @@ const ACTION_WORDS_MAP: Record<string, string> = {
   STATUS: 'حالة',
   SETTLEMENT: 'تسوية',
   SETTLEMENTS: 'التسويات',
+  SINGLE: 'فردي',
+  ONE: 'واحد',
+  TIME: 'مرة',
+  CONFIRMED: 'مؤكد',
+  REJECTED: 'مرفوض',
+  APPROVED: 'معتمد',
+  PURGE: 'تصفير',
+  ACADEMIC: 'أكاديمي',
+  YEAR: 'عام',
+  MONTH: 'شهر',
+  MONTHLY: 'شهري',
 };
 
 export function getActionArabicLabel(action: string): string {

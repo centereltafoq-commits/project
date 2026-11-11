@@ -83,5 +83,49 @@ describe('AuditLogsRepository', () => {
       expect(result.page).toBe(1);
       expect(result.limit).toBe(10);
     });
+
+    it('handles search for system actions and Arabic entityType correctly', async () => {
+      const mockRows = [
+        {
+          id: 'log-sys',
+          actorUserId: null,
+          actorName: 'النظام',
+          action: 'BACKUP_CREATE',
+          entityType: 'BACKUP',
+          entityId: 'b-1',
+          createdAt: new Date(),
+        },
+      ];
+
+      const mockOffset = vi.fn().mockResolvedValue(mockRows);
+      const mockLimit = vi.fn().mockReturnValue({ offset: mockOffset });
+      const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockLeftJoin = vi.fn().mockReturnValue({ where: mockWhere });
+      const mockFrom = vi.fn().mockReturnValue({ leftJoin: mockLeftJoin });
+
+      const mockCountWhere = vi.fn().mockResolvedValue([{ total: 1 }]);
+      const mockCountLeftJoin = vi.fn().mockReturnValue({ where: mockCountWhere });
+      const mockCountFrom = vi.fn().mockReturnValue({ leftJoin: mockCountLeftJoin });
+
+      mockDb.select.mockImplementation((fields?: any) => {
+        if (fields && fields.total) {
+          return { from: mockCountFrom };
+        }
+        return { from: mockFrom };
+      });
+
+      const result = await repository.findPaginated({
+        page: 1,
+        limit: 10,
+        entityType: 'الطلاب',
+        search: 'النظام',
+        action: 'تسجيل دخول',
+      });
+
+      expect(mockDb.select).toHaveBeenCalled();
+      expect(result.rows).toHaveLength(1);
+      expect(result.total).toBe(1);
+    });
   });
 });

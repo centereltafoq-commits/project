@@ -74,26 +74,39 @@ export class AuditLogsRepository {
       if (aliases && aliases.length > 0) {
         conditions.push(inArray(auditLogs.entityType, aliases));
       } else {
-        conditions.push(
-          or(
-            eq(auditLogs.entityType, query.entityType),
-            ilike(auditLogs.entityType, `%${query.entityType}%`),
-          )!,
-        );
+        const entityOrs: SQL[] = [
+          eq(auditLogs.entityType, query.entityType),
+          ilike(auditLogs.entityType, `%${query.entityType}%`),
+          sql`${auditLogs.metadata}->>'entityTypeAr' ILIKE ${`%${query.entityType}%`}`,
+        ];
+        const entitySynonyms = getSearchTermEquivalents(query.entityType);
+        for (const syn of entitySynonyms) {
+          const synAliases = ENTITY_TYPE_ALIASES[syn.toUpperCase()];
+          if (synAliases && synAliases.length > 0) {
+            entityOrs.push(inArray(auditLogs.entityType, synAliases));
+          } else {
+            entityOrs.push(ilike(auditLogs.entityType, `%${syn}%`));
+          }
+        }
+        conditions.push(or(...entityOrs)!);
       }
     }
     if (query.action) {
-      conditions.push(
-        or(
-          eq(auditLogs.action, query.action),
-          ilike(auditLogs.action, `%${query.action}%`),
-          sql`${auditLogs.metadata}->>'actionAr' ILIKE ${`%${query.action}%`}`,
-        )!,
-      );
+      const actionOrs: SQL[] = [
+        eq(auditLogs.action, query.action),
+        ilike(auditLogs.action, `%${query.action}%`),
+        sql`${auditLogs.metadata}->>'actionAr' ILIKE ${`%${query.action}%`}`,
+      ];
+      const actionSynonyms = getSearchTermEquivalents(query.action);
+      for (const syn of actionSynonyms) {
+        actionOrs.push(ilike(auditLogs.action, `%${syn}%`));
+      }
+      conditions.push(or(...actionOrs)!);
     }
     if (query.search && query.search.trim()) {
       const pattern = `%${query.search.trim()}%`;
       const searchOrs: SQL[] = [
+        sql`COALESCE(NULLIF(TRIM(${auditLogs.actorName}), ''), ${users.fullName}, 'النظام') ILIKE ${pattern}`,
         ilike(auditLogs.actorName, pattern),
         ilike(users.fullName, pattern),
         ilike(auditLogs.action, pattern),
@@ -122,7 +135,7 @@ export class AuditLogsRepository {
         .select({
           id: auditLogs.id,
           actorUserId: auditLogs.actorUserId,
-          actorName: sql<string>`COALESCE(NULLIF(TRIM(${auditLogs.actorName}), ''), ${users.fullName}, 'النظام')`.as('actor_name'),
+          actorName: sql<string>`COALESCE(NULLIF(TRIM(${auditLogs.actorName}), ''), ${users.fullName}, 'النظام')`.as('actorName'),
           action: auditLogs.action,
           entityType: auditLogs.entityType,
           entityId: auditLogs.entityId,
