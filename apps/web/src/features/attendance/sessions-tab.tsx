@@ -76,17 +76,20 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'date',
       header: 'التاريخ والوقت',
-      className: 'min-w-[130px] max-w-[165px] px-2.5',
-      headerClassName: 'px-2.5',
+      className: 'w-[18%] min-w-[125px] px-2.5 truncate',
+      headerClassName: 'w-[18%] min-w-[125px] px-2.5',
       render: (row) => {
         const d = new Date(`${row.sessionDate}T00:00:00`);
         const dayName = Number.isNaN(d.getTime()) ? '' : ARABIC_DAYS[d.getDay()];
         return (
-          <div>
-            <div className="font-bold text-foreground text-xs hover:text-primary transition-colors cursor-pointer line-clamp-1 leading-snug">
+          <div className="truncate">
+            <div
+              className="font-bold text-foreground text-xs hover:text-primary transition-colors cursor-pointer truncate leading-snug"
+              title={`${dayName} — ${formatDateAr(row.sessionDate)}`}
+            >
               {dayName} — {formatDateAr(row.sessionDate)}
             </div>
-            <div className="text-[10px] text-muted-foreground font-mono">
+            <div className="text-[10px] text-muted-foreground font-mono truncate">
               {formatTimeRangeAr(row.startTime, row.endTime)}
             </div>
           </div>
@@ -96,12 +99,14 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'group',
       header: 'المجموعة والمادة',
-      className: 'min-w-[150px] max-w-[220px] px-2.5',
-      headerClassName: 'px-2.5',
+      className: 'w-[28%] min-w-[150px] px-2.5 truncate',
+      headerClassName: 'w-[28%] min-w-[150px] px-2.5',
       render: (row) => (
-        <div>
-          <div className="font-bold text-foreground text-xs line-clamp-1 leading-snug">{row.groupName}</div>
-          <div className="text-[10px] text-muted-foreground line-clamp-1">
+        <div className="truncate">
+          <div className="font-bold text-foreground text-xs truncate leading-snug" title={row.groupName}>
+            {row.groupName}
+          </div>
+          <div className="text-[10px] text-muted-foreground truncate">
             <span className="font-mono font-bold text-primary">{row.groupCode}</span> • {row.subject}
           </div>
         </div>
@@ -110,12 +115,14 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'teacher',
       header: 'المدرس / القاعة',
-      className: 'min-w-[120px] max-w-[160px] px-2.5',
-      headerClassName: 'px-2.5',
+      className: 'w-[20%] min-w-[120px] px-2.5 truncate',
+      headerClassName: 'w-[20%] min-w-[120px] px-2.5',
       render: (row) => (
-        <div>
-          <div className="font-medium text-foreground text-xs line-clamp-1">{row.teacherName}</div>
-          <div className="text-[10px] text-muted-foreground line-clamp-1">
+        <div className="truncate">
+          <div className="font-medium text-foreground text-xs truncate" title={row.teacherName}>
+            {row.teacherName}
+          </div>
+          <div className="text-[10px] text-muted-foreground truncate">
             {row.classroomName ? `${row.classroomName} (${row.roomNumber})` : 'بدون قاعة'}
           </div>
         </div>
@@ -124,8 +131,8 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'attendanceCount',
       header: 'ملخص الرصد',
-      className: 'whitespace-nowrap text-center px-2',
-      headerClassName: 'text-center px-2',
+      className: 'w-[14%] min-w-[100px] whitespace-nowrap text-center px-1.5',
+      headerClassName: 'w-[14%] min-w-[100px] text-center px-1.5',
       render: (row) =>
         row.recordedCount > 0 ? (
           <Badge variant="purple" className="text-[11px] px-2 py-0.5">
@@ -138,8 +145,8 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'status',
       header: 'الحالة',
-      className: 'whitespace-nowrap text-center px-2',
-      headerClassName: 'text-center px-2',
+      className: 'w-[9%] min-w-[65px] whitespace-nowrap text-center px-1',
+      headerClassName: 'w-[9%] min-w-[65px] text-center px-1',
       render: (row) => {
         const meta = SESSION_STATUS_META[row.status] ?? {
           label: row.status,
@@ -155,8 +162,8 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'actions',
       header: 'إجراءات',
-      className: 'whitespace-nowrap text-left pl-3 pr-2',
-      headerClassName: 'text-left pl-3 pr-2',
+      className: 'w-[11%] min-w-[95px] whitespace-nowrap text-left pl-2 pr-1',
+      headerClassName: 'w-[11%] min-w-[95px] text-left pl-2 pr-1',
       render: (row) => (
         <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
           <Button
@@ -191,6 +198,7 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
       )}
 
       <ServerDataTable
+        tableClassName="w-full table-fixed border-collapse text-right text-xs"
         columns={columns}
         data={data?.data ?? []}
         meta={data?.meta}

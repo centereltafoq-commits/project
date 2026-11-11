@@ -73,11 +73,14 @@ export function GroupsPage() {
     {
       key: 'name',
       header: 'المجموعة',
-      className: 'min-w-[160px] max-w-[220px] px-2.5',
-      headerClassName: 'px-2.5',
+      className: 'w-[23%] min-w-[150px] px-2.5 truncate',
+      headerClassName: 'w-[23%] min-w-[150px] px-2.5',
       render: (row) => (
-        <div onClick={() => navigate(`/groups/${row.id}`)}>
-          <p className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer line-clamp-1 leading-snug">
+        <div onClick={() => navigate(`/groups/${row.id}`)} className="truncate">
+          <p
+            className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer truncate leading-snug"
+            title={row.name}
+          >
             {row.name}
           </p>
           <span className="inline-block mt-0.5 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
@@ -89,22 +92,29 @@ export function GroupsPage() {
     {
       key: 'subjectGrade',
       header: 'المادة والصف',
-      className: 'min-w-[105px] max-w-[135px] px-2.5',
-      headerClassName: 'px-2.5',
+      className: 'w-[14%] min-w-[100px] px-2.5 truncate',
+      headerClassName: 'w-[14%] min-w-[100px] px-2.5',
       render: (row) => (
-        <div>
-          <p className="font-semibold text-foreground text-xs leading-snug">{row.subject}</p>
-          <p className="text-[11px] text-muted-foreground">{row.gradeLevel}</p>
+        <div className="truncate">
+          <p className="font-semibold text-foreground text-xs leading-snug truncate" title={row.subject}>
+            {row.subject}
+          </p>
+          <p className="text-[11px] text-muted-foreground truncate" title={row.gradeLevel}>
+            {row.gradeLevel}
+          </p>
         </div>
       ),
     },
     {
       key: 'teacher',
       header: 'المدرس الأساسي',
-      className: 'min-w-[105px] max-w-[135px] px-2.5',
-      headerClassName: 'px-2.5',
+      className: 'w-[14%] min-w-[100px] px-2.5 truncate',
+      headerClassName: 'w-[14%] min-w-[100px] px-2.5',
       render: (row) => (
-        <span className="font-semibold text-foreground text-xs line-clamp-1">
+        <span
+          className="font-semibold text-foreground text-xs truncate block"
+          title={row.primaryTeacherName || '—'}
+        >
           {row.primaryTeacherName || '—'}
         </span>
       ),
@@ -112,8 +122,8 @@ export function GroupsPage() {
     {
       key: 'schedule',
       header: 'المواعيد والقاعة',
-      className: 'min-w-[125px] max-w-[165px] px-2.5',
-      headerClassName: 'px-2.5',
+      className: 'w-[15%] min-w-[110px] px-2.5 truncate',
+      headerClassName: 'w-[15%] min-w-[110px] px-2.5',
       render: (row) => {
         const slotsCount = row.scheduleSlots?.length ?? 0;
         const daysText = row.scheduleSlots?.length
@@ -121,13 +131,18 @@ export function GroupsPage() {
           : null;
 
         return (
-          <div className="text-xs">
-            <span className="font-medium text-foreground flex items-center gap-1 line-clamp-1">
+          <div className="text-xs truncate">
+            <span
+              className="font-medium text-foreground flex items-center gap-1 truncate"
+              title={daysText || 'لم تُحدد'}
+            >
               <Calendar className="h-3 w-3 text-primary shrink-0" />
-              {daysText ? `${daysText}${slotsCount > 2 ? ` (+${slotsCount - 2})` : ''}` : 'لم تُحدد'}
+              <span className="truncate">
+                {daysText ? `${daysText}${slotsCount > 2 ? ` (+${slotsCount - 2})` : ''}` : 'لم تُحدد'}
+              </span>
             </span>
             {row.defaultClassroomName && (
-              <span className="text-[10px] text-muted-foreground block line-clamp-1">
+              <span className="text-[10px] text-muted-foreground block truncate" title={row.defaultClassroomName}>
                 {row.defaultClassroomName}
               </span>
             )}
@@ -138,12 +153,12 @@ export function GroupsPage() {
     {
       key: 'students',
       header: 'المشتركون',
-      className: 'whitespace-nowrap text-center px-2',
-      headerClassName: 'text-center px-2',
+      className: 'w-[9%] min-w-[70px] whitespace-nowrap text-center px-1.5',
+      headerClassName: 'w-[9%] min-w-[70px] text-center px-1.5',
       render: (row) => (
         <Badge
           variant={row.activeStudentsCount >= row.maxStudents ? 'danger' : 'purple'}
-          className="text-[11px] px-2 py-0.5"
+          className="text-[11px] px-1.5 py-0.5"
         >
           {row.activeStudentsCount} / {row.maxStudents}
         </Badge>
@@ -152,8 +167,8 @@ export function GroupsPage() {
     {
       key: 'monthlyPrice',
       header: 'الاشتراك',
-      className: 'whitespace-nowrap px-2.5',
-      headerClassName: 'px-2.5',
+      className: 'w-[9%] min-w-[75px] whitespace-nowrap px-2',
+      headerClassName: 'w-[9%] min-w-[75px] px-2',
       render: (row) => (
         <div>
           <p className="font-bold text-foreground text-xs">{formatCurrency(row.monthlyPrice)}</p>
@@ -166,10 +181,10 @@ export function GroupsPage() {
     {
       key: 'status',
       header: 'الحالة',
-      className: 'whitespace-nowrap text-center px-2',
-      headerClassName: 'text-center px-2',
+      className: 'w-[7%] min-w-[55px] whitespace-nowrap text-center px-1',
+      headerClassName: 'w-[7%] min-w-[55px] text-center px-1',
       render: (row) => (
-        <Badge variant={row.isActive ? 'success' : 'neutral'} className="text-[11px] px-2 py-0.5">
+        <Badge variant={row.isActive ? 'success' : 'neutral'} className="text-[11px] px-1.5 py-0.5">
           {row.isActive ? 'نشطة' : 'متوقفة'}
         </Badge>
       ),
@@ -177,8 +192,8 @@ export function GroupsPage() {
     {
       key: 'actions',
       header: 'إجراءات',
-      className: 'whitespace-nowrap text-left pl-3 pr-2',
-      headerClassName: 'text-left pl-3 pr-2',
+      className: 'w-[9%] min-w-[90px] whitespace-nowrap text-left pl-2 pr-1',
+      headerClassName: 'w-[9%] min-w-[90px] text-left pl-2 pr-1',
       render: (row) => (
         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
           <Button
@@ -254,6 +269,7 @@ export function GroupsPage() {
       />
 
       <ServerDataTable
+        tableClassName="w-full table-fixed border-collapse text-right text-xs"
         columns={columns}
         data={data?.data ?? []}
         meta={data?.meta}

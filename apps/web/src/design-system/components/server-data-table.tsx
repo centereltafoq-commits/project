@@ -31,6 +31,7 @@ interface ServerDataTableProps<T> {
   emptyTitle?: string;
   emptyDescription?: string;
   onRowClick?: (row: T) => void;
+  tableClassName?: string;
 }
 
 export function ServerDataTable<T>({
@@ -51,6 +52,7 @@ export function ServerDataTable<T>({
   emptyTitle = 'لا توجد بيانات مطابقة',
   emptyDescription = 'جرّب تعديل كلمات البحث أو الفلاتر أو أضف سجلاً جديداً.',
   onRowClick,
+  tableClassName,
 }: ServerDataTableProps<T>) {
   const currentLimit = meta?.limit ?? limit;
   const currentPage = meta?.page ?? page;
@@ -92,7 +94,7 @@ export function ServerDataTable<T>({
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-full border-collapse text-right text-xs">
+        <table className={cn('w-full min-w-full border-collapse text-right text-xs', tableClassName)}>
           <thead>
             <tr className="border-b border-border bg-muted/40 text-xs font-bold text-muted-foreground">
               {columns.map((col) => (

@@ -203,6 +203,7 @@ export function MakeupsTab({ lookups }: MakeupsTabProps) {
       )}
 
       <ServerDataTable
+        tableClassName="w-full table-fixed border-collapse text-right text-xs"
         columns={columns}
         data={data?.data ?? []}
         meta={data?.meta}
