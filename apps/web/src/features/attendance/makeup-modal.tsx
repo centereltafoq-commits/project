@@ -119,6 +119,10 @@ export function MakeupModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (status === MakeupStatus.SCHEDULED && !scheduledLocal) {
+            notify('يجب تحديد موعد انعقاد الحصة التعويضية عند اختيار الحالة مجدولة', 'warning');
+            return;
+          }
           mutation.mutate();
         }}
         className="space-y-4"

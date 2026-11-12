@@ -97,6 +97,15 @@ export class MakeupsRepository {
     return row ?? null;
   }
 
+  async findStudentAttendance(sessionId: string, studentId: string) {
+    const [row] = await this.db
+      .select()
+      .from(attendance)
+      .where(and(eq(attendance.sessionId, sessionId), eq(attendance.studentId, studentId)))
+      .limit(1);
+    return row ?? null;
+  }
+
   async create(input: typeof makeupSessions.$inferInsert) {
     const [created] = await this.db.insert(makeupSessions).values(input).returning();
     return created;

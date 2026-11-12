@@ -126,4 +126,11 @@ export class BackupsRepository {
       .returning();
     return deleted;
   }
+
+  async fixRestoredInProgressRecords() {
+    await this.db
+      .update(backupRecords)
+      .set({ status: 'SUCCESS' })
+      .where(eq(backupRecords.status, 'IN_PROGRESS'));
+  }
 }

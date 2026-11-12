@@ -44,9 +44,14 @@ export class SessionSheetRepository {
       .where(
         and(
           eq(enrollments.groupId, groupId),
-          ne(enrollments.status, EnrollmentStatus.CANCELLED),
-          lte(enrollments.startDate, sessionDate),
-          or(isNull(enrollments.endDate), gte(enrollments.endDate, sessionDate))!,
+          or(
+            sql`${attendance.id} IS NOT NULL`,
+            and(
+              ne(enrollments.status, EnrollmentStatus.CANCELLED),
+              lte(enrollments.startDate, sessionDate),
+              or(isNull(enrollments.endDate), gte(enrollments.endDate, sessionDate))!,
+            ),
+          ),
         ),
       )
       .orderBy(asc(students.fullName));

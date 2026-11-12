@@ -132,8 +132,8 @@ describe('ScheduleConflictChecker (5 Conflict Prevention Rules)', () => {
           classroomMaintenances: [
             {
               id: 'm-1',
-              startAt: new Date('2026-11-10T14:30:00Z'),
-              endAt: new Date('2026-11-10T16:30:00Z'),
+              startAt: new Date('2026-11-10T14:30:00'),
+              endAt: new Date('2026-11-10T16:30:00'),
               reason: 'صيانة التكييف',
             },
           ],

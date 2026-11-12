@@ -46,7 +46,7 @@ export function useBackupMutations() {
     mutationFn: ({ id, password }: { id: string; password: string }) =>
       backupsApi.restore(id, password),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['backups'] });
+      queryClient.invalidateQueries();
     },
   });
 

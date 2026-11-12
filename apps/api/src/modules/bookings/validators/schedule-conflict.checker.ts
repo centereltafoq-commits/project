@@ -31,9 +31,9 @@ export interface ConflictCheckResult {
   conflicts: ConflictDetail[];
 }
 
-function buildUtcDateTime(date: string, hhmm: string): Date {
+function parseLocalDateTime(date: string, hhmm: string): Date {
   const normalized = hhmm.length === 5 ? `${hhmm}:00` : hhmm;
-  return new Date(`${date}T${normalized}Z`);
+  return new Date(`${date}T${normalized}`);
 }
 
 @Injectable()
@@ -113,8 +113,8 @@ export class ScheduleConflictChecker {
         }
 
         // Rule 3b: Maintenance window overlap
-        const reqStart = buildUtcDateTime(input.date, input.startTime).getTime();
-        const reqEnd = buildUtcDateTime(input.date, input.endTime).getTime();
+        const reqStart = parseLocalDateTime(input.date, input.startTime).getTime();
+        const reqEnd = parseLocalDateTime(input.date, input.endTime).getTime();
         for (const m of ctx.classroomMaintenances) {
           if (m.startAt.getTime() < reqEnd && m.endAt.getTime() > reqStart) {
             conflicts.push({
@@ -185,8 +185,8 @@ export class ScheduleConflictChecker {
     const { allClassrooms, maintenances, roomBookings, roomSessions } =
       await this.conflictRepo.fetchAllClassroomsDayContext(params.date);
 
-    const reqStart = buildUtcDateTime(params.date, params.startTime).getTime();
-    const reqEnd = buildUtcDateTime(params.date, params.endTime).getTime();
+    const reqStart = parseLocalDateTime(params.date, params.startTime).getTime();
+    const reqEnd = parseLocalDateTime(params.date, params.endTime).getTime();
 
     const availableClassrooms: typeof allClassrooms = [];
     const unavailableClassrooms: Array<

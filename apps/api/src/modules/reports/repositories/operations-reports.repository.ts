@@ -117,13 +117,13 @@ export class OperationsReportsRepository {
           status: classrooms.status,
           sessionsCount: sql<number>`(
             SELECT COUNT(*)::int FROM sessions s
-            WHERE s.classroom_id = ${classrooms.id}
+            WHERE s.classroom_id = classrooms.id
               AND s.status != 'CANCELLED'
               AND s.year_month = ${yearMonth}
           )`,
           confirmedBookingsCount: sql<number>`(
             SELECT COUNT(*)::int FROM booking_requests br
-            WHERE COALESCE(br.assigned_classroom_id, br.requested_classroom_id) = ${classrooms.id}
+            WHERE COALESCE(br.assigned_classroom_id, br.requested_classroom_id) = classrooms.id
               AND br.status IN ('CONFIRMED', 'COMPLETED')
               AND TO_CHAR(br.requested_date, 'YYYY-MM') = ${yearMonth}
           )`,

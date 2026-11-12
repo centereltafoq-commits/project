@@ -71,6 +71,16 @@ export class PaymentsRepository {
         throw new ConflictException('الشهر المالي مغلق نهائياً ولا يمكن تحصيل دفعات عليه');
       }
 
+      const totalRemaining = roundMoney(
+        monthlyRows.reduce((sum, r) => sum + parseMoney(r.remainingBalance), 0),
+      );
+
+      if (monthlyRows.length > 0 && input.amount > totalRemaining) {
+        throw new BadRequestException(
+          `المبلغ المدفوع (${input.amount} ج.م) يتجاوز إجمالي المستحق المتبقي على الطالب لهذا الشهر (${totalRemaining} ج.م)`,
+        );
+      }
+
       const recordByGroup = new Map(monthlyRows.map((r) => [r.groupId, r]));
       const plannedAllocations: Array<{
         groupId: string;
@@ -85,6 +95,14 @@ export class PaymentsRepository {
         }
         for (const [groupId, allocAmt] of merged) {
           const rec = recordByGroup.get(groupId);
+          if (rec) {
+            const groupRem = parseMoney(rec.remainingBalance);
+            if (allocAmt > groupRem) {
+              throw new BadRequestException(
+                `المبلغ المخصص للمجموعة (${allocAmt} ج.م) يتجاوز المستحق المتبقي عليها (${groupRem} ج.م)`,
+              );
+            }
+          }
           plannedAllocations.push({
             groupId,
             studentMonthlyRecordId: rec?.id ?? null,

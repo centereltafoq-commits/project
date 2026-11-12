@@ -424,6 +424,7 @@ export class BackupsService {
     }
 
     await this.executeRestore(record.filePath);
+    await this.repository.fixRestoredInProgressRecords();
     await this.cacheService.invalidatePrefix('');
 
     await this.auditLogsService.record({
@@ -454,6 +455,7 @@ export class BackupsService {
 
     try {
       await this.executeRestore(tempFile);
+      await this.repository.fixRestoredInProgressRecords();
       await this.cacheService.invalidatePrefix('');
 
       await this.auditLogsService.record({

@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
-import { MakeupStatus } from '@edu-center/shared';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
+import { AttendanceStatus, MakeupStatus } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
@@ -30,9 +35,25 @@ export class MakeupsService {
       throw new NotFoundException('الحصة الأصلية غير موجودة');
     }
 
+    const existingAtt = await this.makeupsRepository.findStudentAttendance(
+      dto.originalSessionId,
+      dto.studentId,
+    );
+    if (
+      existingAtt &&
+      (existingAtt.status === AttendanceStatus.PRESENT ||
+        existingAtt.status === AttendanceStatus.MAKEUP_ATTENDED)
+    ) {
+      throw new BadRequestException('لا يمكن إنشاء حصة تعويضية لطالب حاضر في الحصة الأصلية بالفعل');
+    }
+
     const extraFee = dto.isFree ? '0.00' : Number(dto.extraFee ?? 0).toFixed(2);
     const status =
       dto.status ?? (dto.scheduledAt ? MakeupStatus.SCHEDULED : MakeupStatus.PENDING);
+
+    if (status === MakeupStatus.SCHEDULED && !dto.scheduledAt) {
+      throw new BadRequestException('يجب تحديد موعد انعقاد الحصة التعويضية المجدولة');
+    }
 
     const created = await this.makeupsRepository.create({
       studentId: dto.studentId,
@@ -93,6 +114,16 @@ export class MakeupsService {
       : dto.extraFee !== undefined
         ? Number(dto.extraFee).toFixed(2)
         : existing.extraFee;
+
+    const targetStatus = dto.status !== undefined ? dto.status : existing.status;
+    const targetScheduledAt =
+      dto.scheduledAt !== undefined
+        ? dto.scheduledAt ? new Date(dto.scheduledAt) : null
+        : existing.scheduledAt;
+
+    if (targetStatus === MakeupStatus.SCHEDULED && !targetScheduledAt) {
+      throw new BadRequestException('يجب تحديد موعد انعقاد الحصة التعويضية المجدولة');
+    }
 
     const updates: Parameters<MakeupsRepository['updateAndSyncOriginalAttendance']>[1] = {
       isFree: effectiveIsFree,

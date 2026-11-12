@@ -224,6 +224,10 @@ export class AttendanceService {
       throw new NotFoundException('الحصة المطلوبة غير موجودة');
     }
 
+    if (this.settlementService) {
+      await this.settlementService.assertMonthOpen(session.yearMonth);
+    }
+
     const items = normalizeAttendanceItems(dto);
     const existingMap = await this.sheetRepository.findExistingAttendanceMap(sessionId);
     const canOverride =

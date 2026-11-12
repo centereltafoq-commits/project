@@ -106,6 +106,14 @@ export function CollectPaymentModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          const numericAmount = Number(amount);
+          if (presetRecord && presetRecord.remainingBalance > 0 && numericAmount > presetRecord.remainingBalance) {
+            notify(
+              `المبلغ المدفوع لا يمكن أن يتجاوز الرصيد المتبقي على الطالب (${presetRecord.remainingBalance} ج.م)`,
+              'error',
+            );
+            return;
+          }
           collectMutation.mutate();
         }}
         className="space-y-4"

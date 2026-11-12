@@ -36,6 +36,19 @@ export function resolveAndValidateCalendarRange(from?: string, to?: string): {
   return { fromDate, toDate, rangeStartUtc, rangeEndUtc };
 }
 
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatLocalTime(d: Date): string {
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 export function expandMaintenanceDays(params: {
   startAt: Date;
   endAt: Date;
@@ -43,24 +56,26 @@ export function expandMaintenanceDays(params: {
   toDate: string;
 }): Array<{ date: string; startTime: string; endTime: string }> {
   const result: Array<{ date: string; startTime: string; endTime: string }> = [];
-  const startIsoDay = params.startAt.toISOString().slice(0, 10);
-  const endIsoDay = params.endAt.toISOString().slice(0, 10);
+  const startDay = formatLocalDate(params.startAt);
+  const endDay = formatLocalDate(params.endAt);
 
-  const firstDay = startIsoDay > params.fromDate ? startIsoDay : params.fromDate;
-  const lastDay = endIsoDay < params.toDate ? endIsoDay : params.toDate;
+  const firstDay = startDay > params.fromDate ? startDay : params.fromDate;
+  const lastDay = endDay < params.toDate ? endDay : params.toDate;
 
-  const cursor = new Date(`${firstDay}T00:00:00.000Z`);
-  const endCursor = new Date(`${lastDay}T00:00:00.000Z`);
+  const [fy, fm, fd] = firstDay.split('-').map(Number);
+  const [ly, lm, ld] = lastDay.split('-').map(Number);
+  const cursor = new Date(fy!, fm! - 1, fd!);
+  const endCursor = new Date(ly!, lm! - 1, ld!);
 
   while (cursor <= endCursor) {
-    const dayStr = cursor.toISOString().slice(0, 10);
+    const dayStr = formatLocalDate(cursor);
     const startTime =
-      dayStr === startIsoDay ? params.startAt.toISOString().slice(11, 16) : '00:00';
+      dayStr === startDay ? formatLocalTime(params.startAt) : '00:00';
     const endTime =
-      dayStr === endIsoDay ? params.endAt.toISOString().slice(11, 16) : '23:59';
+      dayStr === endDay ? formatLocalTime(params.endAt) : '23:59';
 
     result.push({ date: dayStr, startTime, endTime });
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   return result;

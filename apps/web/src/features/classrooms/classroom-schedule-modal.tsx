@@ -67,28 +67,32 @@ export function ClassroomScheduleModal({
     }
 
     for (const group of allocatedGroups) {
-      const slots = group.slotsForThisRoom?.length
+      const rawSlots = group.slotsForThisRoom?.length
         ? group.slotsForThisRoom
         : group.scheduleSlots;
-      for (const slot of slots ?? []) {
-        const arr = map.get(Number(slot.dayOfWeek)) ?? [];
+      const slots = Array.isArray(rawSlots) ? rawSlots : [];
+      for (const slot of slots) {
+        if (!slot) continue;
+        const day = Number(slot.dayOfWeek);
+        if (Number.isNaN(day) || day < 0 || day > 6) continue;
+        const arr = map.get(day) ?? [];
         arr.push({
           groupId: group.id,
           groupName: group.name,
           groupCode: group.groupCode,
           subject: group.subject,
           teacherName: group.teacherName,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
+          startTime: slot.startTime || '',
+          endTime: slot.endTime || '',
         });
-        map.set(Number(slot.dayOfWeek), arr);
+        map.set(day, arr);
       }
     }
 
     // Sort each day's slots by startTime
     for (let d = 0; d < 7; d++) {
       const arr = map.get(d) ?? [];
-      arr.sort((a, b) => a.startTime.localeCompare(b.startTime));
+      arr.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
       map.set(d, arr);
     }
 
@@ -134,7 +138,7 @@ export function ClassroomScheduleModal({
               className="gap-1 text-xs"
             >
               <Clock className="h-3.5 w-3.5" />
-              الحصص والحجوزات المؤرخة ({data ? data.sessions.length + data.bookings.length : 0})
+              الحصص والحجوزات المؤرخة ({data ? (data.sessions?.length ?? 0) + (data.bookings?.length ?? 0) : 0})
             </Button>
             <Button
               type="button"
@@ -280,13 +284,13 @@ export function ClassroomScheduleModal({
               <div className="space-y-4">
                 <div>
                   <h4 className="mb-2 text-sm font-extrabold">
-                    الحصص الدراسية الفعلية المجدولة ({data.sessions.length})
+                    الحصص الدراسية الفعلية المجدولة ({data.sessions?.length ?? 0})
                   </h4>
-                  {data.sessions.length === 0 ? (
+                  {(data.sessions?.length ?? 0) === 0 ? (
                     <p className="text-xs text-muted-foreground">لا توجد حصص مجدولة في هذه الفترة</p>
                   ) : (
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {data.sessions.map((s) => (
+                      {(data.sessions ?? []).map((s) => (
                         <div key={s.id} className="rounded-lg border border-border p-3 text-sm">
                           <div className="flex items-center justify-between">
                             <span className="font-bold">{s.groupName}</span>
@@ -304,13 +308,13 @@ export function ClassroomScheduleModal({
 
                 <div>
                   <h4 className="mb-2 text-sm font-extrabold">
-                    الحجوزات الإضافية المؤكدة ({data.bookings.length})
+                    الحجوزات الإضافية المؤكدة ({data.bookings?.length ?? 0})
                   </h4>
-                  {data.bookings.length === 0 ? (
+                  {(data.bookings?.length ?? 0) === 0 ? (
                     <p className="text-xs text-muted-foreground">لا توجد حجوزات إضافية في هذه الفترة</p>
                   ) : (
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {data.bookings.map((b) => (
+                      {(data.bookings ?? []).map((b) => (
                         <div key={b.id} className="rounded-lg border border-border p-3 text-sm">
                           <div className="flex items-center justify-between">
                             <span className="font-bold">{b.title}</span>
@@ -325,13 +329,13 @@ export function ClassroomScheduleModal({
                   )}
                 </div>
 
-                {data.maintenances.length > 0 && (
+                {(data.maintenances?.length ?? 0) > 0 && (
                   <div>
                     <h4 className="mb-2 text-sm font-extrabold text-amber-600">
-                      نوافذ الصيانة ({data.maintenances.length})
+                      نوافذ الصيانة ({data.maintenances?.length ?? 0})
                     </h4>
                     <div className="space-y-1.5">
-                      {data.maintenances.map((m) => (
+                      {(data.maintenances ?? []).map((m) => (
                         <div
                           key={m.id}
                           className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs"
