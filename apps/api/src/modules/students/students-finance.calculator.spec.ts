@@ -6,7 +6,7 @@ import {
 import { computeStudentMonthlyBreakdown } from './students-finance.calculator';
 
 describe('computeStudentMonthlyBreakdown', () => {
-  it('charges only attended sessions and does not bill unexcused absences', () => {
+  it('bills all completed group sessions regardless of individual ABSENT/EXCUSED attendance while tracking academic counts separately', () => {
     const bundle: any = {
       monthlyRecords: [],
       monthAllocations: [],
@@ -48,12 +48,12 @@ describe('computeStudentMonthlyBreakdown', () => {
     expect(item.absentCount).toBe(2);
     expect(item.excusedCount).toBe(1);
     expect(item.sessionPrice).toBe(50);
-    // Student attended 1 session, excused is not charged -> totalDue should be 1 * 50 = 50, NOT 150 or 200
-    expect(item.totalDue).toBe(50);
-    expect(item.remaining).toBe(50);
+    // Group completed 4 sessions -> all enrolled students owe 4 * 50 = 200 regardless of absence/excused
+    expect(item.totalDue).toBe(200);
+    expect(item.remaining).toBe(200);
   });
 
-  it('charges excused absences when chargeExcusedAbsence is true', () => {
+  it('bills completed group sessions automatically even when individual attendance sheet is empty', () => {
     const bundle: any = {
       monthlyRecords: [],
       monthAllocations: [],
@@ -75,21 +75,20 @@ describe('computeStudentMonthlyBreakdown', () => {
       groupSessionsInMonth: [
         { id: 's-1', groupId: 'grp-1', sessionDate: '2026-11-05', status: 'COMPLETED' },
         { id: 's-2', groupId: 'grp-1', sessionDate: '2026-11-12', status: 'COMPLETED' },
+        { id: 's-3', groupId: 'grp-1', sessionDate: '2026-11-19', status: 'SCHEDULED' },
       ],
-      monthAttendance: [
-        { groupId: 'grp-1', sessionId: 's-1', status: AttendanceStatus.PRESENT },
-        { groupId: 'grp-1', sessionId: 's-2', status: AttendanceStatus.EXCUSED },
-      ],
+      monthAttendance: [],
       studentPayments: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
     const item = result.breakdown[0];
-    // 1 present + 1 excused = 2 chargeable * 50 = 100
+    expect(item.presentCount).toBe(0);
+    // Only COMPLETED sessions (s-1, s-2) are billed = 2 * 50 = 100; SCHEDULED (s-3) is not billed yet
     expect(item.totalDue).toBe(100);
   });
 
-  it('charges fixed reservation fee on full-month absence if policy is CHARGE_FIXED_RESERVATION_FEE', () => {
+  it('decouples billing from full-month absence policies and charges completed group sessions normally', () => {
     const bundle: any = {
       monthlyRecords: [],
       monthAllocations: [],
@@ -121,10 +120,10 @@ describe('computeStudentMonthlyBreakdown', () => {
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
     const item = result.breakdown[0];
-    expect(item.totalDue).toBe(75);
+    expect(item.totalDue).toBe(100);
   });
 
-  it('calculates session price from agreedMonthlyPrice / agreedSessionsCount when agreedSessionPrice is missing or zero', () => {
+  it('calculates session price from agreedMonthlyPrice / agreedSessionsCount and bills all completed group sessions', () => {
     const bundle: any = {
       monthlyRecords: [],
       monthAllocations: [],
@@ -156,12 +155,12 @@ describe('computeStudentMonthlyBreakdown', () => {
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
     const item = result.breakdown[0];
-    // 300 / 6 = 50 per session, 1 attended -> 50
+    // 300 / 6 = 50 per session, 2 completed group sessions -> 100
     expect(item.sessionPrice).toBe(50);
-    expect(item.totalDue).toBe(50);
+    expect(item.totalDue).toBe(100);
   });
 
-  it('charges full subscription amount when policy is CHARGE_FULL_SUBSCRIPTION on full-month absence', () => {
+  it('excludes cancelled sessions and bills completed group sessions regardless of absence policy', () => {
     const bundle: any = {
       monthlyRecords: [],
       monthAllocations: [],
@@ -196,8 +195,8 @@ describe('computeStudentMonthlyBreakdown', () => {
     const item = result.breakdown[0];
     // Cancelled session s-3 is excluded
     expect(item.totalSessions).toBe(2);
-    // Student absent full month, charged full agreed monthly price
-    expect(item.totalDue).toBe(400);
+    // 2 completed group sessions * 100 = 200
+    expect(item.totalDue).toBe(200);
   });
 
   it('clamps remaining balance to 0 on overpayment', () => {

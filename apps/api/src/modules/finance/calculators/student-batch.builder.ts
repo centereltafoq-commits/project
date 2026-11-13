@@ -128,11 +128,11 @@ export function buildStudentSettlementBatch(
     });
 
     if (enr.status === EnrollmentStatus.CANCELLED && !calc.isClosed) {
-      const hasBillableAttendance =
-        calc.attendedCount > 0 || calc.billableSessionsCount > 0;
+      const hasBillableGroupActivity =
+        calc.billableSessionsCount > 0 || calc.attendedCount > 0;
 
-      if (!hasBillableAttendance) {
-        // Cancelled enrollment with zero attended/billable sessions: exempt from full-month absence fees
+      if (!hasBillableGroupActivity) {
+        // Cancelled enrollment with zero eligible group sessions: no fee due
         if (existing || currentPaid > 0) {
           studentRows.push({
             studentId: enr.studentId,
@@ -171,7 +171,7 @@ export function buildStudentSettlementBatch(
       enr.groupId,
       roundMoney((groupRevenueMap.get(enr.groupId) ?? 0) + calc.totalDue),
     );
-    if (calc.totalDue > 0 || calc.attendedCount > 0) {
+    if (calc.totalDue > 0 || calc.attendedCount > 0 || calc.eligibleSessions > 0) {
       groupBilledStudentsMap.set(
         enr.groupId,
         (groupBilledStudentsMap.get(enr.groupId) ?? 0) + 1,

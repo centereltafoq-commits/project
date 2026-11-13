@@ -31,6 +31,67 @@ export interface DashboardMonthlySessionsStats {
   collectionRateSessions: number;
 }
 
+export interface DashboardMonthlyPaymentStats {
+  paidStudentsCount: number;
+  unpaidStudentsCount: number;
+  totalBilledStudentsCount: number;
+  paidGroupsCount: number;
+  unpaidGroupsCount: number;
+  totalBilledGroupsCount: number;
+}
+
+export type SessionProgressStatus =
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'NEAR_LAST'
+  | 'LAST_OR_DONE';
+
+export interface DashboardSessionProgressStudentItem {
+  enrollmentId: string;
+  studentId: string;
+  studentName: string;
+  studentCode: string;
+  studentPhone: string;
+  groupId: string;
+  groupName: string;
+  groupCode: string;
+  subject: string;
+  attendedSessions: number;
+  targetSessions: number;
+  stepNumber: number;
+  status: SessionProgressStatus;
+  remainingBalance: number;
+}
+
+export interface DashboardSessionStepBucket {
+  stepNumber: number;
+  label: string;
+  isNearLast: boolean;
+  isLast: boolean;
+  studentsCount: number;
+}
+
+export interface DashboardSessionTrackBreakdown {
+  targetSessions: number;
+  totalEnrollments: number;
+  notStartedCount: number;
+  inProgressCount: number;
+  nearLastCount: number;
+  lastOrCompletedCount: number;
+  steps: DashboardSessionStepBucket[];
+}
+
+export interface DashboardSessionProgressSummary {
+  totalTrackedEnrollments: number;
+  nearLastTotalCount: number;
+  lastOrCompletedTotalCount: number;
+  inProgressTotalCount: number;
+  notStartedTotalCount: number;
+  tracks: DashboardSessionTrackBreakdown[];
+  students: DashboardSessionProgressStudentItem[];
+  isStudentsListTruncated?: boolean;
+}
+
 export interface DashboardSummaryData {
   yearMonth: string;
   todayDate: string;
@@ -48,6 +109,8 @@ export interface DashboardSummaryData {
     excused: number;
   };
   monthlySessionsStats: DashboardMonthlySessionsStats;
+  monthlyPaymentStats?: DashboardMonthlyPaymentStats;
+  monthlySessionProgress?: DashboardSessionProgressSummary;
   totalRevenue: number;
   totalCollectedPayments: number;
   totalReceivables: number;

@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { DashboardSummaryData } from '../dashboard.types';
 import { DashboardLiveRoomsBento } from './dashboard-live-rooms-bento';
 import { DashboardMonthlyPulseBento } from './dashboard-monthly-pulse-bento';
+import { DashboardSessionProgressCard } from './dashboard-session-progress-card';
 import { DashboardTodaySessionsBento } from './dashboard-today-sessions-bento';
 
 interface DashboardOperationsTabProps {
@@ -18,6 +19,8 @@ export function DashboardOperationsTab({ data }: DashboardOperationsTabProps) {
 
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+      <DashboardSessionProgressCard data={data} />
+
       {canAccessAttendance && <DashboardTodaySessionsBento data={data} />}
 
       <div

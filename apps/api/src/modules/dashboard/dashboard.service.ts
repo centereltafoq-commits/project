@@ -40,13 +40,40 @@ export class DashboardService {
       isOwner ||
       perms.includes(PERMISSIONS.ATTENDANCE_VIEW) ||
       perms.includes(PERMISSIONS.SESSIONS_VIEW);
+    const canViewSessionProgress =
+      canViewAttendance ||
+      perms.includes(PERMISSIONS.STUDENTS_VIEW) ||
+      perms.includes(PERMISSIONS.GROUPS_VIEW);
 
-    if (canViewFinance && canViewClassrooms && canViewAttendance) {
+    if (canViewFinance && canViewClassrooms && canViewAttendance && canViewSessionProgress) {
       return summary;
     }
 
+    const emptySessionProgress = {
+      totalTrackedEnrollments: 0,
+      nearLastTotalCount: 0,
+      lastOrCompletedTotalCount: 0,
+      inProgressTotalCount: 0,
+      notStartedTotalCount: 0,
+      tracks: [],
+      students: [],
+    };
+
+    const sanitizedSessionProgress = !canViewSessionProgress
+      ? emptySessionProgress
+      : canViewFinance
+        ? summary.monthlySessionProgress
+        : {
+            ...summary.monthlySessionProgress,
+            students: summary.monthlySessionProgress.students.map((item) => ({
+              ...item,
+              remainingBalance: 0,
+            })),
+          };
+
     return {
       ...summary,
+      monthlySessionProgress: sanitizedSessionProgress,
       ...(canViewAttendance ? {} : { todaySessions: [] }),
       ...(canViewClassrooms
         ? {}
@@ -59,7 +86,7 @@ export class DashboardService {
             },
             classroomsLive: [],
           }),
-      ...(canViewFinance
+          ...(canViewFinance
         ? {}
         : {
             monthlySessionsStats: {
@@ -68,6 +95,14 @@ export class DashboardService {
               totalPaidSessions: 0,
               totalUnpaidSessions: 0,
               collectionRateSessions: 0,
+            },
+            monthlyPaymentStats: {
+              paidStudentsCount: 0,
+              unpaidStudentsCount: 0,
+              totalBilledStudentsCount: 0,
+              paidGroupsCount: 0,
+              unpaidGroupsCount: 0,
+              totalBilledGroupsCount: 0,
             },
             totalRevenue: 0,
             totalCollectedPayments: 0,

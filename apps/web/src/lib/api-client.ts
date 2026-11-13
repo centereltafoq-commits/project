@@ -60,6 +60,9 @@ apiClient.interceptors.response.use(
           })
           .catch(() => {
             setAccessToken(null);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('edu:auth-expired'));
+            }
             return null;
           })
           .finally(() => {

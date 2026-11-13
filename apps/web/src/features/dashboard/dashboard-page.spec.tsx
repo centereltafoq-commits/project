@@ -15,6 +15,7 @@ vi.mock('@/features/auth/auth-context', () => ({
 vi.mock('@/lib/api-client', () => ({
   apiClient: {
     get: vi.fn(),
+    post: vi.fn(),
   },
   extractErrorMessage: (err: unknown) => (err instanceof Error ? err.message : 'خطأ'),
 }));
@@ -69,6 +70,71 @@ const MOCK_SUMMARY: DashboardSummaryData = {
     totalPaidSessions: 320,
     totalUnpaidSessions: 80,
     collectionRateSessions: 80,
+  },
+  monthlyPaymentStats: {
+    paidStudentsCount: 85,
+    unpaidStudentsCount: 23,
+    totalBilledStudentsCount: 108,
+    paidGroupsCount: 18,
+    unpaidGroupsCount: 6,
+    totalBilledGroupsCount: 24,
+  },
+  monthlySessionProgress: {
+    totalTrackedEnrollments: 19,
+    nearLastTotalCount: 7,
+    lastOrCompletedTotalCount: 5,
+    inProgressTotalCount: 7,
+    notStartedTotalCount: 0,
+    tracks: [
+      {
+        targetSessions: 4,
+        totalEnrollments: 19,
+        notStartedCount: 0,
+        inProgressCount: 7,
+        nearLastCount: 7,
+        lastOrCompletedCount: 5,
+        steps: [
+          { stepNumber: 1, label: 'الحصة 1', isNearLast: false, isLast: false, studentsCount: 3 },
+          { stepNumber: 2, label: 'الحصة 2', isNearLast: false, isLast: false, studentsCount: 4 },
+          { stepNumber: 3, label: 'الحصة 3 (قبل الأخيرة)', isNearLast: true, isLast: false, studentsCount: 7 },
+          { stepNumber: 4, label: 'الحصة 4 (الأخيرة)', isNearLast: false, isLast: true, studentsCount: 5 },
+        ],
+      },
+    ],
+    students: [
+      {
+        enrollmentId: 'enr-near-1',
+        studentId: 'stu-1',
+        studentName: 'أحمد سامي',
+        studentCode: 'ST-101',
+        studentPhone: '01012345678',
+        groupId: 'grp-1',
+        groupName: 'فيزياء ثالثة ثانوي - أ',
+        groupCode: 'GRP-1',
+        subject: 'فيزياء',
+        attendedSessions: 3,
+        targetSessions: 4,
+        stepNumber: 3,
+        status: 'NEAR_LAST',
+        remainingBalance: 250,
+      },
+      {
+        enrollmentId: 'enr-last-1',
+        studentId: 'stu-2',
+        studentName: 'نور محمد',
+        studentCode: 'ST-102',
+        studentPhone: '01099988877',
+        groupId: 'grp-1',
+        groupName: 'فيزياء ثالثة ثانوي - أ',
+        groupCode: 'GRP-1',
+        subject: 'فيزياء',
+        attendedSessions: 4,
+        targetSessions: 4,
+        stepNumber: 4,
+        status: 'LAST_OR_DONE',
+        remainingBalance: 0,
+      },
+    ],
   },
   totalRevenue: 45000,
   totalCollectedPayments: 36000,
@@ -170,17 +236,18 @@ describe('DashboardPage Bento Executive UX', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('إجمالي عدد الحصص (المستحقة)')).toBeInTheDocument();
+      expect(screen.getByText('الطلاب اللي دفعت')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('الحصص اللي اتدفعت')).toBeInTheDocument();
-    expect(screen.getByText('الحصص اللي مدفعتش')).toBeInTheDocument();
-    expect(screen.getByText('إجمالي فلوس المدرسين')).toBeInTheDocument();
+    expect(screen.getByText('الطلاب اللي مدفعتش')).toBeInTheDocument();
+    expect(screen.getByText('المجموعات اللي دفعت')).toBeInTheDocument();
+    expect(screen.getByText('المجموعات اللي مدفعتش')).toBeInTheDocument();
 
-    // Paid/unpaid/billable counts & teacher dues appear clearly at top
-    expect(screen.getByText('400')).toBeInTheDocument();
-    expect(screen.getAllByText('320').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('80').length).toBeGreaterThan(0);
+    // Paid/unpaid student & group counts & teacher dues appear clearly at top
+    expect(screen.getByText('85')).toBeInTheDocument();
+    expect(screen.getByText('23')).toBeInTheDocument();
+    expect(screen.getByText('18')).toBeInTheDocument();
+    expect(screen.getByText('6')).toBeInTheDocument();
     expect(screen.getByText('22,000 ج.م')).toBeInTheDocument();
 
     expect(screen.queryByText('وصول سريع:')).not.toBeInTheDocument();
@@ -192,6 +259,17 @@ describe('DashboardPage Bento Executive UX', () => {
     // Live Rooms are visible alongside sessions
     expect(screen.getByText('القاعات اللحظية')).toBeInTheDocument();
     expect(screen.getByText('المعمل')).toBeInTheDocument();
+
+    // Organized Near-Last-Session Tracker renders step breakdown for 4-session cycle
+    expect(screen.getByText(/متابعة الحصص والاقتراب من الحصة الأخيرة/i)).toBeInTheDocument();
+    expect(screen.getByText('نظام 4 حصص بالشهر')).toBeInTheDocument();
+    expect(screen.getByText('الحصة 3')).toBeInTheDocument();
+    expect(screen.getByText('الحصة 4')).toBeInTheDocument();
+
+    // Clicking the 3rd-session step expands only students in 3rd session
+    fireEvent.click(screen.getByRole('button', { name: /الحصة 3/i }));
+    expect(screen.getByText('أحمد سامي')).toBeInTheDocument();
+    expect(screen.queryByText('نور محمد')).not.toBeInTheDocument();
   });
 
   it('filters today sessions by status pill and search input, and filters live rooms', async () => {
@@ -282,8 +360,30 @@ describe('DashboardPage Bento Executive UX', () => {
       expect(screen.getByText('الطلاب النشطون بالسنتر')).toBeInTheDocument();
     });
 
-    expect(screen.queryByText('إجمالي فلوس المدرسين')).not.toBeInTheDocument();
-    expect(screen.queryByText('الحصص اللي اتدفعت')).not.toBeInTheDocument();
+    expect(screen.queryByText('الطلاب اللي دفعت')).not.toBeInTheDocument();
+    expect(screen.queryByText('المجموعات اللي دفعت')).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /التحليل المالي للشهر/i })).not.toBeInTheDocument();
+  });
+
+  it('allows 1-click group attendance completion for SCHEDULED today sessions when authorized', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { sessionId: 'sess-1', status: 'COMPLETED' } } as any);
+
+    setupAuth([
+      PERMISSIONS.DASHBOARD_VIEW,
+      PERMISSIONS.ATTENDANCE_VIEW,
+      PERMISSIONS.ATTENDANCE_RECORD,
+      PERMISSIONS.GROUPS_VIEW,
+    ]);
+
+    renderPage();
+
+    const completeButtons = await screen.findAllByRole('button', { name: /تحضير المجموعة/i });
+    expect(completeButtons).toHaveLength(1);
+
+    fireEvent.click(completeButtons[0]);
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith('/attendance/sessions/sess-1/complete-group');
+    });
   });
 });

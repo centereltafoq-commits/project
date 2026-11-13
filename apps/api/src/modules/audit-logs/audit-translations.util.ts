@@ -48,6 +48,7 @@ export const ACTION_TRANSLATIONS: Record<string, string> = {
   SESSION_CREATE: 'إنشاء حصة دراسية جديدة',
   GENERATE_MONTH_SESSIONS: 'توليد حصص الشهر للمجموعة تلقائياً',
   SESSION_GENERATE_MONTH: 'توليد حصص الشهر للمجموعة تلقائياً',
+  COMPLETE_GROUP_SESSION: 'تسجيل حضور مجموعة لحصة',
 
   // Classrooms
   CREATE_CLASSROOM: 'إضافة قاعة دراسية جديدة',

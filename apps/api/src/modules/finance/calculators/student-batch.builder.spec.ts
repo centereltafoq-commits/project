@@ -128,7 +128,7 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
     expect(batch.groupEnrolledStudentsMap.get('grp-1')).toBe(1);
   });
 
-  it('does not charge full-month absence penalty when a cancelled enrollment has zero attended sessions', () => {
+  it('does not charge a cancelled enrollment that ended before any executed group session ran', () => {
     const snap = createBaseSnapshot({
       allPolicies: [
         {
@@ -150,7 +150,7 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
           studentId: 'stu-2',
           groupId: 'grp-1',
           startDate: '2026-11-01',
-          endDate: '2026-11-05',
+          endDate: '2026-11-01',
           agreedMonthlyPrice: '320.00',
           agreedSessionsCount: 8,
           agreedSessionPrice: '40.00',
@@ -198,7 +198,7 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
     expect(batch.groupEnrolledStudentsMap.get('grp-1') ?? 0).toBe(0);
   });
 
-  it('preserves paid balance for zero-attendance cancelled enrollment when prior open record or payment exists', () => {
+  it('preserves paid balance for zero-session cancelled enrollment when prior payment exists', () => {
     const snap = createBaseSnapshot({
       monthEnrollments: [
         {
@@ -206,7 +206,7 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
           studentId: 'stu-3',
           groupId: 'grp-1',
           startDate: '2026-11-01',
-          endDate: '2026-11-05',
+          endDate: '2026-11-01',
           agreedMonthlyPrice: '320.00',
           agreedSessionsCount: 8,
           agreedSessionPrice: '40.00',

@@ -45,6 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, [queryClient]);
 
+  React.useEffect(() => {
+    const handleAuthExpired = () => {
+      setAccessToken(null);
+      setUser(null);
+      queryClient.clear();
+    };
+    window.addEventListener('edu:auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('edu:auth-expired', handleAuthExpired);
+  }, [queryClient]);
+
   const login = React.useCallback(async (email: string, password: string) => {
     queryClient.clear();
     const res = await apiClient.post<{ accessToken: string; user: AuthUser }>('/auth/login', {

@@ -14,6 +14,7 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { ARABIC_DAYS, formatDateAr, formatTimeRangeAr, getCurrentYearMonth } from '@/lib/formatters';
+import { CompleteGroupSessionButton } from './complete-group-session-button';
 import {
   AttendanceLookups,
   SESSION_STATUS_META,
@@ -155,10 +156,17 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'actions',
       header: 'إجراءات',
-      className: 'w-[11%] min-w-[95px] whitespace-nowrap text-left pl-2 pr-1',
-      headerClassName: 'w-[11%] min-w-[95px] text-left pl-2 pr-1',
+      className: 'w-[20%] min-w-[220px] whitespace-nowrap text-left pl-2 pr-1',
+      headerClassName: 'w-[20%] min-w-[220px] text-left pl-2 pr-1',
       render: (row) => (
-        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          {row.status === SessionStatus.SCHEDULED && (
+            <CompleteGroupSessionButton
+              sessionId={row.id}
+              label="تحضير المجموعة"
+              className="h-7.5 px-2.5 text-xs font-bold"
+            />
+          )}
           <Button
             size="sm"
             variant="outline"

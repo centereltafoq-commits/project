@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { CompleteGroupSessionButton } from './complete-group-session-button';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCheck, Printer, Save, Search } from 'lucide-react';
 import { AttendanceStatus, PERMISSIONS } from '@edu-center/shared';
@@ -167,6 +168,10 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
             </div>
           )}
 
+          <div className="rounded-xl border border-blue-200/80 bg-blue-50/70 px-3.5 py-2 text-xs font-medium text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
+            ملاحظة النظام المالي: تسجيل حضور المجموعة (أو حفظ هذا الكشف) يجعل الحصة منفذة ويُحمّل رسومها على جميع طلاب المجموعة تلقائياً؛ أما حالات الغياب/الحضور الفردية هنا فهي للمتابعة الأكاديمية فقط.
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 p-3 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="neutral">إجمالي المقيدين بتاريخ الحصة: {data.students.length}</Badge>
@@ -175,10 +180,19 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
               <Badge variant="warning">بعذر: {liveCounts.excused}</Badge>
             </div>
             {isSheetEditable && (
-              <Button type="button" size="sm" variant="secondary" onClick={markAllPresent}>
-                <CheckCheck className="h-4 w-4" />
-                تحضير الكل
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                {data.session.status === 'SCHEDULED' && (
+                  <CompleteGroupSessionButton
+                    sessionId={data.session.id}
+                    disabled={isMonthClosed}
+                    label="تسجيل حضور المجموعة فقط"
+                  />
+                )}
+                <Button type="button" size="sm" variant="secondary" onClick={markAllPresent}>
+                  <CheckCheck className="h-4 w-4" />
+                  تحضير الكل
+                </Button>
+              </div>
             )}
           </div>
 

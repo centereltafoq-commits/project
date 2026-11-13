@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -327,5 +328,57 @@ export class AttendanceService {
     } catch {}
 
     return this.getSessionSheet(sessionId);
+  }
+
+  /**
+   * Marks an entire group session as attended/completed and triggers monthly financial billing
+   * for all active students enrolled in that group independently of individual attendance sheets.
+   */
+  async completeGroupSession(sessionId: string, actor: AuthenticatedUser) {
+    const session = await this.repository.findSessionById(sessionId);
+    if (!session) {
+      throw new NotFoundException('الحصة المطلوبة غير موجودة');
+    }
+
+    if (session.status === SessionStatus.CANCELLED) {
+      throw new BadRequestException('لا يمكن تسجيل حضور مجموعة لحصة ملغاة');
+    }
+
+    if (this.settlementService) {
+      await this.settlementService.assertMonthOpen(session.yearMonth);
+    }
+
+    const updatedSession =
+      session.status === SessionStatus.COMPLETED
+        ? session
+        : (await this.sheetRepository.markSessionCompleted(sessionId)) ?? session;
+
+    if (session.status !== SessionStatus.COMPLETED) {
+      await this.audit.record({
+        actorUserId: actor.id,
+        actorName: actor.fullName,
+        action: 'COMPLETE_GROUP_SESSION',
+        entityType: 'SESSION',
+        entityId: sessionId,
+        afterData: {
+          groupId: session.groupId,
+          yearMonth: session.yearMonth,
+          sessionDate: session.sessionDate,
+        },
+      });
+    }
+
+    if (this.settlementService) {
+      await this.settlementService.recalculateMonth(session.yearMonth);
+    }
+
+    try {
+      await Promise.all([
+        this.cache.invalidatePrefix('dashboard:summary:'),
+        this.cache.invalidatePrefix('reports:'),
+      ]);
+    } catch {}
+
+    return updatedSession;
   }
 }

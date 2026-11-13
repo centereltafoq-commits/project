@@ -98,14 +98,14 @@ export function StudentBillingTab({
       },
       {
         key: 'attendance',
-        header: 'الحضور / المؤهل',
+        header: 'حصص المجموعة / الحضور',
         render: (r) => (
           <div className="text-xs space-y-0.5">
             <span className="font-bold text-foreground">
-              حضر {r.presentCount} من {r.eligibleSessions} حصة
+              حساب المجموعة: {r.eligibleSessions} حصة
             </span>
             <div className="text-[11px] text-muted-foreground">
-              غياب: {r.absentCount} | إذن: {r.excusedCount}
+              متابعة: حضور {r.presentCount} • غياب {r.absentCount} • إذن {r.excusedCount}
             </div>
           </div>
         ),
@@ -215,7 +215,7 @@ export function StudentBillingTab({
           setPage(1);
         }}
         emptyTitle="لا توجد سجلات مستحقات طلاب لهذا الشهر"
-        emptyDescription="اضغط «إعادة احتساب الشهر» لتوليد وتحديث مستحقات الطلاب حسب الحضور الفعلي."
+        emptyDescription="اضغط «إعادة احتساب الشهر» لتوليد وتحديث مستحقات الطلاب حسب حصص المجموعة المنفذة."
         filters={
           <div className="flex flex-wrap items-center gap-2">
             <Select

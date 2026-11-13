@@ -74,4 +74,13 @@ export class AttendanceController {
   ) {
     return this.attendanceService.recordSessionAttendance(sessionId, dto, actor);
   }
+
+  @Post('sessions/:sessionId/complete-group')
+  @RequireAnyPermissions(PERMISSIONS.ATTENDANCE_RECORD, PERMISSIONS.SESSIONS_MANAGE)
+  async completeGroupSession(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.attendanceService.completeGroupSession(sessionId, actor);
+  }
 }

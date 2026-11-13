@@ -20,6 +20,7 @@ import {
   teachers,
 } from '../../database/schemas';
 import { queryClassroomsLiveSnapshot } from './dashboard-classrooms.helper';
+import { queryStudentSessionProgress } from './dashboard-session-progress.helper';
 import { DashboardSummaryResponse } from './dashboard.types';
 
 @Injectable()
@@ -48,6 +49,9 @@ export class DashboardRepository {
       [assistantPaidRow],
       [expensesRow],
       roomsSnapshot,
+      studentPaymentRows,
+      groupPaymentRows,
+      sessionProgressSummary,
     ] = await Promise.all([
       this.db
         .select({
@@ -110,15 +114,15 @@ export class DashboardRepository {
         .where(eq(sessions.yearMonth, yearMonth)),
       this.db
         .select({
-          totalBillableSessions: sql<number>`COALESCE(SUM(${studentMonthlyRecords.presentCount}), 0)::int`,
+          totalBillableSessions: sql<number>`COALESCE(SUM(${studentMonthlyRecords.eligibleSessions}), 0)::int`,
           totalPaidSessions: sql<number>`COALESCE(SUM(
             CASE 
               WHEN ${studentMonthlyRecords.sessionPriceSnapshot} > 0 
               THEN LEAST(
-                ${studentMonthlyRecords.presentCount}, 
+                ${studentMonthlyRecords.eligibleSessions}, 
                 FLOOR(${studentMonthlyRecords.totalPaid} / ${studentMonthlyRecords.sessionPriceSnapshot})::int
               )
-              ELSE ${studentMonthlyRecords.presentCount}
+              ELSE ${studentMonthlyRecords.eligibleSessions}
             END
           ), 0)::int`,
           totalUnpaidSessions: sql<number>`COALESCE(SUM(
@@ -126,7 +130,7 @@ export class DashboardRepository {
               WHEN ${studentMonthlyRecords.sessionPriceSnapshot} > 0 
               THEN GREATEST(
                 0, 
-                ${studentMonthlyRecords.presentCount} - FLOOR(${studentMonthlyRecords.totalPaid} / ${studentMonthlyRecords.sessionPriceSnapshot})::int
+                ${studentMonthlyRecords.eligibleSessions} - FLOOR(${studentMonthlyRecords.totalPaid} / ${studentMonthlyRecords.sessionPriceSnapshot})::int
               )
               ELSE 0
             END
@@ -180,6 +184,27 @@ export class DashboardRepository {
         .from(expenses)
         .where(eq(expenses.yearMonth, yearMonth)),
       queryClassroomsLiveSnapshot(this.db, todayDate, currentTime),
+      this.db
+        .select({
+          studentId: studentMonthlyRecords.studentId,
+          totalDue: sql<string>`COALESCE(SUM(${studentMonthlyRecords.totalDue}), 0)::text`,
+          totalPaid: sql<string>`COALESCE(SUM(${studentMonthlyRecords.totalPaid}), 0)::text`,
+          remainingBalance: sql<string>`COALESCE(SUM(${studentMonthlyRecords.remainingBalance}), 0)::text`,
+        })
+        .from(studentMonthlyRecords)
+        .where(eq(studentMonthlyRecords.yearMonth, yearMonth))
+        .groupBy(studentMonthlyRecords.studentId),
+      this.db
+        .select({
+          groupId: studentMonthlyRecords.groupId,
+          totalDue: sql<string>`COALESCE(SUM(${studentMonthlyRecords.totalDue}), 0)::text`,
+          totalPaid: sql<string>`COALESCE(SUM(${studentMonthlyRecords.totalPaid}), 0)::text`,
+          remainingBalance: sql<string>`COALESCE(SUM(${studentMonthlyRecords.remainingBalance}), 0)::text`,
+        })
+        .from(studentMonthlyRecords)
+        .where(eq(studentMonthlyRecords.yearMonth, yearMonth))
+        .groupBy(studentMonthlyRecords.groupId),
+      queryStudentSessionProgress(this.db, yearMonth),
     ]);
 
     const totalRevenue = Number(studentFinRow?.totalRevenue ?? 0);
@@ -204,6 +229,34 @@ export class DashboardRepository {
       totalBillableSessions > 0
         ? Math.min(100, Math.round((totalPaidSessions / totalBillableSessions) * 100))
         : 0;
+
+    let paidStudentsCount = 0;
+    let unpaidStudentsCount = 0;
+    for (const row of studentPaymentRows) {
+      const remaining = Number(row.remainingBalance ?? 0);
+      const totalDue = Number(row.totalDue ?? 0);
+      const totalPaid = Number(row.totalPaid ?? 0);
+      if (remaining > 0) {
+        unpaidStudentsCount += 1;
+      } else if (totalDue > 0 || totalPaid > 0) {
+        paidStudentsCount += 1;
+      }
+    }
+    const totalBilledStudentsCount = paidStudentsCount + unpaidStudentsCount;
+
+    let paidGroupsCount = 0;
+    let unpaidGroupsCount = 0;
+    for (const row of groupPaymentRows) {
+      const remaining = Number(row.remainingBalance ?? 0);
+      const totalDue = Number(row.totalDue ?? 0);
+      const totalPaid = Number(row.totalPaid ?? 0);
+      if (remaining > 0) {
+        unpaidGroupsCount += 1;
+      } else if (totalDue > 0 || totalPaid > 0) {
+        paidGroupsCount += 1;
+      }
+    }
+    const totalBilledGroupsCount = paidGroupsCount + unpaidGroupsCount;
 
     return {
       yearMonth,
@@ -230,6 +283,15 @@ export class DashboardRepository {
         totalUnpaidSessions,
         collectionRateSessions,
       },
+      monthlyPaymentStats: {
+        paidStudentsCount,
+        unpaidStudentsCount,
+        totalBilledStudentsCount,
+        paidGroupsCount,
+        unpaidGroupsCount,
+        totalBilledGroupsCount,
+      },
+      monthlySessionProgress: sessionProgressSummary,
       totalRevenue,
       totalCollectedPayments,
       totalReceivables,

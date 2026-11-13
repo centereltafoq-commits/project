@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
 import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
+import { CompleteGroupSessionButton } from '@/features/attendance/complete-group-session-button';
 import { DashboardSummaryData } from '../dashboard.types';
 
 interface DashboardTodaySessionsBentoProps {
@@ -198,7 +199,16 @@ export function DashboardTodaySessionsBento({
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-left whitespace-nowrap">
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                        <div className="inline-flex items-center justify-end gap-2">
+                          {s.status === 'SCHEDULED' && (
+                            <CompleteGroupSessionButton
+                              sessionId={s.id}
+                              label="تحضير المجموعة"
+                              className="h-7 px-2.5 text-[11px]"
+                            />
+                          )}
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </div>
                       </td>
                     </tr>
                   );

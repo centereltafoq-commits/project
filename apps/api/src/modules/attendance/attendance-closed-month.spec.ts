@@ -43,6 +43,13 @@ describe('Attendance Closed-Month Lock Enforcement', () => {
     sheetRepository = {
       findExistingAttendanceMap: vi.fn(),
       upsertSessionAttendance: vi.fn(),
+      markSessionCompleted: vi.fn().mockResolvedValue({
+        id: 'ses-1',
+        groupId: 'grp-1',
+        yearMonth: '2026-10',
+        sessionDate: '2026-10-12',
+        status: 'COMPLETED',
+      }),
     };
 
     audit = { record: vi.fn().mockResolvedValue(undefined) };
@@ -105,6 +112,29 @@ describe('Attendance Closed-Month Lock Enforcement', () => {
       ),
     ).rejects.toThrow(ConflictException);
     expect(sheetRepository.upsertSessionAttendance).not.toHaveBeenCalled();
+  });
+
+  it('rejects completing a group session in a closed month', async () => {
+    await expect(attendanceService.completeGroupSession('ses-1', actor)).rejects.toThrow(
+      ConflictException,
+    );
+    expect(sheetRepository.markSessionCompleted).not.toHaveBeenCalled();
+  });
+
+  it('marks an open group session COMPLETED and recalculates monthly finance', async () => {
+    repository.findSessionById.mockResolvedValueOnce({
+      id: 'ses-open',
+      groupId: 'grp-1',
+      yearMonth: '2026-10',
+      sessionDate: '2026-10-12',
+      status: 'SCHEDULED',
+    });
+
+    const result = await attendanceService.completeGroupSession('ses-open', actor);
+    expect(result.status).toBe('COMPLETED');
+    expect(sheetRepository.markSessionCompleted).toHaveBeenCalledWith('ses-open');
+    expect(settlementService.recalculateMonth).toHaveBeenCalledWith('2026-10');
+    expect(cache.invalidatePrefix).toHaveBeenCalledWith('dashboard:summary:');
   });
 });
 

@@ -131,4 +131,16 @@ export class SessionSheetRepository {
         .where(eq(sessions.id, params.sessionId));
     });
   }
+
+  async markSessionCompleted(sessionId: string) {
+    const [updated] = await this.db
+      .update(sessions)
+      .set({
+        status: SessionStatus.COMPLETED,
+        updatedAt: new Date(),
+      })
+      .where(eq(sessions.id, sessionId))
+      .returning();
+    return updated ?? null;
+  }
 }

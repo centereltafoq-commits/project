@@ -139,34 +139,17 @@ export function calculateStudentMonthlyBilling(
         ? roundMoney(enrollment.agreedMonthlyPrice / enrollment.agreedSessionsCount)
         : 0;
 
+  // Academic attendance metrics stay independent from financial billing
   const attendedCount = presentCount;
-  const billableSessionsCount =
-    attendedCount + (policy.chargeExcusedAbsence ? excusedCount : 0);
+
+  // Group-level billing rule: every executed group session within enrollment window bills the student
+  const billableSessionsCount = eligibleSessions;
 
   let baseDue = 0;
-  let isFullMonthAbsenceApplied = false;
+  const isFullMonthAbsenceApplied = false;
 
-  if (
-    eligibleSessions > 0 &&
-    attendedCount === 0 &&
-    (!policy.chargeExcusedAbsence || excusedCount === 0)
-  ) {
-    isFullMonthAbsenceApplied = true;
-    switch (policy.fullMonthAbsencePolicy) {
-      case FullMonthAbsencePolicy.CHARGE_FULL_SUBSCRIPTION:
-        baseDue =
-          enrollment.agreedMonthlyPrice > 0
-            ? roundMoney(enrollment.agreedMonthlyPrice)
-            : roundMoney(enrollment.agreedSessionsCount * sessionPriceSnapshot);
-        break;
-      case FullMonthAbsencePolicy.CHARGE_FIXED_RESERVATION_FEE:
-        baseDue = roundMoney(policy.fullAbsenceFixedFee);
-        break;
-      case FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE:
-      default:
-        baseDue = 0;
-        break;
-    }
+  if (billableSessionsCount === 0) {
+    baseDue = 0;
   } else if (
     billableSessionsCount === enrollment.agreedSessionsCount &&
     enrollment.agreedMonthlyPrice > 0 &&

@@ -25,6 +25,55 @@ describe('DashboardService - Financial Metrics Guarding', () => {
       totalUnpaidSessions: 10,
       collectionRateSessions: 80,
     },
+    monthlyPaymentStats: {
+      paidStudentsCount: 95,
+      unpaidStudentsCount: 25,
+      totalBilledStudentsCount: 120,
+      paidGroupsCount: 14,
+      unpaidGroupsCount: 6,
+      totalBilledGroupsCount: 20,
+    },
+    monthlySessionProgress: {
+      totalTrackedEnrollments: 12,
+      nearLastTotalCount: 4,
+      lastOrCompletedTotalCount: 3,
+      inProgressTotalCount: 4,
+      notStartedTotalCount: 1,
+      tracks: [
+        {
+          targetSessions: 4,
+          totalEnrollments: 12,
+          notStartedCount: 1,
+          inProgressCount: 4,
+          nearLastCount: 4,
+          lastOrCompletedCount: 3,
+          steps: [
+            { stepNumber: 1, label: 'الحصة 1', isNearLast: false, isLast: false, studentsCount: 2 },
+            { stepNumber: 2, label: 'الحصة 2', isNearLast: false, isLast: false, studentsCount: 2 },
+            { stepNumber: 3, label: 'الحصة 3 (قبل الأخيرة)', isNearLast: true, isLast: false, studentsCount: 4 },
+            { stepNumber: 4, label: 'الحصة 4 (الأخيرة)', isNearLast: false, isLast: true, studentsCount: 3 },
+          ],
+        },
+      ],
+      students: [
+        {
+          enrollmentId: 'enr-1',
+          studentId: 'stu-1',
+          studentName: 'أحمد',
+          studentCode: 'ST-1',
+          studentPhone: '010111',
+          groupId: 'grp-1',
+          groupName: 'فيزياء 4 حصص',
+          groupCode: 'G-1',
+          subject: 'فيزياء',
+          attendedSessions: 3,
+          targetSessions: 4,
+          stepNumber: 3,
+          status: 'NEAR_LAST',
+          remainingBalance: 150,
+        },
+      ],
+    },
     totalRevenue: 50000,
     totalCollectedPayments: 42000,
     totalReceivables: 8000,
@@ -68,6 +117,14 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.netCenterResult).toBe(13000);
     expect(res.netCashFlow).toBe(10000);
     expect(res.totalStudents).toBe(150);
+    expect(res.monthlyPaymentStats).toEqual({
+      paidStudentsCount: 95,
+      unpaidStudentsCount: 25,
+      totalBilledStudentsCount: 120,
+      paidGroupsCount: 14,
+      unpaidGroupsCount: 6,
+      totalBilledGroupsCount: 20,
+    });
   });
 
   it('returns full financial figures for users with FINANCE_VIEW', async () => {
@@ -110,6 +167,14 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.monthlySessionsStats.totalPaidSessions).toBe(0);
     expect(res.monthlySessionsStats.totalUnpaidSessions).toBe(0);
     expect(res.monthlySessionsStats.collectionRateSessions).toBe(0);
+    expect(res.monthlyPaymentStats).toEqual({
+      paidStudentsCount: 0,
+      unpaidStudentsCount: 0,
+      totalBilledStudentsCount: 0,
+      paidGroupsCount: 0,
+      unpaidGroupsCount: 0,
+      totalBilledGroupsCount: 0,
+    });
     expect(res.classroomsSummary).toEqual({
       total: 0,
       availableNow: 0,
@@ -118,6 +183,8 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     });
     expect(res.classroomsLive).toEqual([]);
     expect(res.todaySessions).toEqual([]);
+    expect(res.monthlySessionProgress.students[0].remainingBalance).toBe(0);
+    expect(res.monthlySessionProgress.nearLastTotalCount).toBe(4);
   });
 
   it('masks classrooms payload while allowing authorized finance view separately', async () => {
@@ -137,5 +204,6 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.totalRevenue).toBe(50000);
     expect(res.classroomsLive).toEqual([]);
     expect(res.classroomsSummary.total).toBe(0);
+    expect(res.monthlySessionProgress.students[0].remainingBalance).toBe(150);
   });
 });

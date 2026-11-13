@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Banknote,
   Building2,
-  CalendarCheck2,
   CalendarClock,
   CheckCircle2,
   GraduationCap,
@@ -38,11 +37,28 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
     collectionRateSessions: 0,
   };
 
-  const paidRate = stats.collectionRateSessions;
-  const unpaidRate = stats.totalBillableSessions > 0 ? Math.max(0, 100 - paidRate) : 0;
+  const paymentStats = data.monthlyPaymentStats ?? {
+    paidStudentsCount: 0,
+    unpaidStudentsCount: 0,
+    totalBilledStudentsCount: 0,
+    paidGroupsCount: 0,
+    unpaidGroupsCount: 0,
+    totalBilledGroupsCount: 0,
+  };
 
-  const teacherPaid = data.totalTeacherPaidOut ?? 0;
-  const teacherRemaining = Math.max(0, data.totalTeacherDues - teacherPaid);
+  const paidStudentsPercent =
+    paymentStats.totalBilledStudentsCount > 0
+      ? Math.min(100, Math.round((paymentStats.paidStudentsCount / paymentStats.totalBilledStudentsCount) * 100))
+      : 0;
+  const unpaidStudentsPercent =
+    paymentStats.totalBilledStudentsCount > 0 ? Math.max(0, 100 - paidStudentsPercent) : 0;
+
+  const paidGroupsPercent =
+    paymentStats.totalBilledGroupsCount > 0
+      ? Math.min(100, Math.round((paymentStats.paidGroupsCount / paymentStats.totalBilledGroupsCount) * 100))
+      : 0;
+  const unpaidGroupsPercent =
+    paymentStats.totalBilledGroupsCount > 0 ? Math.max(0, 100 - paidGroupsPercent) : 0;
 
   const totalMarkedToday =
     data.todayAttendance.present +
@@ -173,65 +189,36 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
 
   return (
     <div className="space-y-3">
-      {/* الصف الرئيسي: 4 مؤشرات أساسية للمحاسبة بالحصة وفلوس المدرسين */}
+      {/* الصف الرئيسي: 4 مؤشرات أساسية لحالة سداد الطلاب والمجموعات للشهر */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* 1. إجمالي عدد الحصص */}
-        <Card className="p-4 transition-all hover:border-primary/40 hover:shadow-sm">
-          <div className="flex items-start justify-between gap-2">
-            <div className="space-y-1 min-w-0">
-              <span className="text-xs font-semibold text-muted-foreground block">
-                إجمالي عدد الحصص (المستحقة)
-              </span>
-              <p className="text-2xl font-black tracking-tight text-foreground tabular-nums">
-                {stats.totalBillableSessions}{' '}
-                <span className="text-sm font-bold text-muted-foreground">حصة</span>
-              </p>
-            </div>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-              <CalendarCheck2 className="h-4.5 w-4.5" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
-            <span className="truncate">
-              حصص المجموعات: <strong className="text-foreground">{stats.executedSessions}</strong> منفذة من{' '}
-              {stats.totalSessions}
-            </span>
-            {canAccessAttendance && (
-              <Link to="/attendance" className="font-bold text-primary hover:underline shrink-0">
-                الحضور
-              </Link>
-            )}
-          </div>
-        </Card>
-
-        {/* 2. الحصص اللي اتدفعت */}
+        {/* 1. الطلاب اللي دفعت */}
         <Card className="border-emerald-500/25 bg-emerald-500/[0.03] p-4 transition-all hover:border-emerald-500/45 hover:shadow-sm">
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                  الحصص اللي اتدفعت
+                  الطلاب اللي دفعت
                 </span>
                 <Badge variant="success" className="px-1.5 py-0 text-[10px]">
-                  {paidRate}%
+                  {paidStudentsPercent}%
                 </Badge>
               </div>
               <p className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 tabular-nums">
-                {stats.totalPaidSessions}{' '}
+                {paymentStats.paidStudentsCount.toLocaleString('en-US')}{' '}
                 <span className="text-sm font-bold text-emerald-700/80 dark:text-emerald-300/80">
-                  حصة مسددة
+                  طالب مسدد
                 </span>
               </p>
             </div>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-4.5 w-4.5" />
+              <UserCheck className="h-4.5 w-4.5" />
             </div>
           </div>
           <div className="mt-2.5 space-y-1.5">
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-emerald-500/15">
               <div
                 className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                style={{ width: `${paidRate}%` }}
+                style={{ width: `${paidStudentsPercent}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -248,25 +235,25 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
           </div>
         </Card>
 
-        {/* 3. الحصص اللي مدفعتش */}
+        {/* 2. الطلاب اللي مدفعتش */}
         <Card className="border-rose-500/25 bg-rose-500/[0.03] p-4 transition-all hover:border-rose-500/45 hover:shadow-sm">
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-rose-800 dark:text-rose-300">
-                  الحصص اللي مدفعتش
+                  الطلاب اللي مدفعتش
                 </span>
                 <Badge
-                  variant={stats.totalUnpaidSessions > 0 ? 'danger' : 'success'}
+                  variant={paymentStats.unpaidStudentsCount > 0 ? 'danger' : 'success'}
                   className="px-1.5 py-0 text-[10px]"
                 >
-                  {unpaidRate}%
+                  {unpaidStudentsPercent}%
                 </Badge>
               </div>
               <p className="text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400 tabular-nums">
-                {stats.totalUnpaidSessions}{' '}
+                {paymentStats.unpaidStudentsCount.toLocaleString('en-US')}{' '}
                 <span className="text-sm font-bold text-rose-700/80 dark:text-rose-300/80">
-                  حصة معلقة
+                  طالب لم يسدد
                 </span>
               </p>
             </div>
@@ -278,7 +265,7 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-rose-500/15">
               <div
                 className="h-full rounded-full bg-rose-500 transition-all duration-500"
-                style={{ width: `${unpaidRate}%` }}
+                style={{ width: `${unpaidStudentsPercent}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -295,32 +282,92 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
           </div>
         </Card>
 
-        {/* 4. إجمالي فلوس المدرسين */}
-        <Card className="border-violet-500/25 bg-violet-500/[0.03] p-4 transition-all hover:border-violet-500/45 hover:shadow-sm">
+        {/* 3. المجموعات اللي دفعت */}
+        <Card className="border-primary/25 bg-primary/[0.03] p-4 transition-all hover:border-primary/45 hover:shadow-sm">
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1 min-w-0">
-              <span className="text-xs font-semibold text-violet-800 dark:text-violet-300 block">
-                إجمالي فلوس المدرسين
-              </span>
-              <p className="text-2xl font-black tracking-tight text-violet-700 dark:text-violet-300 tabular-nums truncate">
-                {formatCurrency(data.totalTeacherDues)}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-primary">
+                  المجموعات اللي دفعت
+                </span>
+                <Badge variant="info" className="px-1.5 py-0 text-[10px]">
+                  {paidGroupsPercent}%
+                </Badge>
+              </div>
+              <p className="text-2xl font-black tracking-tight text-primary tabular-nums">
+                {paymentStats.paidGroupsCount.toLocaleString('en-US')}{' '}
+                <span className="text-sm font-bold text-primary/80">
+                  مجموعة مسددة
+                </span>
               </p>
             </div>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
-              <UserCheck className="h-4.5 w-4.5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <CheckCircle2 className="h-4.5 w-4.5" />
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
-            <span className="truncate">
-              صُرف: <strong className="text-foreground">{formatCurrency(teacherPaid)}</strong> • باقي:{' '}
-              <strong className="text-amber-600 dark:text-amber-400">{formatCurrency(teacherRemaining)}</strong>
-            </span>
-            <Link
-              to="/finance?tab=teacher-dues"
-              className="font-bold text-primary hover:underline shrink-0"
-            >
-              الصرف
-            </Link>
+          <div className="mt-2.5 space-y-1.5">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/15">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${paidGroupsPercent}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="truncate">
+                مكتملة من <strong className="text-foreground">{paymentStats.totalBilledGroupsCount.toLocaleString('en-US')}</strong> مجموعة
+              </span>
+              <Link
+                to="/groups"
+                className="font-bold text-primary hover:underline shrink-0"
+              >
+                المجموعات
+              </Link>
+            </div>
+          </div>
+        </Card>
+
+        {/* 4. المجموعات اللي مدفعتش */}
+        <Card className="border-amber-500/25 bg-amber-500/[0.03] p-4 transition-all hover:border-amber-500/45 hover:shadow-sm">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                  المجموعات اللي مدفعتش
+                </span>
+                <Badge
+                  variant={paymentStats.unpaidGroupsCount > 0 ? 'warning' : 'success'}
+                  className="px-1.5 py-0 text-[10px]"
+                >
+                  {unpaidGroupsPercent}%
+                </Badge>
+              </div>
+              <p className="text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400 tabular-nums">
+                {paymentStats.unpaidGroupsCount.toLocaleString('en-US')}{' '}
+                <span className="text-sm font-bold text-amber-700/80 dark:text-amber-300/80">
+                  مجموعة متبقية
+                </span>
+              </p>
+            </div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+              <Layers className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-2.5 space-y-1.5">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-amber-500/15">
+              <div
+                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                style={{ width: `${unpaidGroupsPercent}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="truncate">بها متأخرات تحصيل</span>
+              <Link
+                to="/finance?tab=student-billing"
+                className="font-bold text-primary hover:underline shrink-0"
+              >
+                متابعة
+              </Link>
+            </div>
           </div>
         </Card>
       </div>
@@ -346,9 +393,18 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
           <span className="hidden sm:inline text-border">|</span>
 
           <span className="text-muted-foreground">
-            المستهدف من الحصص:{' '}
+            إجمالي مستحقات الشهر:{' '}
             <strong className="font-bold text-foreground tabular-nums">
               {formatCurrency(data.totalRevenue)}
+            </strong>
+          </span>
+
+          <span className="hidden sm:inline text-border">|</span>
+
+          <span className="text-muted-foreground">
+            مستحقات المدرسين:{' '}
+            <strong className="font-bold text-violet-700 dark:text-violet-300 tabular-nums">
+              {formatCurrency(data.totalTeacherDues)}
             </strong>
           </span>
         </div>
