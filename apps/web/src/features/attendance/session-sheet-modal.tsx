@@ -115,7 +115,8 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
       (s) =>
         s.studentName.toLowerCase().includes(q) ||
         s.studentCode.toLowerCase().includes(q) ||
-        s.studentPhone.includes(q),
+        (s.studentPhone ?? '').includes(q) ||
+        (s.guardianPhone ?? '').includes(q),
     );
   }, [data?.students, search]);
 

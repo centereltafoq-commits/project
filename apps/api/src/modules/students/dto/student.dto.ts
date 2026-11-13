@@ -42,10 +42,15 @@ export class CreateStudentDto {
   @MaxLength(160)
   fullName: string;
 
-  @IsString({ message: 'رقم هاتف الطالب مطلوب' })
-  @MinLength(6)
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() || null : value,
+  )
+  @ValidateIf((o) => o.phone !== null && o.phone !== undefined)
+  @IsString({ message: 'رقم هاتف الطالب غير صالح' })
+  @MinLength(6, { message: 'رقم هاتف الطالب يجب ألا يقل عن 6 أرقام' })
   @MaxLength(30)
-  phone: string;
+  phone?: string | null;
 
   @IsOptional()
   @Transform(({ value }: { value: unknown }) =>
@@ -84,10 +89,14 @@ export class UpdateStudentDto {
   fullName?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(6)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() || null : value,
+  )
+  @ValidateIf((o) => o.phone !== null && o.phone !== undefined)
+  @IsString({ message: 'رقم هاتف الطالب غير صالح' })
+  @MinLength(6, { message: 'رقم هاتف الطالب يجب ألا يقل عن 6 أرقام' })
   @MaxLength(30)
-  phone?: string;
+  phone?: string | null;
 
   @IsOptional()
   @Transform(({ value }: { value: unknown }) =>

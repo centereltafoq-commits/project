@@ -58,8 +58,8 @@ export interface SheetStudentRow {
   studentId: string;
   studentCode: string;
   studentName: string;
-  studentPhone: string;
-  guardianPhone: string;
+  studentPhone: string | null;
+  guardianPhone: string | null;
   attendanceId: string | null;
   status: AttendanceStatus | null;
   notes: string | null;

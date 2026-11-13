@@ -6,6 +6,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PERMISSIONS } from '@edu-center/shared';
 import { ToastProvider } from '@/design-system';
 import * as authContextModule from '@/features/auth/auth-context';
+import { apiClient } from '@/lib/api-client';
 import { downloadBlobFile } from '@/lib/file-download';
 import { StudentsPage } from './students-page';
 
@@ -98,5 +99,34 @@ describe('StudentsPage Excel Import & Export Integration', () => {
     fireEvent.click(importBtn);
 
     expect(await screen.findByText('استيراد بيانات الطلاب من Excel')).toBeInTheDocument();
+  });
+
+  it('allows creating a new student without entering student phone number (optional phone)', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'stu-new' } } as any);
+
+    renderPage([PERMISSIONS.STUDENTS_VIEW, PERMISSIONS.STUDENTS_CREATE]);
+
+    fireEvent.click(screen.getByRole('button', { name: /تسجيل طالب جديد/i }));
+
+    expect(await screen.findByText('رقم هاتف الطالب (اختياري)')).toBeInTheDocument();
+
+    const phoneInput = screen.getByPlaceholderText('010xxxxxxxx');
+    expect(phoneInput).not.toBeRequired();
+
+    fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد عبد الرحمن'), {
+      target: { value: 'يوسف سامح إبراهيم' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /حفظ ملف الطالب/i }));
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/students',
+        expect.objectContaining({
+          fullName: 'يوسف سامح إبراهيم',
+          phone: undefined,
+        }),
+      );
+    });
   });
 });

@@ -8,7 +8,7 @@ export interface StudentRow {
   id: string;
   studentCode: string;
   fullName: string;
-  phone: string;
+  phone: string | null;
   guardianPhone: string | null;
   gradeLevel: string;
   registrationDate: string;

@@ -80,7 +80,8 @@ export function PaymentsHistoryTab({
         <div>
           <div className="font-bold text-foreground text-xs">{r.studentName}</div>
           <div className="font-mono text-[11px] text-muted-foreground">
-            {r.studentCode} • {r.studentPhone}
+            {r.studentCode}
+            {r.studentPhone ? ` • ${r.studentPhone}` : ''}
           </div>
         </div>
       ),

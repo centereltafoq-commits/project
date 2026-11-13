@@ -20,7 +20,7 @@ import { StudentsRepository } from './students.repository';
 export interface ParsedStudentImportRow {
   studentCode: string | null;
   fullName: string;
-  phone: string;
+  phone: string | null;
   guardianPhone: string | null;
   gradeLevel: string;
   registrationDate: string;
@@ -46,7 +46,7 @@ const STUDENT_STATUS_PARSE_MAP: Record<string, StudentStatus> = {
 const STUDENT_HEADER_ALIASES: Record<keyof ParsedStudentImportRow, string[]> = {
   studentCode: ['كود الطالب (اختياري)', 'كود الطالب', 'studentCode', 'code'],
   fullName: ['اسم الطالب *', 'اسم الطالب', 'الاسم الكامل', 'fullName', 'name'],
-  phone: ['هاتف الطالب *', 'هاتف الطالب', 'رقم الهاتف', 'phone'],
+  phone: ['هاتف الطالب (اختياري)', 'هاتف الطالب *', 'هاتف الطالب', 'رقم الهاتف', 'phone'],
   guardianPhone: [
     'هاتف ولي الأمر *',
     'هاتف ولي الأمر (اختياري)',
@@ -77,7 +77,7 @@ export class StudentsExcelService {
       columns: [
         { key: 'studentCode', header: 'كود الطالب (اختياري)', width: 22, numFmt: '@' },
         { key: 'fullName', header: 'اسم الطالب *', width: 28 },
-        { key: 'phone', header: 'هاتف الطالب *', width: 20, numFmt: '@' },
+        { key: 'phone', header: 'هاتف الطالب (اختياري)', width: 20, numFmt: '@' },
         { key: 'guardianPhone', header: 'هاتف ولي الأمر (اختياري)', width: 20, numFmt: '@' },
         {
           key: 'gradeLevel',
@@ -101,7 +101,7 @@ export class StudentsExcelService {
         title: 'تعليمات استيراد بيانات الطلاب من Excel',
         lines: [
           'أدخل بيانات الطلاب في الورقة الأولى (بيانات الطلاب) بدءاً من الصف رقم 2 أسفل العناوين مباشرة.',
-          'الحقول المميزة بعلامة (*) إجبارية: اسم الطالب، هاتف الطالب، والصف الدراسي (وهاتف ولي الأمر اختياري).',
+          'الحقول المميزة بعلامة (*) إجبارية: اسم الطالب والصف الدراسي (وهاتف الطالب وهاتف ولي الأمر اختياريان).',
           'كود الطالب اختياري؛ إذا تُرك فارغاً سيقوم النظام بإنشاء كود فريد تلقائياً بصيغة STU-YYYY-XXXX.',
           'أعمدة الهاتف مضبوطة بصيغة نص (@) للحفاظ على الصفر البادئ (مثل 01012345678).',
           'تاريخ التسجيل اختياري بصيغة YYYY-MM-DD (مثل 2026-09-01)، وإذا تُرك فارغاً يُسجَّل بتاريخ اليوم.',
@@ -111,7 +111,7 @@ export class StudentsExcelService {
         sampleHeaders: [
           'كود الطالب (اختياري)',
           'اسم الطالب *',
-          'هاتف الطالب *',
+          'هاتف الطالب (اختياري)',
           'هاتف ولي الأمر (اختياري)',
           'الصف الدراسي *',
           'تاريخ التسجيل (YYYY-MM-DD)',
@@ -245,7 +245,7 @@ export class StudentsExcelService {
         studentCode: row.studentCode,
         fullName: row.fullName,
         gradeLevel: row.gradeLevel,
-        phone: row.phone,
+        phone: row.phone ?? '',
         guardianPhone: row.guardianPhone ?? '',
         activeGroupsCount: Number(row.activeGroupsCount ?? 0),
         registrationDate: row.registrationDate,
@@ -270,9 +270,9 @@ export class StudentsExcelService {
       STUDENT_HEADER_ALIASES,
     );
 
-    if (!headerLookup.fullName || !headerLookup.phone || !headerLookup.gradeLevel) {
+    if (!headerLookup.fullName || !headerLookup.gradeLevel) {
       throw new BadRequestException(
-        'تنسيق الأعمدة غير مطابق للنموذج المعتمد. تأكد من وجود الأعمدة: اسم الطالب، هاتف الطالب، الصف الدراسي.',
+        'تنسيق الأعمدة غير مطابق للنموذج المعتمد. تأكد من وجود الأعمدة: اسم الطالب، الصف الدراسي.',
       );
     }
 
@@ -293,7 +293,9 @@ export class StudentsExcelService {
       const code = headerLookup.studentCode
         ? this.excelService.normalizeCellText(row.cells[headerLookup.studentCode])
         : '';
-      const phone = this.excelService.normalizePhoneText(row.cells[headerLookup.phone!]);
+      const phone = headerLookup.phone
+        ? this.excelService.normalizePhoneText(row.cells[headerLookup.phone])
+        : '';
       if (code) candidateCodes.push(code.toUpperCase());
       if (phone) candidatePhones.push(phone);
       return { row, code, phone };
@@ -319,7 +321,9 @@ export class StudentsExcelService {
         ? this.excelService.normalizeCellText(row.cells[headerLookup.studentCode])
         : '';
       const fullName = this.excelService.normalizeCellText(row.cells[headerLookup.fullName!]);
-      const phone = this.excelService.normalizePhoneText(row.cells[headerLookup.phone!]);
+      const phone = headerLookup.phone
+        ? this.excelService.normalizePhoneText(row.cells[headerLookup.phone])
+        : '';
       const guardianPhone = headerLookup.guardianPhone
         ? this.excelService.normalizePhoneText(row.cells[headerLookup.guardianPhone])
         : '';
@@ -361,8 +365,8 @@ export class StudentsExcelService {
         errors.push('اسم الطالب يتجاوز الحد الأقصى (160 حرفاً)');
       }
 
-      if (!phone || phone.length < 6) {
-        errors.push('هاتف الطالب مطلوب (6 أرقام على الأقل)');
+      if (phone && phone.length < 6) {
+        errors.push('هاتف الطالب (إن وُجد) يجب ألا يقل عن 6 أرقام');
       } else if (phone.length > 30) {
         errors.push('هاتف الطالب يتجاوز الحد الأقصى (30 حرفاً)');
       }
@@ -454,7 +458,7 @@ export class StudentsExcelService {
         data: {
           studentCode: rawCode || null,
           fullName,
-          phone,
+          phone: phone || null,
           guardianPhone: guardianPhone || null,
           gradeLevel: resolvedGradeLevel,
           registrationDate,

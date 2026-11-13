@@ -103,8 +103,8 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
       className: 'whitespace-nowrap font-mono',
       render: (row) => (
         <div className="text-xs" dir="ltr">
-          <div className="font-mono text-xs">{row.studentPhone}</div>
-          <div className="text-[11px] text-muted-foreground">{row.guardianPhone}</div>
+          <div className="font-mono text-xs">{row.studentPhone || '—'}</div>
+          <div className="text-[11px] text-muted-foreground">{row.guardianPhone || '—'}</div>
         </div>
       ),
     },

@@ -112,9 +112,43 @@ describe('StudentsExcelService', () => {
 
     expect(parsed.sheetName).toBe('بيانات الطلاب');
     expect(parsed.headers).toContain('اسم الطالب *');
+    expect(parsed.headers).toContain('هاتف الطالب (اختياري)');
     expect(parsed.headers).toContain('الصف الدراسي *');
     expect(parsed.rows).toHaveLength(0);
     expect(mockRepo.findActiveGradeLevelNames).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows importing students without a student phone number', async () => {
+    const file = await buildXlsxUpload([
+      {
+        studentCode: '',
+        fullName: 'طالب بدون هاتف',
+        phone: '',
+        guardianPhone: '',
+        gradeLevel: 'الأول الثانوي',
+      },
+    ]);
+
+    const preview = await service.previewImport(file, { duplicateStrategy: 'skip' });
+    expect(preview.validCount).toBe(1);
+    expect(preview.errorCount).toBe(0);
+    expect(preview.rows[0].data.phone).toBeNull();
+
+    const commitRes = await service.commitImport(
+      file,
+      { duplicateStrategy: 'skip', skipInvalidRows: false },
+      actor,
+    );
+    expect(commitRes.importedCount).toBe(1);
+    expect(mockRepo.createManyTx).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fullName: 'طالب بدون هاتف',
+          phone: null,
+          guardianPhone: null,
+        }),
+      ]),
+    );
   });
 
   it('previews rows, normalizes Arabic digits & status, detects errors, duplicates and warnings', async () => {

@@ -119,7 +119,7 @@ export function StudentProfilePage() {
             <div className="flex items-center gap-1.5">
               <Phone className="h-4 w-4 text-primary" />
               <span className="text-muted-foreground">هاتف الطالب:</span>
-              <strong dir="ltr">{student.phone}</strong>
+              <strong dir="ltr">{student.phone || '—'}</strong>
             </div>
             <div className="flex items-center gap-1.5">
               <Phone className="h-4 w-4 text-emerald-600" />

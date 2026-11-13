@@ -137,7 +137,9 @@ export class StudentsRepository {
 
     const existingCodes = new Set(codeRows.map((row) => row.studentCode.trim().toUpperCase()));
     const existingNamePhones = new Set(
-      phoneRows.map((row) => `${row.fullName.trim().toLowerCase()}|${row.phone.trim()}`),
+      phoneRows
+        .filter((row) => Boolean(row.phone))
+        .map((row) => `${row.fullName.trim().toLowerCase()}|${row.phone!.trim()}`),
     );
 
     return { existingCodes, existingNamePhones };
@@ -147,7 +149,7 @@ export class StudentsRepository {
     rows: Array<{
       studentCode: string;
       fullName: string;
-      phone: string;
+      phone: string | null;
       guardianPhone: string | null;
       gradeLevel: string;
       registrationDate: string;
@@ -188,7 +190,7 @@ export class StudentsRepository {
   async create(data: {
     studentCode: string;
     fullName: string;
-    phone: string;
+    phone: string | null;
     guardianPhone: string | null;
     gradeLevel: string;
     registrationDate: string;
@@ -200,7 +202,7 @@ export class StudentsRepository {
       .values({
         studentCode: data.studentCode,
         fullName: data.fullName,
-        phone: data.phone,
+        phone: data.phone ?? null,
         guardianPhone: data.guardianPhone ?? null,
         gradeLevel: data.gradeLevel,
         registrationDate: data.registrationDate,
@@ -215,7 +217,7 @@ export class StudentsRepository {
     id: string,
     updates: Partial<{
       fullName: string;
-      phone: string;
+      phone: string | null;
       guardianPhone: string | null;
       gradeLevel: string;
       registrationDate: string;

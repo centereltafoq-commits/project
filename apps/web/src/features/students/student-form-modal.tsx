@@ -59,7 +59,7 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
       setForm({
         studentCode: student.studentCode,
         fullName: student.fullName,
-        phone: student.phone,
+        phone: student.phone ?? '',
         guardianPhone: student.guardianPhone ?? '',
         gradeLevel: student.gradeLevel,
         registrationDate: student.registrationDate?.slice(0, 10) || getTodayIsoDate(),
@@ -82,16 +82,19 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const normalizedPhone = form.phone.trim();
       const normalizedGuardian = form.guardianPhone.trim();
       if (isEdit && student) {
         const { studentCode: _code, ...payload } = form;
         return apiClient.patch(`/students/${student.id}`, {
           ...payload,
+          phone: normalizedPhone,
           guardianPhone: normalizedGuardian,
         });
       }
       return apiClient.post('/students', {
         ...form,
+        phone: normalizedPhone || undefined,
         guardianPhone: normalizedGuardian || undefined,
         studentCode: form.studentCode.trim() || undefined,
       });
@@ -138,8 +141,7 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
             placeholder="STU-2026-XXXX"
           />
           <Input
-            label="رقم هاتف الطالب"
-            required
+            label="رقم هاتف الطالب (اختياري)"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             placeholder="010xxxxxxxx"

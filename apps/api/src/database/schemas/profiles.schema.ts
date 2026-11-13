@@ -19,7 +19,7 @@ export const students = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     studentCode: varchar('student_code', { length: 40 }).notNull(),
     fullName: varchar('full_name', { length: 160 }).notNull(),
-    phone: varchar('phone', { length: 30 }).notNull(),
+    phone: varchar('phone', { length: 30 }),
     guardianPhone: varchar('guardian_phone', { length: 30 }),
     gradeLevel: varchar('grade_level', { length: 80 }).notNull(),
     registrationDate: date('registration_date').notNull(),

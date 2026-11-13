@@ -101,8 +101,8 @@ export interface StudentMonthlyRecordRow {
   studentId: string;
   studentCode: string;
   studentName: string;
-  studentPhone: string;
-  guardianPhone: string;
+  studentPhone: string | null;
+  guardianPhone: string | null;
   groupId: string;
   groupCode: string;
   groupName: string;
@@ -133,8 +133,8 @@ export interface PaymentRow {
   studentId: string;
   studentCode: string;
   studentName: string;
-  studentPhone: string;
-  guardianPhone?: string;
+  studentPhone: string | null;
+  guardianPhone?: string | null;
   yearMonth: string;
   amount: number;
   paymentDate: string;

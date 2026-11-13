@@ -40,7 +40,7 @@ export class StudentsService {
     const created = await this.repository.create({
       studentCode,
       fullName: dto.fullName.trim(),
-      phone: dto.phone.trim(),
+      phone: dto.phone?.trim() || null,
       guardianPhone: dto.guardianPhone?.trim() || null,
       gradeLevel: dto.gradeLevel.trim(),
       registrationDate,
@@ -64,7 +64,7 @@ export class StudentsService {
     const existing = await this.getById(id);
     const updated = await this.repository.update(id, {
       ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
-      ...(dto.phone !== undefined ? { phone: dto.phone.trim() } : {}),
+      ...(dto.phone !== undefined ? { phone: dto.phone?.trim() || null } : {}),
       ...(dto.guardianPhone !== undefined
         ? { guardianPhone: dto.guardianPhone?.trim() || null }
         : {}),

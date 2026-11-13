@@ -71,8 +71,8 @@ export interface EnrollmentRow {
   studentId: string;
   studentCode: string;
   studentName: string;
-  studentPhone: string;
-  guardianPhone: string;
+  studentPhone: string | null;
+  guardianPhone: string | null;
   gradeLevel: string;
   groupId: string;
   startDate: string;
