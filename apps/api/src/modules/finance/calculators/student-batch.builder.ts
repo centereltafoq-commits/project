@@ -1,5 +1,6 @@
 import {
   AttendanceStatus,
+  EnrollmentStatus,
   FullMonthAbsencePolicy,
   SessionStatus,
 } from '@edu-center/shared';
@@ -89,7 +90,12 @@ export function buildStudentSettlementBatch(
     MonthlySettlementSnapshot['monthEnrollments'][number]
   >();
   for (const enr of snap.monthEnrollments) {
-    uniqueEnrollments.set(`${enr.studentId}:${enr.groupId}`, enr);
+    const key = `${enr.studentId}:${enr.groupId}`;
+    const prev = uniqueEnrollments.get(key);
+    // Prefer active/completed enrollment over a cancelled one for the same student & group
+    if (!prev || prev.status === EnrollmentStatus.CANCELLED) {
+      uniqueEnrollments.set(key, enr);
+    }
   }
 
   const studentRows: NewStudentMonthlyRow[] = [];
@@ -98,10 +104,6 @@ export function buildStudentSettlementBatch(
   const groupEnrolledStudentsMap = new Map<string, number>();
 
   for (const [key, enr] of uniqueEnrollments) {
-    groupEnrolledStudentsMap.set(
-      enr.groupId,
-      (groupEnrolledStudentsMap.get(enr.groupId) ?? 0) + 1,
-    );
     const existing = existingStudentMap.get(key);
     const policy = policyByGroup.get(enr.groupId);
     const currentPaid = Math.max(
@@ -147,6 +149,60 @@ export function buildStudentSettlementBatch(
           }
         : null,
     });
+
+    if (enr.status === EnrollmentStatus.CANCELLED && !calc.isClosed) {
+      const hasBillableAttendance =
+        calc.attendedCount > 0 || calc.billableSessionsCount > 0;
+
+      if (!hasBillableAttendance) {
+        // Cancelled enrollment with zero attended/billable sessions: exempt from full-month absence fees
+        const cancelledDue = roundMoney(calc.extraMakeupFees);
+        const cancelledRemaining = roundMoney(Math.max(0, cancelledDue - calc.totalPaid));
+
+        if (cancelledDue > 0) {
+          groupRevenueMap.set(
+            enr.groupId,
+            roundMoney((groupRevenueMap.get(enr.groupId) ?? 0) + cancelledDue),
+          );
+          groupBilledStudentsMap.set(
+            enr.groupId,
+            (groupBilledStudentsMap.get(enr.groupId) ?? 0) + 1,
+          );
+        }
+
+        if (existing || currentPaid > 0 || cancelledDue > 0) {
+          studentRows.push({
+            studentId: enr.studentId,
+            groupId: enr.groupId,
+            yearMonth,
+            totalGroupSessions: 0,
+            eligibleSessions: 0,
+            presentCount: 0,
+            absentCount: 0,
+            excusedCount: 0,
+            makeupAttendedCount: 0,
+            sessionPriceSnapshot: toMoneyString(calc.sessionPriceSnapshot),
+            extraMakeupFees: toMoneyString(cancelledDue),
+            totalDue: toMoneyString(cancelledDue),
+            totalPaid: toMoneyString(calc.totalPaid),
+            remainingBalance: toMoneyString(cancelledRemaining),
+            isClosed: false,
+          });
+        }
+        continue;
+      }
+    }
+
+    if (
+      enr.status !== EnrollmentStatus.CANCELLED ||
+      calc.attendedCount > 0 ||
+      calc.totalDue > 0
+    ) {
+      groupEnrolledStudentsMap.set(
+        enr.groupId,
+        (groupEnrolledStudentsMap.get(enr.groupId) ?? 0) + 1,
+      );
+    }
 
     groupRevenueMap.set(
       enr.groupId,

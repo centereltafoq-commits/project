@@ -85,6 +85,11 @@ export class AttendanceService {
       throw new NotFoundException('المجموعة المطلوبة غير موجودة');
     }
 
+    const yearMonth = dto.sessionDate.slice(0, 7);
+    if (this.settlementService) {
+      await this.settlementService.assertMonthOpen(yearMonth);
+    }
+
     const targetClassroomId = dto.classroomId ?? group.defaultClassroomId ?? null;
     const targetTeacherId = dto.teacherId ?? group.primaryTeacherId;
 
@@ -100,7 +105,6 @@ export class AttendanceService {
       throw new ConflictException(conflict.message);
     }
 
-    const yearMonth = dto.sessionDate.slice(0, 7);
     const created = await this.repository.createSession({
       groupId: dto.groupId,
       teacherId: targetTeacherId,
@@ -137,6 +141,10 @@ export class AttendanceService {
     const group = await this.repository.findGroupById(dto.groupId);
     if (!group) {
       throw new NotFoundException('المجموعة المطلوبة غير موجودة');
+    }
+
+    if (this.settlementService) {
+      await this.settlementService.assertMonthOpen(dto.yearMonth);
     }
 
     const candidateDates = buildMonthSessionDates(dto.yearMonth, group.scheduleSlots);

@@ -6,11 +6,9 @@ import {
   inArray,
   isNull,
   lte,
-  ne,
   or,
   sql,
 } from 'drizzle-orm';
-import { EnrollmentStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../../database/database.module';
 import {
   assistantDues,
@@ -70,7 +68,6 @@ export class MonthlySettlementReadRepository {
           and(
             lte(enrollments.startDate, monthEnd),
             or(isNull(enrollments.endDate), gte(enrollments.endDate, monthStart)),
-            ne(enrollments.status, EnrollmentStatus.CANCELLED),
           ),
         ),
       this.db.select().from(sessions).where(eq(sessions.yearMonth, yearMonth)),

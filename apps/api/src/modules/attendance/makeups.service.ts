@@ -35,6 +35,10 @@ export class MakeupsService {
       throw new NotFoundException('الحصة الأصلية غير موجودة');
     }
 
+    if (this.settlementService) {
+      await this.settlementService.assertMonthOpen(originalSession.yearMonth);
+    }
+
     const existingAtt = await this.makeupsRepository.findStudentAttendance(
       dto.originalSessionId,
       dto.studentId,
@@ -108,6 +112,11 @@ export class MakeupsService {
       throw new NotFoundException('الحصة التعويضية غير موجودة');
     }
 
+    const originalSession = await this.repository.findSessionById(existing.originalSessionId);
+    if (originalSession && this.settlementService) {
+      await this.settlementService.assertMonthOpen(originalSession.yearMonth);
+    }
+
     const effectiveIsFree = dto.isFree !== undefined ? dto.isFree : existing.isFree;
     const effectiveExtraFee = effectiveIsFree
       ? '0.00'
@@ -161,11 +170,8 @@ export class MakeupsService {
       afterData: updated,
     });
 
-    if (this.settlementService) {
-      const originalSession = await this.repository.findSessionById(existing.originalSessionId);
-      if (originalSession) {
-        await this.settlementService.recalculateMonth(originalSession.yearMonth);
-      }
+    if (this.settlementService && originalSession) {
+      await this.settlementService.recalculateMonth(originalSession.yearMonth);
     }
     try {
       await Promise.all([

@@ -138,7 +138,8 @@ export function ClassroomsPage() {
             size="sm"
             variant="outline"
             className="h-8 gap-1 px-2.5 text-xs font-bold"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setQuickViewRoom(row);
               setQuickViewOpen(true);
             }}
@@ -150,7 +151,10 @@ export function ClassroomsPage() {
             size="sm"
             variant="ghost"
             className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setScheduleRoom(row)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setScheduleRoom(row);
+            }}
           >
             <CalendarRange className="h-3.5 w-3.5 text-primary" />
             الجدول
@@ -160,7 +164,10 @@ export function ClassroomsPage() {
               size="sm"
               variant="outline"
               className="h-8 gap-1 px-2.5 text-xs font-bold text-primary hover:bg-primary/10"
-              onClick={() => setAllocationRoom(row)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setAllocationRoom(row);
+              }}
             >
               <Layers className="h-3.5 w-3.5" />
               تسكين
@@ -171,7 +178,8 @@ export function ClassroomsPage() {
               size="sm"
               variant="ghost"
               className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setEditingRoom(row);
                 setFormOpen(true);
               }}
@@ -305,6 +313,7 @@ export function ClassroomsPage() {
       />
 
       <ClassroomScheduleModal
+        key={scheduleRoom?.id ?? 'none'}
         open={Boolean(scheduleRoom)}
         onOpenChange={(o) => !o && setScheduleRoom(null)}
         classroom={scheduleRoom}

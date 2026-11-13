@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link, NavLink, Navigate, Outlet } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   BookOpen,
   GraduationCap,
@@ -16,9 +16,11 @@ import { Badge, Button } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/features/auth/auth-context';
 import { useCenterSettings } from '@/features/settings/center-settings-context';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { SIDEBAR_NAV_ITEMS } from './nav-items';
 
 export function AppLayout() {
+  const location = useLocation();
   const { user, isLoading, logout, hasPermission } = useAuth();
   const { settings } = useCenterSettings();
   const [logoError, setLogoError] = React.useState(false);
@@ -312,7 +314,9 @@ export function AppLayout() {
         </header>
 
         <main className="flex-1 p-4 lg:p-8">
-          <Outlet />
+          <ErrorBoundary resetKey={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

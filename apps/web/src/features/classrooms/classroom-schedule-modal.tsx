@@ -43,9 +43,13 @@ export function ClassroomScheduleModal({
     },
   });
 
-  if (!classroom) return null;
-
   const allocatedGroups = data?.allocatedGroups ?? [];
+
+  React.useEffect(() => {
+    if (open) {
+      setTab('weekly');
+    }
+  }, [open, classroom?.id]);
 
   // Group recurring slots by day of week (0 to 6)
   const slotsByDay = React.useMemo(() => {
@@ -65,6 +69,8 @@ export function ClassroomScheduleModal({
     for (let d = 0; d < 7; d++) {
       map.set(d, []);
     }
+
+    if (!classroom) return map;
 
     for (const group of allocatedGroups) {
       const rawSlots = group.slotsForThisRoom?.length
@@ -97,7 +103,7 @@ export function ClassroomScheduleModal({
     }
 
     return map;
-  }, [allocatedGroups]);
+  }, [allocatedGroups, classroom]);
 
   // Total recurring slots count
   const totalWeeklySlots = React.useMemo(() => {
@@ -107,6 +113,8 @@ export function ClassroomScheduleModal({
     });
     return count;
   }, [slotsByDay]);
+
+  if (!classroom) return null;
 
   return (
     <Modal
@@ -390,7 +398,7 @@ export function ClassroomScheduleModal({
                       <Badge variant="neutral">المدرس: {g.teacherName}</Badge>
                     </div>
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {(g.slotsForThisRoom ?? g.scheduleSlots ?? []).map((s, idx) => (
+                      {(g.slotsForThisRoom?.length ? g.slotsForThisRoom : g.scheduleSlots ?? []).map((s, idx) => (
                         <Badge key={idx} variant="info">
                           {ARABIC_DAYS[s.dayOfWeek]}: {formatTimeRangeAr(s.startTime, s.endTime)}
                         </Badge>
