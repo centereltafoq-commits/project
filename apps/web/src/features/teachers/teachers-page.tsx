@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Edit3, Eye, Plus, RotateCcw } from 'lucide-react';
+import { Download, Edit3, Eye, Plus, RotateCcw, Upload } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
@@ -11,10 +11,13 @@ import {
   Select,
   ServerDataTable,
   TableColumn,
+  useToast,
 } from '@/design-system';
+import { ExcelImportModal } from '@/components/excel-import-modal';
 import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, extractErrorMessage } from '@/lib/api-client';
+import { downloadBlobFile } from '@/lib/file-download';
 import { formatDateAr } from '@/lib/formatters';
 import { TeacherFormModal } from './teacher-form-modal';
 import { TeacherQuickViewModal } from './components/teacher-quick-view-modal';
@@ -26,10 +29,13 @@ import {
 
 export function TeachersPage() {
   const navigate = useNavigate();
+  const { notify } = useToast();
   const { hasPermission } = useAuth();
   const canViewAllTeachers = hasPermission(PERMISSIONS.TEACHERS_VIEW);
   const canViewOwnTeacher = hasPermission(PERMISSIONS.TEACHERS_VIEW_OWN);
   const canManageTeachers = hasPermission(PERMISSIONS.TEACHERS_MANAGE);
+  const canExport =
+    canViewAllTeachers && hasPermission(PERMISSIONS.REPORTS_EXPORT);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -40,6 +46,8 @@ export function TeachersPage() {
   const debouncedSpec = useDebounce(specFilter, 300);
 
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [importModalOpen, setImportModalOpen] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
   const [editingTeacher, setEditingTeacher] = React.useState<TeacherRow | null>(null);
   const [quickViewTeacher, setQuickViewTeacher] = React.useState<TeacherRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
@@ -170,23 +178,68 @@ export function TeachersPage() {
     },
   ];
 
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await downloadBlobFile(
+        '/teachers/export',
+        `teachers-${today}.xlsx`,
+        {
+          search: debouncedSearch || undefined,
+          employmentStatus: statusFilter || undefined,
+          specialization: debouncedSpec || undefined,
+        },
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      notify('تم تصدير سجل المدرسين بصيغة Excel بنجاح', 'success');
+    } catch (err) {
+      notify(extractErrorMessage(err), 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="إدارة المدرسين والمستحقات الشهرية"
         description="ملفات المدرسين، المجموعات المسندة، أوقات الإتاحة الأسبوعية، وحسابات المستحقات والصرف"
         actions={
-          canManageTeachers ? (
-            <Button
-              onClick={() => {
-                setEditingTeacher(null);
-                setModalOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              إضافة مدرس جديد
-            </Button>
-          ) : null
+          <div className="flex flex-wrap items-center gap-2">
+            {canExport && (
+              <Button
+                variant="success"
+                onClick={handleExportExcel}
+                isLoading={isExporting}
+                className="gap-1.5"
+              >
+                <Download className="h-4 w-4" />
+                تصدير Excel
+              </Button>
+            )}
+            {canManageTeachers && (
+              <Button
+                variant="outline"
+                onClick={() => setImportModalOpen(true)}
+                className="gap-1.5"
+              >
+                <Upload className="h-4 w-4" />
+                استيراد من Excel
+              </Button>
+            )}
+            {canManageTeachers && (
+              <Button
+                onClick={() => {
+                  setEditingTeacher(null);
+                  setModalOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                إضافة مدرس جديد
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -269,6 +322,23 @@ export function TeachersPage() {
           setEditingTeacher(t);
           setModalOpen(true);
         }}
+      />
+
+      <ExcelImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        title="استيراد بيانات المدرسين من Excel"
+        entityLabelPlural="المدرسين"
+        templateUrl="/teachers/import/template"
+        templateFilename="teachers-import-template.xlsx"
+        previewUrl="/teachers/import/preview"
+        commitUrl="/teachers/import/commit"
+        previewColumns={[
+          { key: 'fullName', label: 'اسم المدرس' },
+          { key: 'phone', label: 'رقم الهاتف', dir: 'ltr' },
+          { key: 'specialization', label: 'التخصص' },
+        ]}
+        invalidateQueryKeys={[['teachers']]}
       />
     </div>
   );

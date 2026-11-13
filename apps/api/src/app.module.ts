@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateAndLoadEnv } from './config/env.config';
 import { DatabaseModule } from './database/database.module';
 import { AppCacheModule } from './common/cache/cache.module';
+import { ExcelModule } from './common/excel/excel.module';
 import { LoggerModule } from './common/logger/app-logger.service';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -56,6 +57,7 @@ class HealthController {
     LoggerModule,
     DatabaseModule,
     AppCacheModule,
+    ExcelModule,
     AuditLogsModule,
     RolesModule,
     UsersModule,

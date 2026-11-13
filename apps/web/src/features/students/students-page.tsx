@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Edit3, Eye, GraduationCap, Plus, RotateCcw } from 'lucide-react';
+import { Download, Edit3, Eye, GraduationCap, Plus, RotateCcw, Upload } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
@@ -10,10 +10,13 @@ import {
   Select,
   ServerDataTable,
   TableColumn,
+  useToast,
 } from '@/design-system';
+import { ExcelImportModal } from '@/components/excel-import-modal';
 import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, extractErrorMessage } from '@/lib/api-client';
+import { downloadBlobFile } from '@/lib/file-download';
 import { formatDateAr } from '@/lib/formatters';
 import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
@@ -28,9 +31,12 @@ import {
 
 export function StudentsPage() {
   const navigate = useNavigate();
+  const { notify } = useToast();
   const { hasPermission } = useAuth();
   const canCreate = hasPermission(PERMISSIONS.STUDENTS_CREATE);
   const canUpdate = hasPermission(PERMISSIONS.STUDENTS_UPDATE);
+  const canExport =
+    hasPermission(PERMISSIONS.STUDENTS_VIEW) && hasPermission(PERMISSIONS.REPORTS_EXPORT);
   const canManageGradeLevels = hasPermission(PERMISSIONS.GROUPS_MANAGE);
 
   const [page, setPage] = React.useState(1);
@@ -41,6 +47,8 @@ export function StudentsPage() {
   const [gradeFilter, setGradeFilter] = React.useState('');
 
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [importModalOpen, setImportModalOpen] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
   const [editingStudent, setEditingStudent] = React.useState<StudentRow | null>(null);
   const [quickViewStudent, setQuickViewStudent] = React.useState<StudentRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
@@ -153,13 +161,56 @@ export function StudentsPage() {
     },
   ];
 
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await downloadBlobFile(
+        '/students/export',
+        `students-${today}.xlsx`,
+        {
+          search: debouncedSearch || undefined,
+          status: statusFilter || undefined,
+          gradeLevel: gradeFilter || undefined,
+        },
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      notify('تم تصدير سجل الطلاب بصيغة Excel بنجاح', 'success');
+    } catch (err) {
+      notify(extractErrorMessage(err), 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="إدارة ملفات الطلاب الدائمة"
         description="متابعة بيانات الطلاب، الاشتراكات، السجل الشهري المالي، وسجل الحضور التراكمي"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {canExport && (
+              <Button
+                variant="success"
+                onClick={handleExportExcel}
+                isLoading={isExporting}
+                className="gap-1.5"
+              >
+                <Download className="h-4 w-4" />
+                تصدير Excel
+              </Button>
+            )}
+            {canCreate && (
+              <Button
+                variant="outline"
+                onClick={() => setImportModalOpen(true)}
+                className="gap-1.5"
+              >
+                <Upload className="h-4 w-4" />
+                استيراد من Excel
+              </Button>
+            )}
             {canManageGradeLevels && (
               <Button
                 variant="outline"
@@ -274,6 +325,24 @@ export function StudentsPage() {
       <GradeLevelsModal
         open={gradeLevelsModalOpen}
         onOpenChange={setGradeLevelsModalOpen}
+      />
+
+      <ExcelImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        title="استيراد بيانات الطلاب من Excel"
+        entityLabelPlural="الطلاب"
+        templateUrl="/students/import/template"
+        templateFilename="students-import-template.xlsx"
+        previewUrl="/students/import/preview"
+        commitUrl="/students/import/commit"
+        previewColumns={[
+          { key: 'fullName', label: 'اسم الطالب' },
+          { key: 'phone', label: 'هاتف الطالب', dir: 'ltr' },
+          { key: 'guardianPhone', label: 'هاتف ولي الأمر', dir: 'ltr' },
+          { key: 'gradeLevel', label: 'الصف الدراسي' },
+        ]}
+        invalidateQueryKeys={[['students']]}
       />
     </div>
   );

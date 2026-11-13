@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, ilike, or, sql, SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, or, sql, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import { groups, groupTeachers, teacherAvailability, teachers } from '../../database/schemas';
 import { normalizePagination } from '../../common/utils/pagination.util';
 import { TeacherAvailabilitySlotDto, TeacherQueryDto } from './dto/teacher.dto';
+import { TeacherExportQueryDto } from './dto/teacher-excel.dto';
 
 function mapTeacherRow<T extends { canApproveBookings: string | boolean }>(
   row: T,
@@ -18,8 +19,9 @@ function mapTeacherRow<T extends { canApproveBookings: string | boolean }>(
 export class TeachersRepository {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
 
-  async findPaginated(query: TeacherQueryDto) {
-    const { page, limit, offset } = normalizePagination(query.page, query.limit);
+  private buildWhereClause(
+    query: Pick<TeacherQueryDto, 'employmentStatus' | 'specialization' | 'search'>,
+  ) {
     const conditions: SQL[] = [];
 
     if (query.employmentStatus) {
@@ -40,15 +42,23 @@ export class TeachersRepository {
       );
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    return conditions.length > 0 ? and(...conditions) : undefined;
+  }
 
-    const assignedGroupsCountSq = sql<number>`(
+  private getAssignedGroupsCountSubquery() {
+    return sql<number>`(
       SELECT COUNT(DISTINCT g.id)::int
       FROM ${groups} g
       LEFT JOIN ${groupTeachers} gt ON gt.group_id = g.id
       WHERE (g.primary_teacher_id = "teachers"."id" OR gt.teacher_id = "teachers"."id")
         AND g.is_active = true
     )`.as('assigned_groups_count');
+  }
+
+  async findPaginated(query: TeacherQueryDto) {
+    const { page, limit, offset } = normalizePagination(query.page, query.limit);
+    const whereClause = this.buildWhereClause(query);
+    const assignedGroupsCountSq = this.getAssignedGroupsCountSubquery();
 
     const [rawRows, [{ total }]] = await Promise.all([
       this.db
@@ -81,6 +91,108 @@ export class TeachersRepository {
       page,
       limit,
     };
+  }
+
+  async findAllForExport(query: TeacherExportQueryDto) {
+    const whereClause = this.buildWhereClause(query);
+    const assignedGroupsCountSq = this.getAssignedGroupsCountSubquery();
+
+    const rawRows = await this.db
+      .select({
+        id: teachers.id,
+        teacherCode: teachers.teacherCode,
+        fullName: teachers.fullName,
+        phone: teachers.phone,
+        specialization: teachers.specialization,
+        contractDate: teachers.contractDate,
+        employmentStatus: teachers.employmentStatus,
+        canApproveBookings: teachers.canApproveBookings,
+        notes: teachers.notes,
+        assignedGroupsCount: assignedGroupsCountSq,
+      })
+      .from(teachers)
+      .where(whereClause)
+      .orderBy(desc(teachers.createdAt))
+      .limit(10_000);
+
+    return rawRows.map(mapTeacherRow);
+  }
+
+  async findExistingCodesAndNamePhones(
+    codes: string[],
+    phones: string[],
+  ): Promise<{ existingCodes: Set<string>; existingNamePhones: Set<string> }> {
+    const uniqueCodes = Array.from(new Set(codes.filter(Boolean)));
+    const uniquePhones = Array.from(new Set(phones.filter(Boolean)));
+
+    const [codeRows, phoneRows] = await Promise.all([
+      uniqueCodes.length > 0
+        ? this.db
+            .select({ teacherCode: teachers.teacherCode })
+            .from(teachers)
+            .where(inArray(teachers.teacherCode, uniqueCodes))
+        : Promise.resolve([]),
+      uniquePhones.length > 0
+        ? this.db
+            .select({ fullName: teachers.fullName, phone: teachers.phone })
+            .from(teachers)
+            .where(inArray(teachers.phone, uniquePhones))
+        : Promise.resolve([]),
+    ]);
+
+    const existingCodes = new Set(codeRows.map((row) => row.teacherCode.trim().toUpperCase()));
+    const existingNamePhones = new Set(
+      phoneRows.map((row) => `${row.fullName.trim().toLowerCase()}|${row.phone.trim()}`),
+    );
+
+    return { existingCodes, existingNamePhones };
+  }
+
+  async createManyTx(
+    rows: Array<{
+      teacherCode: string;
+      fullName: string;
+      phone: string;
+      specialization: string;
+      contractDate: string;
+      employmentStatus: string;
+      canApproveBookings: boolean;
+      notes: string | null;
+    }>,
+  ) {
+    if (rows.length === 0) {
+      return [];
+    }
+
+    return this.db.transaction(async (tx) => {
+      const inserted: Array<
+        Omit<typeof teachers.$inferSelect, 'canApproveBookings'> & {
+          canApproveBookings: boolean;
+        }
+      > = [];
+      const chunkSize = 500;
+      for (let idx = 0; idx < rows.length; idx += chunkSize) {
+        const chunk = rows.slice(idx, idx + chunkSize);
+        const result = await tx
+          .insert(teachers)
+          .values(
+            chunk.map((item) => ({
+              teacherCode: item.teacherCode,
+              userId: null,
+              fullName: item.fullName,
+              phone: item.phone,
+              specialization: item.specialization,
+              contractDate: item.contractDate,
+              employmentStatus: item.employmentStatus,
+              canApproveBookings: item.canApproveBookings ? 'true' : 'false',
+              notes: item.notes,
+            })),
+          )
+          .returning();
+        inserted.push(...result.map(mapTeacherRow));
+      }
+      return inserted;
+    });
   }
 
   async findById(id: string) {

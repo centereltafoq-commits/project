@@ -8,6 +8,7 @@ import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
+import { downloadBlobFile } from '@/lib/file-download';
 import { getCurrentYearMonth } from '@/lib/formatters';
 import { printReportBySlug } from '@/lib/print-service';
 import { formatReportKpiValue, resolveReportColumns } from './columns/resolve-report-columns';
@@ -107,19 +108,12 @@ export function ReportsPage() {
     }
     setIsExporting(true);
     try {
-      const res = await apiClient.get<Blob>(`/reports/${activeReport}/export-csv`, {
-        params: { ...queryParams, page: undefined, limit: undefined },
-        responseType: 'blob',
-      });
-      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${activeReport}-${yearMonth}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      await downloadBlobFile(
+        `/reports/${activeReport}/export-csv`,
+        `${activeReport}-${yearMonth}.csv`,
+        { ...queryParams, page: undefined, limit: undefined },
+        'text/csv;charset=utf-8;',
+      );
       notify('تم تصدير التقرير بصيغة CSV (UTF-8 BOM) المتوافقة مع Excel بنجاح', 'success');
     } catch (err) {
       notify(extractErrorMessage(err), 'error');
