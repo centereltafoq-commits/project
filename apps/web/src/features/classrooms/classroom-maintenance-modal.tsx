@@ -6,6 +6,7 @@ import { Button, Input, Modal, useToast } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatDateTimeAr } from '@/lib/formatters';
+import { confirmAction } from '@/lib/alerts';
 import { ClassroomMaintenanceItem, ClassroomRow } from './classrooms.types';
 
 interface ClassroomMaintenanceModalProps {
@@ -140,7 +141,17 @@ export function ClassroomMaintenanceModal({
                   <Button
                     size="sm"
                     variant="danger"
-                    onClick={() => deleteMutation.mutate(m.id)}
+                    onClick={async () => {
+                      const confirmed = await confirmAction({
+                        title: 'حذف فترة الصيانة',
+                        text: `هل أنت متأكد من حذف فترة الصيانة («${m.reason || 'صيانة مجدولة'}»)؟`,
+                        isDestructive: true,
+                        confirmButtonText: 'نعم، حذف فترة الصيانة',
+                      });
+                      if (confirmed) {
+                        deleteMutation.mutate(m.id);
+                      }
+                    }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     حذف

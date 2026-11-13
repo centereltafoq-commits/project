@@ -15,6 +15,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatCurrency, formatDateAr } from '@/lib/formatters';
+import { confirmAction } from '@/lib/alerts';
 import {
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_CATEGORY_OPTIONS,
@@ -154,8 +155,14 @@ export function ExpensesTab({ yearMonth, isMonthClosed = false }: ExpensesTabPro
               size="sm"
               variant="ghost"
               className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-600"
-              onClick={() => {
-                if (window.confirm(`هل أنت متأكد من حذف المصروف «${r.title}»؟`)) {
+              onClick={async () => {
+                const confirmed = await confirmAction({
+                  title: 'حذف المصروف',
+                  text: `هل أنت متأكد من حذف المصروف «${r.title}»؟ لن يمكنك استرجاعه.`,
+                  isDestructive: true,
+                  confirmButtonText: 'نعم، حذف المصروف',
+                });
+                if (confirmed) {
                   deleteMutation.mutate(r.id);
                 }
               }}

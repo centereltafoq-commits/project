@@ -21,6 +21,7 @@ import {
 } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { ARABIC_DAYS, formatTimeRangeAr } from '@/lib/formatters';
+import { confirmAction } from '@/lib/alerts';
 import { AllocatedGroupItem, ClassroomRow } from './classrooms.types';
 
 interface ClassroomAllocationModalProps {
@@ -378,12 +379,14 @@ export function ClassroomAllocationModal({
                         variant="danger"
                         className="gap-1 text-xs"
                         isLoading={releaseMutation.isPending}
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `هل أنت متأكد من تحرير القاعة وإلغاء تسكين المجموعة "${group.name}"؟`,
-                            )
-                          ) {
+                        onClick={async () => {
+                          const confirmed = await confirmAction({
+                            title: 'تحرير القاعة وإلغاء التسكين',
+                            text: `هل أنت متأكد من تحرير القاعة وإلغاء تسكين المجموعة "${group.name}"؟`,
+                            isDestructive: true,
+                            confirmButtonText: 'نعم، تحرير القاعة',
+                          });
+                          if (confirmed) {
                             releaseMutation.mutate(group.id);
                           }
                         }}

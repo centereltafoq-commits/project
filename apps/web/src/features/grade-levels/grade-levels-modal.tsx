@@ -17,6 +17,7 @@ import { Modal } from '@/design-system/components/modal';
 import { gradeLevelsApi } from './grade-levels-api';
 import { GradeLevel } from './grade-levels.types';
 import { useGradeLevels } from './use-grade-levels';
+import { confirmAction } from '@/lib/alerts';
 
 interface GradeLevelsModalProps {
   open: boolean;
@@ -118,8 +119,14 @@ export function GradeLevelsModal({ open, onOpenChange }: GradeLevelsModalProps) 
     });
   };
 
-  const handleDelete = (item: GradeLevel) => {
-    if (confirm(`هل أنت متأكد من حذف (${item.name})؟`)) {
+  const handleDelete = async (item: GradeLevel) => {
+    const confirmed = await confirmAction({
+      title: 'حذف المرحلة الدراسية',
+      text: `هل أنت متأكد من حذف المرحلة («${item.name}»)؟ لن يمكنك التراجع عن هذا الإجراء.`,
+      isDestructive: true,
+      confirmButtonText: 'نعم، حذف المرحلة',
+    });
+    if (confirmed) {
       deleteMutation.mutate(item.id);
     }
   };
