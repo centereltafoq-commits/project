@@ -73,6 +73,9 @@ const BackupsPage = React.lazy(() =>
 const SettingsPage = React.lazy(() =>
   import('@/features/settings/settings-page').then((m) => ({ default: m.SettingsPage })),
 );
+const DocsPage = React.lazy(() =>
+  import('@/features/docs/docs-page').then((m) => ({ default: m.DocsPage })),
+);
 
 function PageLoader() {
   return (
@@ -112,6 +115,7 @@ export function App() {
           <React.Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/docs" element={<DocsPage />} />
               <Route element={<AppLayout />}>
                 <Route index element={<RoleAwareHome />} />
                 <Route

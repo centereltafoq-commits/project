@@ -208,4 +208,33 @@ describe('AppLayout Navigation Sidebar RBAC', () => {
     const sidebar = screen.getByTestId('app-sidebar');
     expect(sidebar.className).toContain('lg:w-20');
   });
+
+  it('renders creator branding badge and docs link in top header', () => {
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      user: {
+        id: 'user-1',
+        fullName: 'الموظف المسؤول',
+        email: 'staff@center.com',
+        roleCode: SystemRole.SECRETARY,
+        roleNameAr: 'سكرتارية واستقبال',
+        permissions: [PERMISSIONS.DASHBOARD_VIEW],
+      },
+      logout: vi.fn(),
+      hasPermission: () => true,
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <AppLayout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('تم الإنشاء بواسطة')).toBeInTheDocument();
+    expect(screen.getByText('nazzem edu')).toBeInTheDocument();
+
+    const docsBtn = screen.getByTestId('header-docs-btn');
+    expect(docsBtn).toBeInTheDocument();
+    expect(docsBtn).toHaveAttribute('href', '/docs');
+  });
 });

@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { NavLink, Navigate, Outlet } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet } from 'react-router-dom';
 import {
+  BookOpen,
   GraduationCap,
   LogOut,
   Menu,
@@ -277,7 +278,28 @@ export function AppLayout() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Creator Branding Badge */}
+            <div
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs text-muted-foreground select-none"
+              title="تم التطوير والإنشاء بواسطة nazzem edu"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-normal">تم الإنشاء بواسطة</span>
+              <span className="font-extrabold text-foreground tracking-tight">nazzem edu</span>
+            </div>
+
+            {/* Documentation Portal Link */}
+            <Link
+              to="/docs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-accent hover:text-accent-foreground px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title="دليل وتوثيق صفحات النظام"
+              data-testid="header-docs-btn"
+            >
+              <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span>التوثيق</span>
+            </Link>
+
             <Button
               variant="outline"
               size="icon"
