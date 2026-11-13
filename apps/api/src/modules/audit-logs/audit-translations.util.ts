@@ -32,6 +32,7 @@ export const ACTION_TRANSLATIONS: Record<string, string> = {
   GROUP_CREATE: 'إنشاء مجموعة دراسية',
   UPDATE_GROUP: 'تعديل بيانات المجموعة',
   GROUP_UPDATE: 'تعديل بيانات المجموعة',
+  IMPORT_GROUPS_EXCEL: 'استيراد مجموعات دراسية من Excel',
 
   // Enrollments
   CREATE_ENROLLMENT: 'تسجيل اشتراك طالب بالمجموعة',

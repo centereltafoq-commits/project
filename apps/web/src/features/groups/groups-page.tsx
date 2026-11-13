@@ -1,7 +1,17 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Edit3, Eye, GraduationCap, Plus, RotateCcw, Users } from 'lucide-react';
+import {
+  Calendar,
+  Download,
+  Edit3,
+  Eye,
+  GraduationCap,
+  Plus,
+  RotateCcw,
+  Upload,
+  Users,
+} from 'lucide-react';
 import {
   DEFAULT_PAGE_SIZE,
   PaginatedResult,
@@ -14,10 +24,13 @@ import {
   Select,
   ServerDataTable,
   TableColumn,
+  useToast,
 } from '@/design-system';
+import { ExcelImportModal } from '@/components/excel-import-modal';
 import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, extractErrorMessage } from '@/lib/api-client';
+import { downloadBlobFile } from '@/lib/file-download';
 import { ARABIC_DAYS, formatCurrency } from '@/lib/formatters';
 import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
@@ -28,8 +41,11 @@ import { GroupDetailData, GroupRow } from './groups.types';
 
 export function GroupsPage() {
   const navigate = useNavigate();
+  const { notify } = useToast();
   const { hasPermission } = useAuth();
   const canManageGroups = hasPermission(PERMISSIONS.GROUPS_MANAGE);
+  const canExport =
+    hasPermission(PERMISSIONS.GROUPS_VIEW) && hasPermission(PERMISSIONS.REPORTS_EXPORT);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -43,6 +59,8 @@ export function GroupsPage() {
   const [quickViewGroup, setQuickViewGroup] = React.useState<GroupRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
+  const [importModalOpen, setImportModalOpen] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
 
   const { options: dynamicGradeOptions } = useGradeLevels(false);
   const baseGradeOptions =
@@ -251,32 +269,83 @@ export function GroupsPage() {
     },
   ];
 
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await downloadBlobFile(
+        '/groups/export',
+        `groups-${today}.xlsx`,
+        {
+          search: debouncedSearch || undefined,
+          gradeLevel: gradeFilter || undefined,
+          isActive: activeFilter || undefined,
+        },
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      notify('تم تصدير سجل المجموعات بصيغة Excel بنجاح', 'success');
+    } catch (err) {
+      notify(extractErrorMessage(err), 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="المجموعات الدراسية والاشتراكات والسياسات المالية"
         description="إدارة المجموعات، تسعير الحصص التلقائي، قواعد تقسيم العائد، واشتراكات الطلاب المرنة"
         actions={
-          canManageGroups ? (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setGradeLevelsModalOpen(true)}
-                className="gap-1.5"
-              >
-                <GraduationCap className="h-4 w-4" />
-                إدارة الصفوف الدراسية
-              </Button>
-              <Button
-                onClick={() => {
-                  setEditingGroupId(null);
-                  setModalOpen(true);
-                }}
-                className="gap-1.5"
-              >
-                <Plus className="h-4 w-4" />
-                إنشاء مجموعة جديدة
-              </Button>
+          canExport || canManageGroups ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {canExport && (
+                <Button
+                  size="sm"
+                  variant="success"
+                  onClick={handleExportExcel}
+                  isLoading={isExporting}
+                  className="h-9 gap-1.5 px-3"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  تصدير Excel
+                </Button>
+              )}
+              {canManageGroups && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setImportModalOpen(true)}
+                  className="h-9 gap-1.5 px-3"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  استيراد من Excel
+                </Button>
+              )}
+              {canManageGroups && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setGradeLevelsModalOpen(true)}
+                  className="h-9 gap-1.5 px-3"
+                >
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  إدارة الصفوف الدراسية
+                </Button>
+              )}
+              {canManageGroups && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setEditingGroupId(null);
+                    setModalOpen(true);
+                  }}
+                  className="h-9 gap-1.5 px-3.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  إنشاء مجموعة جديدة
+                </Button>
+              )}
             </div>
           ) : undefined
         }
@@ -378,6 +447,28 @@ export function GroupsPage() {
       <GradeLevelsModal
         open={gradeLevelsModalOpen}
         onOpenChange={setGradeLevelsModalOpen}
+      />
+
+      <ExcelImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        title="استيراد المجموعات الدراسية من Excel"
+        entityLabelPlural="المجموعات"
+        templateUrl="/groups/import/template"
+        templateFilename="groups-import-template.xlsx"
+        previewUrl="/groups/import/preview"
+        commitUrl="/groups/import/commit"
+        previewColumns={[
+          { key: 'name', label: 'اسم المجموعة' },
+          { key: 'gradeLevel', label: 'الصف الدراسي' },
+          { key: 'primaryTeacherName', label: 'المدرس الأساسي' },
+          { key: 'monthlyPrice', label: 'سعر الشهر' },
+        ]}
+        invalidateQueryKeys={[
+          ['groups'],
+          ['dashboard-summary'],
+          ['classroom-unallocated-groups'],
+        ]}
       />
     </div>
   );

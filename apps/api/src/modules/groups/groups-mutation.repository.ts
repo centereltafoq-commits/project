@@ -11,66 +11,89 @@ import {
 } from '../../database/schemas';
 import { FinancialPolicyInputDto, GroupAssistantAssignmentDto } from './dto/group-policy.dto';
 
+export interface CreateGroupWithRelationsInput {
+  groupData: {
+    groupCode: string;
+    name: string;
+    subject: string;
+    gradeLevel: string;
+    primaryTeacherId: string;
+    defaultClassroomId: string | null;
+    monthlySessionsCount: number;
+    monthlyPrice: string;
+    calculatedSessionPrice: string;
+    scheduleSlots: GroupScheduleSlot[];
+    maxStudents: number;
+    isActive: boolean;
+    notes: string | null;
+  };
+  policy: FinancialPolicyInputDto;
+  coTeacherIds: string[];
+  assistants: GroupAssistantAssignmentDto[];
+}
+
+type DrizzleTx = Parameters<Parameters<DrizzleDatabase['transaction']>[0]>[0];
+
 @Injectable()
 export class GroupsMutationRepository {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
 
-  async createWithRelations(input: {
-    groupData: {
-      groupCode: string;
-      name: string;
-      subject: string;
-      gradeLevel: string;
-      primaryTeacherId: string;
-      defaultClassroomId: string | null;
-      monthlySessionsCount: number;
-      monthlyPrice: string;
-      calculatedSessionPrice: string;
-      scheduleSlots: GroupScheduleSlot[];
-      maxStudents: number;
-      isActive: boolean;
-      notes: string | null;
-    };
-    policy: FinancialPolicyInputDto;
-    coTeacherIds: string[];
-    assistants: GroupAssistantAssignmentDto[];
-  }) {
-    return this.db.transaction(async (tx) => {
-      const [created] = await tx.insert(groups).values(input.groupData).returning();
+  private async insertGroupWithRelationsTx(
+    tx: DrizzleTx,
+    input: CreateGroupWithRelationsInput,
+  ) {
+    const [created] = await tx.insert(groups).values(input.groupData).returning();
 
-      await tx.insert(financialPolicies).values({
-        groupId: created.id,
-        revenueSplitMethod: input.policy.revenueSplitMethod,
-        teacherSharePerStudent: input.policy.teacherSharePerStudent.toFixed(2),
-        centerSharePerStudent: input.policy.centerSharePerStudent.toFixed(2),
-        teacherPercentage: (input.policy.teacherPercentage ?? 0).toFixed(2),
-        fullMonthAbsencePolicy:
-          input.policy.fullMonthAbsencePolicy ?? FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
-        fullAbsenceFixedFee: (input.policy.fullAbsenceFixedFee ?? 0).toFixed(2),
-        chargeExcusedAbsence: input.policy.chargeExcusedAbsence ?? false,
-      });
+    await tx.insert(financialPolicies).values({
+      groupId: created.id,
+      revenueSplitMethod: input.policy.revenueSplitMethod,
+      teacherSharePerStudent: input.policy.teacherSharePerStudent.toFixed(2),
+      centerSharePerStudent: input.policy.centerSharePerStudent.toFixed(2),
+      teacherPercentage: (input.policy.teacherPercentage ?? 0).toFixed(2),
+      fullMonthAbsencePolicy:
+        input.policy.fullMonthAbsencePolicy ?? FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+      fullAbsenceFixedFee: (input.policy.fullAbsenceFixedFee ?? 0).toFixed(2),
+      chargeExcusedAbsence: input.policy.chargeExcusedAbsence ?? false,
+    });
 
-      const uniqueCoTeachers = Array.from(new Set(input.coTeacherIds)).filter(
-        (tid) => tid !== input.groupData.primaryTeacherId,
+    const uniqueCoTeachers = Array.from(new Set(input.coTeacherIds)).filter(
+      (tid) => tid !== input.groupData.primaryTeacherId,
+    );
+    await tx.insert(groupTeachers).values([
+      { groupId: created.id, teacherId: input.groupData.primaryTeacherId, isPrimary: true },
+      ...uniqueCoTeachers.map((tid) => ({ groupId: created.id, teacherId: tid, isPrimary: false })),
+    ]);
+
+    if (input.assistants.length > 0) {
+      await tx.insert(groupAssistants).values(
+        input.assistants.map((a) => ({
+          groupId: created.id,
+          assistantId: a.assistantId,
+          overrideCalculationMethod: a.overrideCalculationMethod ?? null,
+          overrideRateValue:
+            a.overrideRateValue !== undefined ? a.overrideRateValue.toFixed(2) : null,
+        })),
       );
-      await tx.insert(groupTeachers).values([
-        { groupId: created.id, teacherId: input.groupData.primaryTeacherId, isPrimary: true },
-        ...uniqueCoTeachers.map((tid) => ({ groupId: created.id, teacherId: tid, isPrimary: false })),
-      ]);
+    }
 
-      if (input.assistants.length > 0) {
-        await tx.insert(groupAssistants).values(
-          input.assistants.map((a) => ({
-            groupId: created.id,
-            assistantId: a.assistantId,
-            overrideCalculationMethod: a.overrideCalculationMethod ?? null,
-            overrideRateValue:
-              a.overrideRateValue !== undefined ? a.overrideRateValue.toFixed(2) : null,
-          })),
-        );
+    return created;
+  }
+
+  async createWithRelations(input: CreateGroupWithRelationsInput) {
+    return this.db.transaction(async (tx) => this.insertGroupWithRelationsTx(tx, input));
+  }
+
+  async createManyWithRelationsTx(items: CreateGroupWithRelationsInput[]) {
+    if (items.length === 0) {
+      return [];
+    }
+
+    return this.db.transaction(async (tx) => {
+      const inserted: Array<typeof groups.$inferSelect> = [];
+      for (const item of items) {
+        inserted.push(await this.insertGroupWithRelationsTx(tx, item));
       }
-
-      return created;
+      return inserted;
     });
   }
 

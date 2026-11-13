@@ -1,11 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, ilike, ne, or, sql, SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   assistants,
   classrooms,
   enrollments,
   financialPolicies,
+  gradeLevels,
   groupAssistants,
   groups,
   groupTeachers,
@@ -13,14 +14,16 @@ import {
   teachers,
 } from '../../database/schemas';
 import { normalizePagination } from '../../common/utils/pagination.util';
+import { GroupExportQueryDto } from './dto/group-excel.dto';
 import { GroupQueryDto } from './dto/group.dto';
 
 @Injectable()
 export class GroupsRepository {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
 
-  async findPaginated(query: GroupQueryDto) {
-    const { page, limit, offset } = normalizePagination(query.page, query.limit);
+  private buildWhereClause(
+    query: Pick<GroupQueryDto, 'primaryTeacherId' | 'gradeLevel' | 'isActive' | 'search'>,
+  ): SQL | undefined {
     const conditions: SQL[] = [];
 
     if (query.primaryTeacherId) {
@@ -44,12 +47,21 @@ export class GroupsRepository {
       );
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    const activeStudentsSq = sql<number>`(
+    return conditions.length > 0 ? and(...conditions) : undefined;
+  }
+
+  private getActiveStudentsCountSubquery() {
+    return sql<number>`(
       SELECT COUNT(*)::int
       FROM ${enrollments} e
       WHERE e.group_id = ${groups.id} AND e.status = 'ACTIVE'
     )`.as('active_students_count');
+  }
+
+  async findPaginated(query: GroupQueryDto) {
+    const { page, limit, offset } = normalizePagination(query.page, query.limit);
+    const whereClause = this.buildWhereClause(query);
+    const activeStudentsSq = this.getActiveStudentsCountSubquery();
 
     const [rows, [{ total }]] = await Promise.all([
       this.db
@@ -236,5 +248,111 @@ export class GroupsRepository {
       })
       .from(groups)
       .where(and(...conditions));
+  }
+
+  async findAllForExport(query: GroupExportQueryDto) {
+    const whereClause = this.buildWhereClause(query);
+    const activeStudentsSq = this.getActiveStudentsCountSubquery();
+
+    return this.db
+      .select({
+        id: groups.id,
+        groupCode: groups.groupCode,
+        name: groups.name,
+        subject: groups.subject,
+        gradeLevel: groups.gradeLevel,
+        primaryTeacherId: groups.primaryTeacherId,
+        primaryTeacherName: teachers.fullName,
+        primaryTeacherCode: teachers.teacherCode,
+        defaultClassroomName: classrooms.name,
+        monthlySessionsCount: groups.monthlySessionsCount,
+        monthlyPrice: groups.monthlyPrice,
+        calculatedSessionPrice: groups.calculatedSessionPrice,
+        maxStudents: groups.maxStudents,
+        activeStudentsCount: activeStudentsSq,
+        revenueSplitMethod: financialPolicies.revenueSplitMethod,
+        teacherSharePerStudent: financialPolicies.teacherSharePerStudent,
+        centerSharePerStudent: financialPolicies.centerSharePerStudent,
+        teacherPercentage: financialPolicies.teacherPercentage,
+        fullMonthAbsencePolicy: financialPolicies.fullMonthAbsencePolicy,
+        fullAbsenceFixedFee: financialPolicies.fullAbsenceFixedFee,
+        chargeExcusedAbsence: financialPolicies.chargeExcusedAbsence,
+        isActive: groups.isActive,
+        notes: groups.notes,
+      })
+      .from(groups)
+      .innerJoin(teachers, eq(groups.primaryTeacherId, teachers.id))
+      .leftJoin(classrooms, eq(groups.defaultClassroomId, classrooms.id))
+      .leftJoin(financialPolicies, eq(financialPolicies.groupId, groups.id))
+      .where(whereClause)
+      .orderBy(desc(groups.createdAt))
+      .limit(10_000);
+  }
+
+  async findActiveGradeLevelNames(): Promise<string[]> {
+    const rows = await this.db
+      .select({ name: gradeLevels.name })
+      .from(gradeLevels)
+      .where(eq(gradeLevels.isActive, true))
+      .orderBy(asc(gradeLevels.orderIndex), asc(gradeLevels.name));
+    return rows.map((r) => r.name);
+  }
+
+  async findAllGradeLevelRecords(): Promise<Array<{ name: string; isActive: boolean }>> {
+    return this.db
+      .select({ name: gradeLevels.name, isActive: gradeLevels.isActive })
+      .from(gradeLevels)
+      .orderBy(asc(gradeLevels.orderIndex), asc(gradeLevels.name));
+  }
+
+  async findAllTeachersForExcel(): Promise<
+    Array<{ id: string; teacherCode: string; fullName: string; employmentStatus: string }>
+  > {
+    return this.db
+      .select({
+        id: teachers.id,
+        teacherCode: teachers.teacherCode,
+        fullName: teachers.fullName,
+        employmentStatus: teachers.employmentStatus,
+      })
+      .from(teachers)
+      .orderBy(asc(teachers.fullName));
+  }
+
+  async findExistingCodesAndGroupKeys(
+    codes: string[],
+    teacherIds: string[],
+  ): Promise<{ existingCodes: Set<string>; existingGroupKeys: Set<string> }> {
+    const uniqueCodes = Array.from(new Set(codes.filter(Boolean)));
+    const uniqueTeacherIds = Array.from(new Set(teacherIds.filter(Boolean)));
+
+    const [codeRows, groupRows] = await Promise.all([
+      uniqueCodes.length > 0
+        ? this.db
+            .select({ groupCode: groups.groupCode })
+            .from(groups)
+            .where(inArray(groups.groupCode, uniqueCodes))
+        : Promise.resolve([]),
+      uniqueTeacherIds.length > 0
+        ? this.db
+            .select({
+              name: groups.name,
+              gradeLevel: groups.gradeLevel,
+              primaryTeacherId: groups.primaryTeacherId,
+            })
+            .from(groups)
+            .where(inArray(groups.primaryTeacherId, uniqueTeacherIds))
+        : Promise.resolve([]),
+    ]);
+
+    const existingCodes = new Set(codeRows.map((row) => row.groupCode.trim().toUpperCase()));
+    const existingGroupKeys = new Set(
+      groupRows.map(
+        (row) =>
+          `${row.name.trim().toLowerCase()}|${row.gradeLevel.trim().toLowerCase()}|${row.primaryTeacherId}`,
+      ),
+    );
+
+    return { existingCodes, existingGroupKeys };
   }
 }
