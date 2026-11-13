@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { Badge, Button, Input } from '@/design-system';
 import { cn } from '@/lib/cn';
-import { printDocument } from '@/lib/print-service';
+import { printDocGuideA4 } from '@/lib/print-service';
 import { DocSection, SYSTEM_DOCUMENTATION } from './docs-data';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -138,7 +138,11 @@ export function DocsPage() {
     currentIndex < SYSTEM_DOCUMENTATION.length - 1 ? SYSTEM_DOCUMENTATION[currentIndex + 1] : null;
 
   const safeScrollTop = () => {
-    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.scrollTo === 'function' &&
+      !window.navigator.userAgent.includes('jsdom')
+    ) {
       try {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch {
@@ -150,72 +154,7 @@ export function DocsPage() {
   const ActiveIcon = ICON_MAP[activeSection.iconName] || BookOpen;
 
   const handlePrintDoc = async () => {
-    const bodyHtml = `
-      <div>
-        <div class="header-banner">
-          <div>
-            <h1 class="center-title">دليل تشغيل واستخدام النظام • Nazzem Edu</h1>
-            <p class="center-subtitle">مرجع التشغيل والتحقق المحاسبي والأكاديمي للسناتر التعليمية</p>
-          </div>
-          <div class="meta-box">
-            <div>القسم: <strong>${activeSection.title}</strong></div>
-            <div>التصنيف: <strong>${activeSection.category}</strong></div>
-            <div>تاريخ الطباعة: <strong>${new Date().toLocaleDateString('ar-EG')}</strong></div>
-          </div>
-        </div>
-
-        <div style="border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-          <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px;">نبذة تعريفية:</div>
-          <p style="margin: 0; font-size: 11px; color: #334155; line-height: 1.6;">${activeSection.summary}</p>
-        </div>
-
-        <div style="margin-bottom: 16px;">
-          <div style="font-size: 13px; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
-            الأهداف والمهام الرئيسية:
-          </div>
-          <ul style="padding-right: 20px; font-size: 11px; color: #334155; line-height: 1.6;">
-            ${activeSection.purpose.map((p) => `<li>${p}</li>`).join('')}
-          </ul>
-        </div>
-
-        <div style="margin-bottom: 16px;">
-          <div style="font-size: 13px; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
-            خطوات التشغيل خطوة بخطوة (Workflow):
-          </div>
-          <div style="margin-top: 8px;">
-            ${activeSection.workflowSteps
-              .map(
-                (step) => `
-              <div style="margin-bottom: 8px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px;">
-                <strong style="color: #0f172a;">${step.stepNumber}. ${step.title}:</strong>
-                <div style="font-size: 11px; color: #475569; margin-top: 2px;">${step.description}</div>
-              </div>
-            `,
-              )
-              .join('')}
-          </div>
-        </div>
-
-        <div style="margin-bottom: 16px; border: 1px solid #f59e0b; background: #fffbeb; border-radius: 8px; padding: 12px;">
-          <div style="font-size: 12px; font-weight: bold; color: #92400e; margin-bottom: 4px;">
-            قواعد العمل والتنبيهات المحاسبية الهامة:
-          </div>
-          <ul style="padding-right: 20px; font-size: 11px; color: #78350f; line-height: 1.6; margin: 0;">
-            ${activeSection.businessRules.map((r) => `<li>${r}</li>`).join('')}
-          </ul>
-        </div>
-
-        <div style="font-size: 11px; color: #64748b; margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 6px;">
-          الصلاحيات المطلوبة لهذه الصفحة: <strong>${activeSection.permissions.join(' • ')}</strong>
-        </div>
-      </div>
-    `;
-
-    await printDocument({
-      title: `دليل_${activeSection.title}`,
-      bodyHtml,
-      orientation: 'portrait',
-    });
+    await printDocGuideA4(activeSection);
   };
 
   return (

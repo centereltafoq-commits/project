@@ -9,7 +9,7 @@ import { ForbiddenPage } from '@/components/forbidden-page';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getCurrentYearMonth } from '@/lib/formatters';
-import { printReportA4 } from '@/lib/print-service';
+import { printReportBySlug } from '@/lib/print-service';
 import { formatReportKpiValue, resolveReportColumns } from './columns/resolve-report-columns';
 import { ReportsToolbar } from './components/reports-toolbar';
 import {
@@ -144,24 +144,18 @@ export function ReportsPage() {
       }
     }
 
-    const summaryCards = data?.summary
-      ? data.summary.map((kpi) => ({
-          label: kpi.label,
-          value: String(formatReportKpiValue(kpi)),
-        }))
-      : [];
+    const activeFiltersList: string[] = [];
+    if (groupId) activeFiltersList.push('مجموعة محددة');
+    if (teacherId) activeFiltersList.push('مدرس محدد');
+    if (studentId) activeFiltersList.push('طالب محدد');
+    if (search.trim()) activeFiltersList.push(`بحث: "${search.trim()}"`);
 
-    const printCols = columns.map((c) => ({
-      header: typeof c.header === 'string' ? c.header : (c.id || c.accessorKey || ''),
-      accessorKey: c.accessorKey,
-      id: c.id,
-    }));
-
-    await printReportA4({
-      reportTitle: activeDefinition.fullTitle,
-      categoryLabel: activeDefinition.category,
-      summaryCards,
-      columns: printCols,
+    await printReportBySlug({
+      slug: activeReport,
+      title: activeDefinition.fullTitle,
+      yearMonth,
+      filterSummary: activeFiltersList.length > 0 ? activeFiltersList.join(' • ') : undefined,
+      summary: data?.summary ?? [],
       rows: rowsToPrint,
       settings,
     });

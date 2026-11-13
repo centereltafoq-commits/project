@@ -4,9 +4,13 @@ import {
   printReceiptA4,
   printAttendanceSheetA4,
   printReportA4,
+  printReportBySlug,
+  printDocGuideA4,
+  buildThermalReceiptHtml,
+  ReportTypeSlug,
 } from './print-service';
 
-describe('Print Service (A4 Isolated Print Engine)', () => {
+describe('Print Service (Modular Enterprise A4 & POS Print Engine)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.print = vi.fn();
@@ -53,6 +57,25 @@ describe('Print Service (A4 Isolated Print Engine)', () => {
     expect(window.print).toHaveBeenCalled();
   });
 
+  it('generates a POS 80mm thermal receipt html', () => {
+    const html = buildThermalReceiptHtml(
+      {
+        receiptNumber: 'REC-2026-0002',
+        studentName: 'سارة طارق',
+        studentCode: 'STD-202',
+        paymentDate: '2026-11-13',
+        yearMonth: '2026-11',
+        paymentMethod: 'VODAFONE_CASH',
+        amount: 300,
+      },
+      { centerName: 'سنتر النخبة التعليمي' },
+    );
+
+    expect(html).toContain('REC-2026-0002');
+    expect(html).toContain('سارة طارق');
+    expect(html).toContain('سنتر النخبة التعليمي');
+  });
+
   it('generates an official A4 attendance roster with students and session details', async () => {
     const appendChildSpy = vi.spyOn(document.body, 'appendChild');
 
@@ -91,30 +114,87 @@ describe('Print Service (A4 Isolated Print Engine)', () => {
     expect(window.print).toHaveBeenCalled();
   });
 
-  it('generates an official A4 report with summary KPI cards and columns', async () => {
-    const appendChildSpy = vi.spyOn(document.body, 'appendChild');
-
-    await printReportA4({
-      reportTitle: 'تقرير إيرادات المجموعات',
-      categoryLabel: 'المالية والمحاسبة',
-      summaryCards: [
-        { label: 'إجمالي الإيرادات', value: '50,000 ج.م' },
-        { label: 'عدد الطلاب', value: 120 },
-      ],
-      columns: [
-        { header: 'المجموعة', accessorKey: 'groupName' },
-        { header: 'المبلغ', accessorKey: 'amount' },
-      ],
-      rows: [
-        { groupName: 'مجموعة أ', amount: '25,000 ج.م' },
-        { groupName: 'مجموعة ب', amount: '25,000 ج.م' },
-      ],
-      settings: {
-        centerName: 'سنتر النخبة التعليمي',
-      },
+  it('prints documentation guide A4', async () => {
+    await printDocGuideA4({
+      id: 'dashboard',
+      title: 'لوحة التحكم والمؤشرات',
+      category: 'التشغيل اليومي',
+      iconName: 'LayoutDashboard',
+      summary: 'شاشة المؤشرات الرئيسية للسنتر',
+      purpose: ['متابعة الحضور', 'متابعة الإيرادات'],
+      keyFeatures: [{ title: 'مؤشرات فورية', description: 'تحديث حي' }],
+      workflowSteps: [{ stepNumber: 1, title: 'تسجيل الدخول', description: 'عرض الإحصائيات' }],
+      businessRules: ['تحديث البيانات كل 60 ثانية'],
+      permissions: ['DASHBOARD_VIEW'],
     });
 
-    expect(appendChildSpy).toHaveBeenCalled();
+    expect(window.print).toHaveBeenCalled();
+  });
+
+  const ALL_REPORT_SLUGS: ReportTypeSlug[] = [
+    'students',
+    'attendance',
+    'student-statement',
+    'groups-revenue',
+    'teacher-statement',
+    'assistant-statement',
+    'collections',
+    'expenses',
+    'bookings',
+    'classrooms',
+    'financial-summary',
+  ];
+
+  it.each(ALL_REPORT_SLUGS)(
+    'prints dedicated specialized report for slug: %s',
+    async (slug) => {
+      await printReportBySlug({
+        slug,
+        title: `تقرير تجريبي - ${slug}`,
+        yearMonth: '2026-11',
+        filterSummary: 'مرشح تجريبي',
+        summary: [
+          { key: 'total', label: 'الإجمالي', value: 1000, format: 'currency' },
+          { key: 'count', label: 'العدد', value: 25, format: 'number' },
+        ],
+        rows: [
+          {
+            studentCode: 'STD-001',
+            fullName: 'طالب تجريبي',
+            studentName: 'طالب تجريبي',
+            groupCode: 'GRP-01',
+            groupName: 'مجموعة تجريبية',
+            teacherCode: 'TCH-01',
+            teacherName: 'مدرس تجريبي',
+            assistantCode: 'AST-01',
+            assistantName: 'مساعد تجريبي',
+            receiptNumber: 'REC-001',
+            expenseDate: '2026-11-13',
+            amount: 500,
+            roomNumber: '101',
+            name: 'قاعة 101',
+            sectionAr: 'الإيرادات',
+            lineItemAr: 'إيراد المجموعات',
+          },
+        ],
+        settings: {
+          centerName: 'سنتر النخبة التعليمي',
+          currencySymbol: 'ج.م',
+        },
+      });
+
+      expect(window.print).toHaveBeenCalled();
+    },
+  );
+
+  it('supports legacy printReportA4 backward compatibility', async () => {
+    await printReportA4({
+      reportTitle: 'تقرير عام',
+      columns: [{ header: 'الاسم', accessorKey: 'name' }],
+      rows: [{ name: 'تجربة' }],
+      settings: { centerName: 'السنتر' },
+    });
+
     expect(window.print).toHaveBeenCalled();
   });
 });
