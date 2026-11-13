@@ -209,33 +209,37 @@ export function TeachersPage() {
           <div className="flex flex-wrap items-center gap-2">
             {canExport && (
               <Button
+                size="sm"
                 variant="success"
                 onClick={handleExportExcel}
                 isLoading={isExporting}
-                className="gap-1.5"
+                className="h-9 gap-1.5 px-3"
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-3.5 w-3.5" />
                 تصدير Excel
               </Button>
             )}
             {canManageTeachers && (
               <Button
+                size="sm"
                 variant="outline"
                 onClick={() => setImportModalOpen(true)}
-                className="gap-1.5"
+                className="h-9 gap-1.5 px-3"
               >
-                <Upload className="h-4 w-4" />
+                <Upload className="h-3.5 w-3.5" />
                 استيراد من Excel
               </Button>
             )}
             {canManageTeachers && (
               <Button
+                size="sm"
                 onClick={() => {
                   setEditingTeacher(null);
                   setModalOpen(true);
                 }}
+                className="h-9 gap-1.5 px-3.5"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3.5 w-3.5" />
                 إضافة مدرس جديد
               </Button>
             )}

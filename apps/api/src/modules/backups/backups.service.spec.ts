@@ -153,6 +153,17 @@ describe('BackupsService - Upload & Integrity', () => {
     );
   });
 
+  it('rejects gzipped archive that does not contain SQL statements', async () => {
+    const nonSqlGz = {
+      originalname: 'random_text.sql.gz',
+      buffer: zlib.gzipSync(Buffer.from('hello world, just plain text without any sql statements')),
+    } as any;
+
+    await expect(service.uploadBackupFile(nonSqlGz)).rejects.toThrow(
+      'ملف النسخة الاحتياطية لا يحتوي على أوامر SQL صالحة لقاعدة البيانات',
+    );
+  });
+
   it('rejects empty or whitespace-only .sql files', async () => {
     const emptyFile = {
       originalname: 'empty.sql',
@@ -162,6 +173,26 @@ describe('BackupsService - Upload & Integrity', () => {
     await expect(service.uploadBackupFile(emptyFile)).rejects.toThrow(
       'ملف SQL فارغ ولا يحتوي على أوامر قاعدة البيانات',
     );
+  });
+
+  it('rejects restoreBackup when status is FAILED or IN_PROGRESS', async () => {
+    service.verifyAdminPassword = vi.fn().mockResolvedValue(undefined as never);
+    mockRepo.findRecordById.mockResolvedValue({
+      id: 'rec-failed-1',
+      fileName: 'failed.sql.gz',
+      filePath: path.join(tempTestDir, 'failed.sql.gz'),
+      status: 'FAILED',
+    });
+
+    await expect(
+      service.restoreBackup('rec-failed-1', 'password123', 'admin-id'),
+    ).rejects.toThrow(/لا يمكن استعادة نسخة احتياطية غير مكتملة أو فاشلة/);
+  });
+
+  it('upgrades DROP TABLE IF EXISTS statements to CASCADE during restore prep', () => {
+    const sql = 'DROP TABLE IF EXISTS public.system_settings;\nCREATE TABLE public.system_settings ();';
+    const prepared = (service as any).prepareRestoreSql(sql);
+    expect(prepared).toContain('DROP TABLE IF EXISTS public.system_settings CASCADE;');
   });
 
   it('rejects restoreBackup when checksum does not match', async () => {

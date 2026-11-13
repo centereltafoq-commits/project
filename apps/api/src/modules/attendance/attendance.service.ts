@@ -216,7 +216,11 @@ export class AttendanceService {
       unrecordedCount: students.filter((s) => !s.status).length,
     };
 
-    return { session, summary, students };
+    const isMonthClosed = this.settlementService?.isMonthClosed
+      ? await this.settlementService.isMonthClosed(session.yearMonth)
+      : false;
+
+    return { session, summary, students, isMonthClosed };
   }
 
   async recordSessionAttendance(
@@ -239,20 +243,27 @@ export class AttendanceService {
       actor.roleCode === SystemRole.OWNER ||
       actor.permissions.includes(PERMISSIONS.ATTENDANCE_OVERRIDE);
 
-    const inserts: Array<{ studentId: string; status: string; notes?: string }> = [];
-    const updates: Array<{ studentId: string; status: string; notes?: string }> = [];
+    const inserts: Array<{ studentId: string; status: string; notes: string | null }> = [];
+    const updates: Array<{ studentId: string; status: string; notes: string | null }> = [];
     const beforeUpdates: Array<{ studentId: string; status: string; notes: string | null }> = [];
 
     for (const item of items) {
+      const normalizedNotes =
+        item.notes !== undefined ? item.notes.trim() || null : undefined;
       const prev = existingMap.get(item.studentId);
       if (!prev) {
-        inserts.push(item);
+        inserts.push({
+          studentId: item.studentId,
+          status: item.status,
+          notes: normalizedNotes ?? null,
+        });
         continue;
       }
 
+      const prevNormalizedNotes = prev.notes?.trim() || null;
       const statusChanged = prev.status !== item.status;
       const notesChanged =
-        item.notes !== undefined && (item.notes || null) !== (prev.notes || null);
+        normalizedNotes !== undefined && normalizedNotes !== prevNormalizedNotes;
 
       if (statusChanged && !canOverride) {
         throw new ForbiddenException('تعديل الحضور المسجل مسبقاً يتطلب صلاحية إدارية');
@@ -267,15 +278,18 @@ export class AttendanceService {
         updates.push({
           studentId: item.studentId,
           status: item.status,
-          notes: item.notes ?? prev.notes ?? undefined,
+          notes: normalizedNotes !== undefined ? normalizedNotes : prevNormalizedNotes,
         });
       }
     }
 
+    const normalizedTopic =
+      dto.topic !== undefined ? dto.topic.trim() || null : undefined;
+
     await this.sheetRepository.upsertSessionAttendance({
       sessionId,
       actorUserId: actor.id,
-      topic: dto.topic,
+      topic: normalizedTopic,
       inserts,
       updates,
     });

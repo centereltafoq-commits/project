@@ -1,6 +1,7 @@
 export const AUDIT_ACTION_TRANSLATIONS: Record<string, { label: string; variant: 'info' | 'success' | 'warning' | 'danger' | 'neutral' }> = {
   // المصادقة
   LOGIN: { label: 'تسجيل دخول', variant: 'success' },
+  LOGIN_FAILED: { label: 'محاولة دخول فاشلة', variant: 'danger' },
   LOGOUT: { label: 'تسجيل خروج', variant: 'neutral' },
   AUTH_REFRESH: { label: 'تجديد الجلسة', variant: 'neutral' },
 

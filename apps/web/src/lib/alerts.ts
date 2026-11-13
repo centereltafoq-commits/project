@@ -9,6 +9,12 @@ export interface ConfirmActionOptions {
   icon?: SweetAlertIcon;
 }
 
+function emitSwalToggle(isOpen: boolean) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('edu:swal-toggle', { detail: isOpen }));
+  }
+}
+
 /**
  * Returns customized base options for SweetAlert2 that respect
  * RTL direction, active dark mode, and the system's design system.
@@ -19,6 +25,20 @@ function getBaseSwalOptions(): SweetAlertOptions {
     document.documentElement.classList.contains('dark');
 
   return {
+    willOpen: () => {
+      emitSwalToggle(true);
+    },
+    didOpen: (popup) => {
+      const container = popup.closest('.swal2-container') as HTMLElement | null;
+      if (container) {
+        container.style.pointerEvents = 'auto';
+        container.style.zIndex = '9999';
+      }
+      popup.style.pointerEvents = 'auto';
+    },
+    didDestroy: () => {
+      emitSwalToggle(false);
+    },
     customClass: {
       popup:
         'rounded-2xl border border-border shadow-2xl p-6 font-sans text-right select-none',

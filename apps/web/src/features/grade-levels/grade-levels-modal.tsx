@@ -44,10 +44,18 @@ export function GradeLevelsModal({ open, onOpenChange }: GradeLevelsModalProps) 
     setIsAddingNew(false);
   };
 
+  const invalidateGradeQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['grade-levels'] });
+    queryClient.invalidateQueries({ queryKey: ['students'] });
+    queryClient.invalidateQueries({ queryKey: ['groups'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['reports'] });
+  };
+
   const createMutation = useMutation({
     mutationFn: gradeLevelsApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grade-levels'] });
+      invalidateGradeQueries();
       resetForm();
     },
     onError: (err: any) => {
@@ -59,7 +67,7 @@ export function GradeLevelsModal({ open, onOpenChange }: GradeLevelsModalProps) 
     mutationFn: ({ id, payload }: { id: string; payload: any }) =>
       gradeLevelsApi.update(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grade-levels'] });
+      invalidateGradeQueries();
       resetForm();
     },
     onError: (err: any) => {
@@ -70,7 +78,7 @@ export function GradeLevelsModal({ open, onOpenChange }: GradeLevelsModalProps) 
   const deleteMutation = useMutation({
     mutationFn: gradeLevelsApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grade-levels'] });
+      invalidateGradeQueries();
       setErrorMsg(null);
     },
     onError: (err: any) => {
@@ -99,7 +107,7 @@ export function GradeLevelsModal({ open, onOpenChange }: GradeLevelsModalProps) 
         id: editingId,
         payload: {
           name: formName.trim(),
-          code: formCode.trim() || undefined,
+          code: formCode.trim(),
           orderIndex: Number(formOrder) || 0,
         },
       });

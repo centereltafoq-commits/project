@@ -51,13 +51,32 @@ export function UsersPage() {
   const [quickViewUser, setQuickViewUser] = React.useState<UserRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
 
-  const [form, setForm] = React.useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    password: '',
-    roleId: '',
-  });
+  const EMPTY_FORM = React.useMemo(
+    () => ({
+      fullName: '',
+      email: '',
+      phone: '',
+      password: '',
+      roleId: '',
+    }),
+    [],
+  );
+
+  const [form, setForm] = React.useState(EMPTY_FORM);
+
+  const resetUserForm = React.useCallback(() => {
+    setForm(EMPTY_FORM);
+  }, [EMPTY_FORM]);
+
+  const handleModalOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        resetUserForm();
+      }
+      setModalOpen(nextOpen);
+    },
+    [resetUserForm],
+  );
 
   const { data: roles = [] } = useQuery<RoleOption[]>({
     queryKey: ['roles'],
@@ -197,7 +216,13 @@ export function UsersPage() {
         description="إدارة حسابات فريق السنتر وتخصيص صلاحيات الأدوار الوظيفية بدقة"
         actions={
           canManageUsers ? (
-            <Button onClick={() => setModalOpen(true)} className="gap-1.5">
+            <Button
+              onClick={() => {
+                resetUserForm();
+                setModalOpen(true);
+              }}
+              className="gap-1.5"
+            >
               <Plus className="h-4 w-4" />
               إضافة مستخدم جديد
             </Button>
@@ -296,7 +321,7 @@ export function UsersPage() {
 
       <Modal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleModalOpenChange}
         title="إضافة مستخدم جديد"
         description="أنشئ حساب دخول لموظف أو محاسب أو مدرس وحدد دوره الوظيفي"
       >
@@ -344,7 +369,7 @@ export function UsersPage() {
             options={roles.map((r) => ({ value: r.id, label: r.nameAr }))}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => handleModalOpenChange(false)}>
               إلغاء
             </Button>
             <Button type="submit" isLoading={createMutation.isPending}>

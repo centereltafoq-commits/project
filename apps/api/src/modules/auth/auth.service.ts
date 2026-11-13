@@ -23,12 +23,42 @@ export class AuthService {
   async login(dto: LoginDto, meta: { ipAddress?: string; userAgent?: string }) {
     const user = await this.usersRepository.findByEmailWithRole(dto.email);
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('بيانات الدخول غير صحيحة أو الحساب متوقف');
+      await this.audit.record({
+        actorUserId: user?.id ?? null,
+        actorName: user?.fullName ?? dto.email,
+        action: 'LOGIN_FAILED',
+        entityType: 'AUTH',
+        entityId: user?.id ?? null,
+        afterData: {
+          email: dto.email,
+          reason: !user ? 'UNKNOWN_EMAIL' : 'INACTIVE_ACCOUNT',
+          userAgent: meta.userAgent ?? null,
+        },
+        ipAddress: meta.ipAddress,
+      });
+      throw new UnauthorizedException(
+        !user
+          ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+          : 'هذا الحساب موقوف حالياً، يرجى التواصل مع مدير النظام',
+      );
     }
 
     const passwordValid = await argon2.verify(user.passwordHash, dto.password);
     if (!passwordValid) {
-      throw new UnauthorizedException('بيانات الدخول غير صحيحة أو الحساب متوقف');
+      await this.audit.record({
+        actorUserId: user.id,
+        actorName: user.fullName,
+        action: 'LOGIN_FAILED',
+        entityType: 'AUTH',
+        entityId: user.id,
+        afterData: {
+          email: dto.email,
+          reason: 'INVALID_PASSWORD',
+          userAgent: meta.userAgent ?? null,
+        },
+        ipAddress: meta.ipAddress,
+      });
+      throw new UnauthorizedException('البريد الإلكتروني أو كلمة المرور غير صحيحة');
     }
 
     await this.usersRepository.update(user.id, { lastLoginAt: new Date() });

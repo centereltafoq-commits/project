@@ -106,6 +106,13 @@ export class StudentsRepository {
     return rows.map((r) => r.name);
   }
 
+  async findAllGradeLevelRecords(): Promise<Array<{ name: string; isActive: boolean }>> {
+    return this.db
+      .select({ name: gradeLevels.name, isActive: gradeLevels.isActive })
+      .from(gradeLevels)
+      .orderBy(asc(gradeLevels.orderIndex), asc(gradeLevels.name));
+  }
+
   async findExistingCodesAndNamePhones(
     codes: string[],
     phones: string[],
@@ -141,7 +148,7 @@ export class StudentsRepository {
       studentCode: string;
       fullName: string;
       phone: string;
-      guardianPhone: string;
+      guardianPhone: string | null;
       gradeLevel: string;
       registrationDate: string;
       status: string;
@@ -182,7 +189,7 @@ export class StudentsRepository {
     studentCode: string;
     fullName: string;
     phone: string;
-    guardianPhone: string;
+    guardianPhone: string | null;
     gradeLevel: string;
     registrationDate: string;
     status: string;
@@ -194,7 +201,7 @@ export class StudentsRepository {
         studentCode: data.studentCode,
         fullName: data.fullName,
         phone: data.phone,
-        guardianPhone: data.guardianPhone,
+        guardianPhone: data.guardianPhone ?? null,
         gradeLevel: data.gradeLevel,
         registrationDate: data.registrationDate,
         status: data.status,
@@ -209,7 +216,7 @@ export class StudentsRepository {
     updates: Partial<{
       fullName: string;
       phone: string;
-      guardianPhone: string;
+      guardianPhone: string | null;
       gradeLevel: string;
       registrationDate: string;
       status: string;

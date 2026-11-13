@@ -54,9 +54,13 @@ export class MonthlySettlementService {
     return createPaginatedResult(rows, total, page, limit);
   }
 
-  async assertMonthOpen(yearMonth: string): Promise<void> {
+  async isMonthClosed(yearMonth: string): Promise<boolean> {
     const summary = await this.overviewRepo.fetchMonthExecutiveSummary(yearMonth);
-    if (summary.isMonthClosed) {
+    return Boolean(summary.isMonthClosed);
+  }
+
+  async assertMonthOpen(yearMonth: string): Promise<void> {
+    if (await this.isMonthClosed(yearMonth)) {
       throw new ConflictException(
         `الشهر المالي (${yearMonth}) مغلق نهائياً ولا يمكن إضافة أو تعديل معاملات مالية عليه`,
       );

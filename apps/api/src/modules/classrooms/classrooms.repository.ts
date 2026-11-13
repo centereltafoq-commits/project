@@ -406,39 +406,75 @@ export class ClassroomsRepository {
     groupId: string,
     updateUpcomingSessions: boolean = true,
   ) {
-    const group = await this.findGroupById(groupId);
-    if (!group) return null;
+    return this.db.transaction(async (tx) => {
+      const [group] = await tx
+        .select({
+          id: groups.id,
+          defaultClassroomId: groups.defaultClassroomId,
+          scheduleSlots: groups.scheduleSlots,
+        })
+        .from(groups)
+        .where(eq(groups.id, groupId))
+        .limit(1);
 
-    const nextDefaultRoom =
-      group.defaultClassroomId === classroomId ? null : group.defaultClassroomId;
-    const updatedSlots = (group.scheduleSlots ?? []).map((s) =>
-      s.classroomId === classroomId ? { ...s, classroomId: null } : s,
-    );
+      if (!group) return null;
 
-    await this.db
-      .update(groups)
-      .set({
-        defaultClassroomId: nextDefaultRoom,
-        scheduleSlots: updatedSlots,
-        updatedAt: new Date(),
-      })
-      .where(eq(groups.id, groupId));
+      const hadDefaultRoom = group.defaultClassroomId === classroomId;
+      const hadSlotInRoom = (group.scheduleSlots ?? []).some(
+        (s) => s.classroomId === classroomId,
+      );
 
-    if (updateUpcomingSessions) {
-      const todayIso = new Date().toISOString().slice(0, 10);
-      await this.db
-        .update(sessions)
-        .set({ classroomId: null })
-        .where(
-          and(
-            eq(sessions.groupId, groupId),
-            eq(sessions.classroomId, classroomId),
-            gte(sessions.sessionDate, todayIso),
-            eq(sessions.status, SessionStatus.SCHEDULED),
-          ),
-        );
-    }
+      const nextDefaultRoom = hadDefaultRoom ? null : group.defaultClassroomId;
+      const updatedSlots = (group.scheduleSlots ?? []).map((s) =>
+        s.classroomId === classroomId ? { ...s, classroomId: null } : s,
+      );
 
-    return this.findGroupById(groupId);
+      await tx
+        .update(groups)
+        .set({
+          defaultClassroomId: nextDefaultRoom,
+          scheduleSlots: updatedSlots,
+          updatedAt: new Date(),
+        })
+        .where(eq(groups.id, groupId));
+
+      let clearedSessionsCount = 0;
+      if (updateUpcomingSessions) {
+        const cleared = await tx
+          .update(sessions)
+          .set({ classroomId: null })
+          .where(
+            and(
+              eq(sessions.groupId, groupId),
+              eq(sessions.classroomId, classroomId),
+              eq(sessions.status, SessionStatus.SCHEDULED),
+            ),
+          )
+          .returning({ id: sessions.id });
+        clearedSessionsCount = cleared.length;
+      }
+
+      const [updatedGroup] = await tx
+        .select({
+          id: groups.id,
+          name: groups.name,
+          groupCode: groups.groupCode,
+          subject: groups.subject,
+          gradeLevel: groups.gradeLevel,
+          primaryTeacherId: groups.primaryTeacherId,
+          defaultClassroomId: groups.defaultClassroomId,
+          scheduleSlots: groups.scheduleSlots,
+          maxStudents: groups.maxStudents,
+        })
+        .from(groups)
+        .where(eq(groups.id, groupId))
+        .limit(1);
+
+      return {
+        group: updatedGroup ?? null,
+        wasLinked: hadDefaultRoom || hadSlotInRoom || clearedSessionsCount > 0,
+        clearedSessionsCount,
+      };
+    });
   }
 }

@@ -102,6 +102,52 @@ export class SettingsService {
     return dir;
   }
 
+  private validateImageBufferSignature(
+    buffer: Buffer,
+    ext: string,
+    mimetype?: string,
+  ): void {
+    if (!buffer || buffer.length < 4) {
+      throw new BadRequestException('ملف الصورة فارغ أو تالف');
+    }
+
+    if (ext === '.svg' || mimetype === 'image/svg+xml') {
+      if (buffer.includes(0x00)) {
+        throw new BadRequestException('محتوى ملف SVG غير صالح أو يحتوي على بيانات ثنائية');
+      }
+      const svgText = buffer.toString('utf-8');
+      if (svgText.includes('\uFFFD') || !/<svg[\s>]/i.test(svgText) || !/<\/svg>/i.test(svgText)) {
+        throw new BadRequestException('محتوى ملف SVG غير صالح أو تالف');
+      }
+      return;
+    }
+
+    const isPng =
+      ext === '.png' &&
+      buffer.length >= 8 &&
+      buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    const isJpg =
+      (ext === '.jpg' || ext === '.jpeg') &&
+      buffer.length >= 3 &&
+      buffer[0] === 0xff &&
+      buffer[1] === 0xd8 &&
+      buffer[2] === 0xff;
+    const isGif =
+      ext === '.gif' &&
+      buffer.length >= 6 &&
+      (buffer.subarray(0, 6).toString('ascii') === 'GIF87a' ||
+        buffer.subarray(0, 6).toString('ascii') === 'GIF89a');
+    const isWebp =
+      ext === '.webp' &&
+      buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+
+    if (!isPng && !isJpg && !isGif && !isWebp) {
+      throw new BadRequestException('محتوى ملف الصورة تالف أو لا يطابق صيغة الصورة المحددة');
+    }
+  }
+
   async uploadLogo(
     file: UploadedMulterFile,
     actor?: string | AuthenticatedUser,
@@ -126,6 +172,8 @@ export class SettingsService {
         'نوع الملف غير مدعوم. يرجى رفع صورة بصيغة PNG أو JPG أو WEBP أو SVG',
       );
     }
+
+    this.validateImageBufferSignature(file.buffer, ext, file.mimetype);
 
     // Security check for SVG uploads to prevent stored script injection
     if (ext === '.svg' || file.mimetype === 'image/svg+xml') {

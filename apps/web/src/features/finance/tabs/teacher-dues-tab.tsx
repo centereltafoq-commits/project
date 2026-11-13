@@ -253,10 +253,14 @@ export function TeacherDuesTab({ yearMonth, isMonthClosed = false, lookups }: Te
         onOpenChange={setPayoutOpen}
         yearMonth={yearMonth}
         preset={preset}
-        options={(lookups?.teachers ?? []).map((t) => ({
-          value: t.id,
-          label: `${t.fullName} (${t.code})`,
-        }))}
+        options={(lookups?.teachers ?? []).map((t) => {
+          const rec = duesQuery.data?.data.find((r) => r.teacherId === t.id);
+          return {
+            value: t.id,
+            label: `${t.fullName} (${t.code})`,
+            remainingBalance: rec?.remainingBalance,
+          };
+        })}
       />
     </div>
   );

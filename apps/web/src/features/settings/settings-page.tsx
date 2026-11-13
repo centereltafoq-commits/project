@@ -97,6 +97,73 @@ export function SettingsPage() {
     }
   };
 
+  const readFileHeaderBytes = async (file: File): Promise<Uint8Array | null> => {
+    const slice = typeof file.slice === 'function' ? file.slice(0, 512) : file;
+    if (typeof slice.arrayBuffer === 'function') {
+      return new Uint8Array(await slice.arrayBuffer());
+    }
+    if (typeof FileReader !== 'undefined') {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          resolve(
+            reader.result instanceof ArrayBuffer
+              ? new Uint8Array(reader.result)
+              : null,
+          );
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsArrayBuffer(slice);
+      });
+    }
+    return null;
+  };
+
+  const hasValidLogoHeader = async (file: File): Promise<boolean> => {
+    try {
+      const bytes = await readFileHeaderBytes(file);
+      if (!bytes || bytes.length < 4) return false;
+
+      const name = file.name.toLowerCase();
+      if (file.type === 'image/svg+xml' || name.endsWith('.svg')) {
+        const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+        return /<svg[\s>]/i.test(text);
+      }
+
+      const isPng =
+        bytes.length >= 8 &&
+        bytes[0] === 0x89 &&
+        bytes[1] === 0x50 &&
+        bytes[2] === 0x4e &&
+        bytes[3] === 0x47 &&
+        bytes[4] === 0x0d &&
+        bytes[5] === 0x0a &&
+        bytes[6] === 0x1a &&
+        bytes[7] === 0x0a;
+      const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+      const isGif =
+        bytes.length >= 6 &&
+        bytes[0] === 0x47 &&
+        bytes[1] === 0x49 &&
+        bytes[2] === 0x46 &&
+        bytes[3] === 0x38;
+      const isWebp =
+        bytes.length >= 12 &&
+        bytes[0] === 0x52 &&
+        bytes[1] === 0x49 &&
+        bytes[2] === 0x46 &&
+        bytes[3] === 0x46 &&
+        bytes[8] === 0x57 &&
+        bytes[9] === 0x45 &&
+        bytes[10] === 0x42 &&
+        bytes[11] === 0x50;
+
+      return isPng || isJpg || isGif || isWebp;
+    } catch {
+      return false;
+    }
+  };
+
   const uploadLogoFile = async (file: File) => {
     if (!file.type.startsWith('image/') && !file.name.match(/\.(png|jpe?g|webp|svg|gif)$/i)) {
       notify('نوع الملف غير مدعوم. يرجى اختيار ملف صورة صالح (PNG, JPG, WEBP, SVG)', 'error');
@@ -104,6 +171,10 @@ export function SettingsPage() {
     }
     if (file.size > 5 * 1024 * 1024) {
       notify('حجم ملف الصورة كبير جداً. الحد الأقصى المسموح هو 5 ميجابايت', 'error');
+      return;
+    }
+    if (!(await hasValidLogoHeader(file))) {
+      notify('ملف الصورة تالف أو لا يطابق صيغة الصورة المختارة', 'error');
       return;
     }
 
@@ -160,15 +231,39 @@ export function SettingsPage() {
       return;
     }
 
+    const trimmedPhone = form.phone.trim();
+    if (trimmedPhone && !/^(?=(?:.*\d){7,15})[+\d\s\-()]{7,20}$/.test(trimmedPhone)) {
+      notify('رقم الهاتف غير صالح، يجب أن يحتوي على أرقام صالحة (7 إلى 15 رقماً)', 'error');
+      return;
+    }
+
+    const trimmedYear = form.academicYear.trim();
+    const yearMatch = /^(\d{4})\s*[\/\-]\s*(\d{4})$/.exec(trimmedYear);
+    if (
+      !yearMatch ||
+      Number(yearMatch[1]) < 2000 ||
+      Number(yearMatch[1]) > 2099 ||
+      Number(yearMatch[2]) !== Number(yearMatch[1]) + 1
+    ) {
+      notify('صيغة العام الدراسي غير صالحة، يجب أن تكون عامين متتاليين مثل: 2026 / 2027', 'error');
+      return;
+    }
+
+    const trimmedLogo = form.logoUrl.trim();
+    if (trimmedLogo && !/^(https?:\/\/[^\s]+|\/api\/settings\/logo\/[^\s]+)$/i.test(trimmedLogo)) {
+      notify('رابط الشعار غير صالح، يجب أن يبدأ بـ http:// أو https:// أو مسار شعار النظام', 'error');
+      return;
+    }
+
     try {
       setIsSaving(true);
       await settingsApi.updateSettings({
         centerName: form.centerName.trim(),
         centerSubtitle: form.centerSubtitle.trim() || null,
-        logoUrl: form.logoUrl.trim() || null,
-        phone: form.phone.trim() || null,
+        logoUrl: trimmedLogo || null,
+        phone: trimmedPhone || null,
         address: form.address.trim() || null,
-        academicYear: form.academicYear.trim() || undefined,
+        academicYear: `${yearMatch[1]} / ${yearMatch[2]}`,
         currencySymbol: form.currencySymbol.trim() || undefined,
       });
 

@@ -35,6 +35,11 @@ export function GroupFinancialPolicyFields({
     values.revenueSplitMethod === GroupRevenueSplitMethod.FIXED_PER_SESSION;
   const isFixedAbsenceFee =
     values.fullMonthAbsencePolicy === FullMonthAbsencePolicy.CHARGE_FIXED_RESERVATION_FEE;
+  const monthlyPriceNum = Number(values.monthlyPrice || 0);
+  const sharesSum =
+    Number(values.teacherSharePerStudent || 0) + Number(values.centerSharePerStudent || 0);
+  const sharesExceedPrice =
+    !isCustomPercentage && !isFixedPerSession && sharesSum > monthlyPriceNum + 0.001;
 
   return (
     <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-4">
@@ -133,16 +138,26 @@ export function GroupFinancialPolicyFields({
               value={values.centerSharePerStudent}
               onChange={(e) => onChange({ centerSharePerStudent: e.target.value })}
             />
-            <div className="flex items-end">
-              <div className="flex h-9 w-full items-center justify-between rounded-lg border border-border bg-card px-3 text-xs">
-                <span className="text-muted-foreground">مجموع الحصتين:</span>
-                <strong className="font-bold text-foreground">
-                  {formatCurrency(
-                    Number(values.teacherSharePerStudent || 0) +
-                      Number(values.centerSharePerStudent || 0),
-                  )}
+            <div className="flex flex-col justify-end gap-1">
+              <div
+                className={`flex h-9 w-full items-center justify-between rounded-lg border px-3 text-xs ${
+                  sharesExceedPrice
+                    ? 'border-destructive bg-destructive/10 text-destructive'
+                    : 'border-border bg-card'
+                }`}
+              >
+                <span className={sharesExceedPrice ? 'font-semibold' : 'text-muted-foreground'}>
+                  مجموع الحصتين:
+                </span>
+                <strong className="font-bold">
+                  {formatCurrency(sharesSum)}
                 </strong>
               </div>
+              {sharesExceedPrice && (
+                <span className="text-[11px] font-semibold text-destructive">
+                  يتجاوز الاشتراك الشهري ({formatCurrency(monthlyPriceNum)})
+                </span>
+              )}
             </div>
           </>
         )}

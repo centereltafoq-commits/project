@@ -13,6 +13,7 @@ export function LoginPage() {
   const { notify } = useToast();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
   React.useEffect(() => {
@@ -25,12 +26,15 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setSubmitting(true);
     try {
       await login(email, password);
       notify(`مرحباً بك في ${settings.centerName || 'نظام إدارة السنتر التعليمي'}`, 'success');
     } catch (err) {
-      notify(extractErrorMessage(err), 'error');
+      const msg = extractErrorMessage(err);
+      setErrorMessage(msg);
+      notify(msg, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -61,13 +65,25 @@ export function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {errorMessage && (
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-xs font-semibold text-destructive"
+            >
+              {errorMessage}
+            </div>
+          )}
+
           <div className="relative">
             <Input
               label="البريد الإلكتروني"
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
               placeholder="admin@educenter.com"
             />
             <Mail className="pointer-events-none absolute left-3 top-9 h-4 w-4 text-muted-foreground" />
@@ -79,7 +95,10 @@ export function LoginPage() {
               type="password"
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
               placeholder="••••••••"
             />
             <Lock className="pointer-events-none absolute left-3 top-9 h-4 w-4 text-muted-foreground" />

@@ -53,8 +53,9 @@ export function StudentsPage() {
   const [quickViewStudent, setQuickViewStudent] = React.useState<StudentRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
-  const { options: dynamicGradeOptions } = useGradeLevels(true);
-  const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
+  const { options: dynamicGradeOptions } = useGradeLevels(false);
+  const baseGradeOptions =
+    dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
 
   const { data, isLoading } = useQuery<PaginatedResult<StudentRow>>({
     queryKey: ['students', page, limit, debouncedSearch, statusFilter, gradeFilter],
@@ -71,6 +72,19 @@ export function StudentsPage() {
       return res.data;
     },
   });
+
+  const gradeOptions = React.useMemo(() => {
+    const map = new Map(baseGradeOptions.map((o) => [o.value, o]));
+    for (const row of data?.data ?? []) {
+      if (row.gradeLevel && !map.has(row.gradeLevel)) {
+        map.set(row.gradeLevel, { value: row.gradeLevel, label: row.gradeLevel });
+      }
+    }
+    if (gradeFilter && !map.has(gradeFilter)) {
+      map.set(gradeFilter, { value: gradeFilter, label: gradeFilter });
+    }
+    return Array.from(map.values());
+  }, [baseGradeOptions, data?.data, gradeFilter]);
 
   const columns: TableColumn<StudentRow>[] = [
     {
@@ -192,43 +206,48 @@ export function StudentsPage() {
           <div className="flex flex-wrap items-center gap-2">
             {canExport && (
               <Button
+                size="sm"
                 variant="success"
                 onClick={handleExportExcel}
                 isLoading={isExporting}
-                className="gap-1.5"
+                className="h-9 gap-1.5 px-3"
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-3.5 w-3.5" />
                 تصدير Excel
               </Button>
             )}
             {canCreate && (
               <Button
+                size="sm"
                 variant="outline"
                 onClick={() => setImportModalOpen(true)}
-                className="gap-1.5"
+                className="h-9 gap-1.5 px-3"
               >
-                <Upload className="h-4 w-4" />
+                <Upload className="h-3.5 w-3.5" />
                 استيراد من Excel
               </Button>
             )}
             {canManageGradeLevels && (
               <Button
+                size="sm"
                 variant="outline"
                 onClick={() => setGradeLevelsModalOpen(true)}
-                className="gap-1.5"
+                className="h-9 gap-1.5 px-3"
               >
-                <GraduationCap className="h-4 w-4" />
-                إدارة الصفوف الدراسية
+                <GraduationCap className="h-3.5 w-3.5" />
+                الصفوف الدراسية
               </Button>
             )}
             {canCreate && (
               <Button
+                size="sm"
                 onClick={() => {
                   setEditingStudent(null);
                   setModalOpen(true);
                 }}
+                className="h-9 gap-1.5 px-3.5"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3.5 w-3.5" />
                 تسجيل طالب جديد
               </Button>
             )}

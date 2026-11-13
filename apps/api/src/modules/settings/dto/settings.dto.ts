@@ -7,8 +7,44 @@ import {
   Length,
   Matches,
   MaxLength,
+  registerDecorator,
   ValidateIf,
+  ValidationOptions,
 } from 'class-validator';
+
+const ACADEMIC_YEAR_REGEX = /^(\d{4})\s*[\/\-]\s*(\d{4})$/;
+
+function normalizeAcademicYearValue(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  const match = ACADEMIC_YEAR_REGEX.exec(trimmed);
+  return match ? `${match[1]} / ${match[2]}` : trimmed;
+}
+
+function IsSequentialAcademicYear(validationOptions?: ValidationOptions) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      name: 'isSequentialAcademicYear',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: unknown) {
+          if (typeof value !== 'string') return false;
+          const match = ACADEMIC_YEAR_REGEX.exec(value.trim());
+          if (!match) return false;
+          const startYear = Number(match[1]);
+          const endYear = Number(match[2]);
+          return (
+            startYear >= 2000 &&
+            startYear <= 2099 &&
+            endYear === startYear + 1
+          );
+        },
+      },
+    });
+  };
+}
 
 export class UpdateSettingsDto {
   @IsOptional()
@@ -36,6 +72,10 @@ export class UpdateSettingsDto {
   @IsOptional()
   @ValidateIf((_, val) => val !== null && val !== undefined)
   @IsString({ message: 'رابط الشعار يجب أن يكون نصاً' })
+  @MaxLength(500, { message: 'رابط الشعار لا يجب أن يتجاوز 500 حرف' })
+  @Matches(/^(https?:\/\/[^\s]+|\/api\/settings\/logo\/[^\s]+)$/i, {
+    message: 'رابط الشعار غير صالح، يجب أن يبدأ بـ http:// أو https:// أو مسار شعار النظام',
+  })
   @Transform(({ value }: { value: unknown }) =>
     value === '' || value === null
       ? null
@@ -49,6 +89,9 @@ export class UpdateSettingsDto {
   @ValidateIf((_, val) => val !== null && val !== undefined)
   @IsString({ message: 'رقم الهاتف يجب أن يكون نصاً' })
   @MaxLength(50, { message: 'رقم الهاتف لا يجب أن يتجاوز 50 حرفاً' })
+  @Matches(/^(?=(?:.*\d){7,15})[+\d\s\-()]{7,20}$/, {
+    message: 'رقم الهاتف غير صالح، يجب أن يحتوي على أرقام صالحة (7 إلى 15 رقماً)',
+  })
   @Transform(({ value }: { value: unknown }) =>
     value === '' || value === null
       ? null
@@ -75,9 +118,10 @@ export class UpdateSettingsDto {
   @IsNotEmpty({ message: 'العام الدراسي لا يمكن أن يكون فارغاً' })
   @IsString({ message: 'العام الدراسي يجب أن يكون نصاً' })
   @MaxLength(50, { message: 'العام الدراسي لا يجب أن يتجاوز 50 حرفاً' })
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @IsSequentialAcademicYear({
+    message: 'صيغة العام الدراسي غير صالحة، يجب أن تكون عامين متتاليين مثل: 2026 / 2027',
+  })
+  @Transform(({ value }: { value: unknown }) => normalizeAcademicYearValue(value))
   academicYear?: string;
 
   @IsOptional()
@@ -109,10 +153,14 @@ export class ResetAcademicYearDto {
   purgeStudents?: boolean = false;
 
   @IsOptional()
+  @ValidateIf((_, val) => val !== undefined && val !== '')
   @IsString({ message: 'العام الدراسي الجديد يجب أن يكون نصاً' })
   @MaxLength(50, { message: 'العام الدراسي الجديد لا يتجاوز 50 حرفاً' })
+  @IsSequentialAcademicYear({
+    message: 'صيغة العام الدراسي الجديد غير صالحة، يجب أن تكون مثل: 2027 / 2028',
+  })
   @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
+    value === '' ? undefined : normalizeAcademicYearValue(value),
   )
   newAcademicYear?: string;
 

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarPlus, ClipboardList, RotateCcw, Sparkles } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS, SessionStatus } from '@edu-center/shared';
+import { ClipboardList, RotateCcw } from 'lucide-react';
+import { DEFAULT_PAGE_SIZE, PaginatedResult, SessionStatus } from '@edu-center/shared';
 import {
   Badge,
   Button,
@@ -11,7 +11,6 @@ import {
   ServerDataTable,
   TableColumn,
 } from '@/design-system';
-import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { ARABIC_DAYS, formatDateAr, formatTimeRangeAr, getCurrentYearMonth } from '@/lib/formatters';
@@ -20,7 +19,6 @@ import {
   SESSION_STATUS_META,
   SessionRow,
 } from './attendance.types';
-import { CreateSessionModal, GenerateMonthModal } from './session-modals';
 import { SessionSheetModal } from './session-sheet-modal';
 
 interface SessionsTabProps {
@@ -28,9 +26,6 @@ interface SessionsTabProps {
 }
 
 export function SessionsTab({ lookups }: SessionsTabProps) {
-  const { hasPermission } = useAuth();
-  const canManageSessions = hasPermission(PERMISSIONS.SESSIONS_MANAGE);
-
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = React.useState('');
@@ -41,8 +36,6 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
   const [groupId, setGroupId] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState('');
 
-  const [createOpen, setCreateOpen] = React.useState(false);
-  const [generateOpen, setGenerateOpen] = React.useState(false);
   const [activeSheetSessionId, setActiveSheetSessionId] = React.useState<string | null>(null);
 
   const { data, isLoading } = useQuery<PaginatedResult<SessionRow>>({
@@ -184,19 +177,6 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
 
   return (
     <div className="space-y-4">
-      {canManageSessions && (
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant="secondary" onClick={() => setGenerateOpen(true)} className="gap-1.5">
-            <Sparkles className="h-4 w-4" />
-            توليد حصص الشهر تلقائياً
-          </Button>
-          <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
-            <CalendarPlus className="h-4 w-4" />
-            إنشاء حصة مفردة
-          </Button>
-        </div>
-      )}
-
       <ServerDataTable
         tableClassName="w-full table-fixed border-collapse text-right text-xs"
         columns={columns}
@@ -291,8 +271,6 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
         }
       />
 
-      <CreateSessionModal open={createOpen} onOpenChange={setCreateOpen} lookups={lookups} />
-      <GenerateMonthModal open={generateOpen} onOpenChange={setGenerateOpen} lookups={lookups} />
       <SessionSheetModal
         sessionId={activeSheetSessionId}
         onClose={() => setActiveSheetSessionId(null)}

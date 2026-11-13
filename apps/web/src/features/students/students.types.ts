@@ -9,7 +9,7 @@ export interface StudentRow {
   studentCode: string;
   fullName: string;
   phone: string;
-  guardianPhone: string;
+  guardianPhone: string | null;
   gradeLevel: string;
   registrationDate: string;
   status: StudentStatus;

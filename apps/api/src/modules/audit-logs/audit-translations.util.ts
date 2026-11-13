@@ -1,6 +1,7 @@
 export const ACTION_TRANSLATIONS: Record<string, string> = {
   // Auth
   LOGIN: 'تسجيل دخول',
+  LOGIN_FAILED: 'محاولة تسجيل دخول فاشلة',
   LOGOUT: 'تسجيل خروج',
   AUTH_REFRESH: 'تجديد الجلسة',
 

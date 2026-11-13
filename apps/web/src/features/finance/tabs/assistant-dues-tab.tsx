@@ -258,10 +258,14 @@ export function AssistantDuesTab({ yearMonth, isMonthClosed = false, lookups }: 
         onOpenChange={setPayoutOpen}
         yearMonth={yearMonth}
         preset={preset}
-        options={(lookups?.assistants ?? []).map((a) => ({
-          value: a.id,
-          label: `${a.fullName} (${a.code})`,
-        }))}
+        options={(lookups?.assistants ?? []).map((a) => {
+          const rec = duesQuery.data?.data.find((r) => r.assistantId === a.id);
+          return {
+            value: a.id,
+            label: `${a.fullName} (${a.code})`,
+            remainingBalance: rec?.remainingBalance,
+          };
+        })}
       />
     </div>
   );

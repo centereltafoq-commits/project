@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -6,6 +7,7 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { StudentStatus } from '@edu-center/shared';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
@@ -45,10 +47,15 @@ export class CreateStudentDto {
   @MaxLength(30)
   phone: string;
 
-  @IsString({ message: 'رقم هاتف ولي الأمر مطلوب' })
-  @MinLength(6)
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() || null : value,
+  )
+  @ValidateIf((o) => o.guardianPhone !== null && o.guardianPhone !== undefined)
+  @IsString({ message: 'رقم هاتف ولي الأمر غير صالح' })
+  @MinLength(6, { message: 'رقم هاتف ولي الأمر يجب ألا يقل عن 6 أرقام' })
   @MaxLength(30)
-  guardianPhone: string;
+  guardianPhone?: string | null;
 
   @IsString({ message: 'الصف الدراسي مطلوب' })
   @MinLength(1)
@@ -83,10 +90,14 @@ export class UpdateStudentDto {
   phone?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(6)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() || null : value,
+  )
+  @ValidateIf((o) => o.guardianPhone !== null && o.guardianPhone !== undefined)
+  @IsString({ message: 'رقم هاتف ولي الأمر غير صالح' })
+  @MinLength(6, { message: 'رقم هاتف ولي الأمر يجب ألا يقل عن 6 أرقام' })
   @MaxLength(30)
-  guardianPhone?: string;
+  guardianPhone?: string | null;
 
   @IsOptional()
   @IsString()

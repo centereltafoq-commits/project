@@ -102,7 +102,7 @@ export class StaffStatementsRepository {
         yearMonth,
         totalDues: dues,
         totalPaidOut: paid,
-        remainingBalance: Number((dues - paid).toFixed(2)),
+        remainingBalance: Math.max(0, Number((dues - paid).toFixed(2))),
       };
     });
 
@@ -112,7 +112,7 @@ export class StaffStatementsRepository {
       { key: 'teachers', label: 'عدد المدرسين', value: Number(kpi?.totalCount ?? 0), tone: 'purple' },
       { key: 'dues', label: 'إجمالي المستحقات', value: duesSum, format: 'currency', tone: 'primary' },
       { key: 'paid', label: 'إجمالي المنصرف', value: paidSum, format: 'currency', tone: 'success' },
-      { key: 'rem', label: 'المتبقي للمدرسين', value: Number((duesSum - paidSum).toFixed(2)), format: 'currency', tone: 'warning' },
+      { key: 'rem', label: 'المتبقي للمدرسين', value: Math.max(0, Number((duesSum - paidSum).toFixed(2))), format: 'currency', tone: 'warning' },
     ];
     return { ...createPaginatedResult(mapped, Number(kpi?.totalCount ?? 0), pg.page, pg.limit), summary };
   }
@@ -186,7 +186,7 @@ export class StaffStatementsRepository {
         calculationMethodAr: ASSISTANT_METHOD_AR[r.calculationMethod] || r.calculationMethod,
         totalDues: dues,
         totalPaidOut: paid,
-        remainingBalance: Number((dues - paid).toFixed(2)),
+        remainingBalance: Math.max(0, Number((dues - paid).toFixed(2))),
       };
     });
 
@@ -196,7 +196,7 @@ export class StaffStatementsRepository {
       { key: 'assistants', label: 'عدد المساعدين', value: Number(kpi?.totalCount ?? 0), tone: 'purple' },
       { key: 'dues', label: 'إجمالي المستحقات', value: duesSum, format: 'currency', tone: 'primary' },
       { key: 'paid', label: 'إجمالي المنصرف', value: paidSum, format: 'currency', tone: 'success' },
-      { key: 'rem', label: 'المتبقي للمساعدين', value: Number((duesSum - paidSum).toFixed(2)), format: 'currency', tone: 'warning' },
+      { key: 'rem', label: 'المتبقي للمساعدين', value: Math.max(0, Number((duesSum - paidSum).toFixed(2))), format: 'currency', tone: 'warning' },
     ];
     return { ...createPaginatedResult(mapped, Number(kpi?.totalCount ?? 0), pg.page, pg.limit), summary };
   }

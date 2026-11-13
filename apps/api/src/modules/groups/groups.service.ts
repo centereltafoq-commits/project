@@ -5,13 +5,25 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { PERMISSIONS, SystemRole } from '@edu-center/shared';
+import {
+  AssistantCalculationMethod,
+  FullMonthAbsencePolicy,
+  GroupRevenueSplitMethod,
+  PERMISSIONS,
+  SystemRole,
+} from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { MonthlySettlementService } from '../finance/monthly-settlement.service';
-import { CreateGroupDto, GroupQueryDto, GroupScheduleSlotDto, UpdateGroupDto } from './dto/group.dto';
+import {
+  CreateGroupDto,
+  GroupAssistantAssignmentDto,
+  GroupQueryDto,
+  GroupScheduleSlotDto,
+  UpdateGroupDto,
+} from './dto/group.dto';
 import { GroupsRepository } from './groups.repository';
 import { GroupsMutationRepository } from './groups-mutation.repository';
 
@@ -164,6 +176,95 @@ export class GroupsService {
     }
   }
 
+  private async validateFinancialPolicyAndAssistants(params: {
+    monthlyPrice: number;
+    monthlySessionsCount: number;
+    policy: {
+      revenueSplitMethod: string;
+      teacherSharePerStudent: number;
+      centerSharePerStudent: number;
+      teacherPercentage?: number | null;
+      fullMonthAbsencePolicy?: string | null;
+      fullAbsenceFixedFee?: number | null;
+    };
+    assistants?: GroupAssistantAssignmentDto[];
+  }) {
+    const { monthlyPrice, monthlySessionsCount, policy, assistants: assistantLinks } = params;
+
+    if (!Number.isFinite(monthlySessionsCount) || monthlySessionsCount < 1) {
+      throw new BadRequestException('عدد الحصص الشهرية يجب أن يكون 1 على الأقل');
+    }
+    if (!Number.isFinite(monthlyPrice) || monthlyPrice < 0) {
+      throw new BadRequestException('قيمة الاشتراك الشهري يجب أن تكون موجبة أو صفر');
+    }
+
+    if (
+      policy.revenueSplitMethod === GroupRevenueSplitMethod.ACTUAL_ATTENDANCE_RATIO ||
+      policy.revenueSplitMethod === GroupRevenueSplitMethod.FIXED_PER_STUDENT
+    ) {
+      if (policy.teacherSharePerStudent < 0 || policy.centerSharePerStudent < 0) {
+        throw new BadRequestException('أنصبة المدرس والسنتر لا يمكن أن تكون سالبة');
+      }
+      const sharesSum = Number(
+        (policy.teacherSharePerStudent + policy.centerSharePerStudent).toFixed(2),
+      );
+      if (sharesSum > monthlyPrice + 0.001) {
+        throw new BadRequestException(
+          `مجموع نصيب المدرس والسنتر (${sharesSum} ج.م) لا يمكن أن يتجاوز الاشتراك الشهري للطالب (${monthlyPrice} ج.م)`,
+        );
+      }
+    } else if (policy.revenueSplitMethod === GroupRevenueSplitMethod.CUSTOM_PERCENTAGE) {
+      const pct = Number(policy.teacherPercentage ?? 0);
+      if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+        throw new BadRequestException('نسبة المدرس المئوية يجب أن تكون بين 0% و 100%');
+      }
+    }
+
+    if (
+      policy.fullMonthAbsencePolicy === FullMonthAbsencePolicy.CHARGE_FIXED_RESERVATION_FEE &&
+      Number(policy.fullAbsenceFixedFee ?? 0) > monthlyPrice + 0.001
+    ) {
+      throw new BadRequestException(
+        `رسوم حجز المقعد (${policy.fullAbsenceFixedFee} ج.م) لا يمكن أن تتجاوز الاشتراك الشهري (${monthlyPrice} ج.م)`,
+      );
+    }
+
+    if (assistantLinks && assistantLinks.length > 0) {
+      const seenAssistants = new Set<string>();
+      const lookups = await this.repository.getLookups();
+      const assistantById = new Map(lookups.assistants.map((a) => [a.id, a]));
+
+      for (const link of assistantLinks) {
+        if (seenAssistants.has(link.assistantId)) {
+          throw new BadRequestException('لا يمكن إسناد نفس المساعد مرتين لنفس المجموعة');
+        }
+        seenAssistants.add(link.assistantId);
+
+        const assistant = assistantById.get(link.assistantId);
+        const effectiveMethod = link.overrideCalculationMethod ?? assistant?.calculationMethod;
+        const effectiveRate =
+          link.overrideRateValue !== undefined
+            ? link.overrideRateValue
+            : assistant
+              ? Number(assistant.rateValue)
+              : undefined;
+
+        if (effectiveRate !== undefined && effectiveRate < 0) {
+          throw new BadRequestException('نسبة أو أجر المساعد لا يمكن أن يكون سالباً');
+        }
+        if (
+          effectiveMethod === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT &&
+          effectiveRate !== undefined &&
+          effectiveRate > 100
+        ) {
+          throw new BadRequestException(
+            `نسبة عمولة المساعد${assistant ? ` (${assistant.fullName})` : ''} لا يمكن أن تتجاوز 100%`,
+          );
+        }
+      }
+    }
+  }
+
   async create(dto: CreateGroupDto, actor: AuthenticatedUser) {
     const groupCode = dto.groupCode?.trim() || (await this.generateUniqueGroupCode());
     if (dto.groupCode) {
@@ -174,6 +275,12 @@ export class GroupsService {
     const isActive = dto.isActive ?? true;
     const rawSlots = dto.scheduleSlots ?? [];
     await this.validateSlotsAndTeacherSchedule(rawSlots, dto.primaryTeacherId, isActive);
+    await this.validateFinancialPolicyAndAssistants({
+      monthlyPrice: dto.monthlyPrice,
+      monthlySessionsCount: dto.monthlySessionsCount,
+      policy: dto.financialPolicy,
+      assistants: dto.assistants,
+    });
 
     // Business Rule: Groups are NEVER assigned a classroom automatically upon creation.
     // Classroom & schedule slot allocation happens manually in Classroom Management.
@@ -245,6 +352,39 @@ export class GroupsService {
       dto.monthlySessionsCount !== undefined
         ? dto.monthlySessionsCount
         : existing.monthlySessionsCount;
+
+    const existingPol = existing.financialPolicy;
+    const mergedPolicy = {
+      revenueSplitMethod:
+        dto.financialPolicy?.revenueSplitMethod ??
+        existingPol?.revenueSplitMethod ??
+        GroupRevenueSplitMethod.ACTUAL_ATTENDANCE_RATIO,
+      teacherSharePerStudent:
+        dto.financialPolicy?.teacherSharePerStudent ??
+        Number(existingPol?.teacherSharePerStudent ?? 0),
+      centerSharePerStudent:
+        dto.financialPolicy?.centerSharePerStudent ??
+        Number(existingPol?.centerSharePerStudent ?? 0),
+      teacherPercentage:
+        dto.financialPolicy?.teacherPercentage ??
+        (existingPol?.teacherPercentage !== null && existingPol?.teacherPercentage !== undefined
+          ? Number(existingPol.teacherPercentage)
+          : 0),
+      fullMonthAbsencePolicy:
+        dto.financialPolicy?.fullMonthAbsencePolicy ??
+        existingPol?.fullMonthAbsencePolicy ??
+        FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+      fullAbsenceFixedFee:
+        dto.financialPolicy?.fullAbsenceFixedFee ??
+        Number(existingPol?.fullAbsenceFixedFee ?? 0),
+    };
+
+    await this.validateFinancialPolicyAndAssistants({
+      monthlyPrice: nextMonthlyPrice,
+      monthlySessionsCount: nextSessionsCount,
+      policy: mergedPolicy,
+      assistants: dto.assistants,
+    });
 
     const groupUpdates: Record<string, unknown> = {};
     if (dto.name !== undefined) groupUpdates.name = dto.name.trim();

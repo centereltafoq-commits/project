@@ -219,40 +219,62 @@ export function BackupsPage() {
             <Eye className="h-3.5 w-3.5 text-primary" />
             تفاصيل
           </Button>
-          {canManageBackups && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 gap-1 px-2.5 text-xs font-semibold"
-                title="تحميل الملف على الكمبيوتر أو الفلاشة"
-                onClick={async () => {
-                  try {
-                    await backupsApi.download(row.id, row.fileName);
-                    notify(`تم تحميل النسخة (${row.fileName}) بنجاح`, 'success');
-                  } catch (err: any) {
-                    notify(err.response?.data?.message || 'فشل تحميل ملف النسخة الاحتياطية', 'error');
+          {canManageBackups && (() => {
+            const isReadyBackup = row.status === 'SUCCESS' && Number(row.fileSizeBytes) > 0;
+            return (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!isReadyBackup}
+                  className="h-8 gap-1 px-2.5 text-xs font-semibold"
+                  title={
+                    isReadyBackup
+                      ? 'تحميل الملف على الكمبيوتر أو الفلاشة'
+                      : 'لا يمكن تحميل نسخة غير مكتملة أو ملفها غير صالح'
                   }
-                }}
-              >
-                <Download className="h-3.5 w-3.5 text-primary" />
-                <span>تحميل</span>
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setSelectedRecordForRestore(row);
-                  setRestoreModalOpen(true);
-                }}
-                className="h-8 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
-                title="استعادة قاعدة البيانات من هذه النسخة"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>استعادة</span>
-              </Button>
-            </>
-          )}
+                  onClick={async () => {
+                    try {
+                      await backupsApi.download(row.id, row.fileName);
+                      notify(`تم تحميل النسخة (${row.fileName}) بنجاح`, 'success');
+                    } catch (err: any) {
+                      let msg = 'فشل تحميل ملف النسخة الاحتياطية';
+                      if (err?.response?.data instanceof Blob) {
+                        try {
+                          const parsed = JSON.parse(await err.response.data.text());
+                          if (parsed?.message) msg = parsed.message;
+                        } catch {}
+                      } else if (err?.response?.data?.message) {
+                        msg = err.response.data.message;
+                      }
+                      notify(msg, 'error');
+                    }
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5 text-primary" />
+                  <span>تحميل</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={!isReadyBackup}
+                  onClick={() => {
+                    setSelectedRecordForRestore(row);
+                    setRestoreModalOpen(true);
+                  }}
+                  className="h-8 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                  title={
+                    isReadyBackup
+                      ? 'استعادة قاعدة البيانات من هذه النسخة'
+                      : 'لا يمكن استعادة نسخة غير مكتملة أو ملفها غير صالح'
+                  }
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>استعادة</span>
+                </Button>
+              </>
+            );
+          })()}
         </div>
       ),
     },

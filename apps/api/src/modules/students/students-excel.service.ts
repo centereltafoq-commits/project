@@ -21,7 +21,7 @@ export interface ParsedStudentImportRow {
   studentCode: string | null;
   fullName: string;
   phone: string;
-  guardianPhone: string;
+  guardianPhone: string | null;
   gradeLevel: string;
   registrationDate: string;
   status: StudentStatus;
@@ -47,7 +47,13 @@ const STUDENT_HEADER_ALIASES: Record<keyof ParsedStudentImportRow, string[]> = {
   studentCode: ['كود الطالب (اختياري)', 'كود الطالب', 'studentCode', 'code'],
   fullName: ['اسم الطالب *', 'اسم الطالب', 'الاسم الكامل', 'fullName', 'name'],
   phone: ['هاتف الطالب *', 'هاتف الطالب', 'رقم الهاتف', 'phone'],
-  guardianPhone: ['هاتف ولي الأمر *', 'هاتف ولي الأمر', 'رقم ولي الأمر', 'guardianPhone'],
+  guardianPhone: [
+    'هاتف ولي الأمر *',
+    'هاتف ولي الأمر (اختياري)',
+    'هاتف ولي الأمر',
+    'رقم ولي الأمر',
+    'guardianPhone',
+  ],
   gradeLevel: ['الصف الدراسي *', 'الصف الدراسي', 'الصف', 'gradeLevel'],
   registrationDate: ['تاريخ التسجيل (YYYY-MM-DD)', 'تاريخ التسجيل', 'registrationDate'],
   status: ['الحالة', 'حالة الطالب', 'status'],
@@ -72,7 +78,7 @@ export class StudentsExcelService {
         { key: 'studentCode', header: 'كود الطالب (اختياري)', width: 22, numFmt: '@' },
         { key: 'fullName', header: 'اسم الطالب *', width: 28 },
         { key: 'phone', header: 'هاتف الطالب *', width: 20, numFmt: '@' },
-        { key: 'guardianPhone', header: 'هاتف ولي الأمر *', width: 20, numFmt: '@' },
+        { key: 'guardianPhone', header: 'هاتف ولي الأمر (اختياري)', width: 20, numFmt: '@' },
         {
           key: 'gradeLevel',
           header: 'الصف الدراسي *',
@@ -95,7 +101,7 @@ export class StudentsExcelService {
         title: 'تعليمات استيراد بيانات الطلاب من Excel',
         lines: [
           'أدخل بيانات الطلاب في الورقة الأولى (بيانات الطلاب) بدءاً من الصف رقم 2 أسفل العناوين مباشرة.',
-          'الحقول المميزة بعلامة (*) إجبارية: اسم الطالب، هاتف الطالب، هاتف ولي الأمر، والصف الدراسي.',
+          'الحقول المميزة بعلامة (*) إجبارية: اسم الطالب، هاتف الطالب، والصف الدراسي (وهاتف ولي الأمر اختياري).',
           'كود الطالب اختياري؛ إذا تُرك فارغاً سيقوم النظام بإنشاء كود فريد تلقائياً بصيغة STU-YYYY-XXXX.',
           'أعمدة الهاتف مضبوطة بصيغة نص (@) للحفاظ على الصفر البادئ (مثل 01012345678).',
           'تاريخ التسجيل اختياري بصيغة YYYY-MM-DD (مثل 2026-09-01)، وإذا تُرك فارغاً يُسجَّل بتاريخ اليوم.',
@@ -106,7 +112,7 @@ export class StudentsExcelService {
           'كود الطالب (اختياري)',
           'اسم الطالب *',
           'هاتف الطالب *',
-          'هاتف ولي الأمر *',
+          'هاتف ولي الأمر (اختياري)',
           'الصف الدراسي *',
           'تاريخ التسجيل (YYYY-MM-DD)',
           'الحالة',
@@ -240,7 +246,7 @@ export class StudentsExcelService {
         fullName: row.fullName,
         gradeLevel: row.gradeLevel,
         phone: row.phone,
-        guardianPhone: row.guardianPhone,
+        guardianPhone: row.guardianPhone ?? '',
         activeGroupsCount: Number(row.activeGroupsCount ?? 0),
         registrationDate: row.registrationDate,
         status: STUDENT_STATUS_LABELS[row.status as StudentStatus] ?? row.status,
@@ -264,18 +270,21 @@ export class StudentsExcelService {
       STUDENT_HEADER_ALIASES,
     );
 
-    if (!headerLookup.fullName || !headerLookup.phone || !headerLookup.guardianPhone || !headerLookup.gradeLevel) {
+    if (!headerLookup.fullName || !headerLookup.phone || !headerLookup.gradeLevel) {
       throw new BadRequestException(
-        'تنسيق الأعمدة غير مطابق للنموذج المعتمد. تأكد من وجود الأعمدة: اسم الطالب، هاتف الطالب، هاتف ولي الأمر، الصف الدراسي.',
+        'تنسيق الأعمدة غير مطابق للنموذج المعتمد. تأكد من وجود الأعمدة: اسم الطالب، هاتف الطالب، الصف الدراسي.',
       );
     }
 
-    const [activeGradeLevels] = await Promise.all([
-      this.repository.findActiveGradeLevelNames(),
-    ]);
+    const gradeLevelRecords = this.repository.findAllGradeLevelRecords
+      ? await this.repository.findAllGradeLevelRecords()
+      : (await this.repository.findActiveGradeLevelNames()).map((name) => ({
+          name,
+          isActive: true,
+        }));
 
-    const gradeLookup = new Map<string, string>(
-      activeGradeLevels.map((name) => [name.trim().toLowerCase(), name]),
+    const gradeLookup = new Map<string, { name: string; isActive: boolean }>(
+      gradeLevelRecords.map((g) => [g.name.trim().toLowerCase(), g]),
     );
 
     const candidateCodes: string[] = [];
@@ -311,9 +320,9 @@ export class StudentsExcelService {
         : '';
       const fullName = this.excelService.normalizeCellText(row.cells[headerLookup.fullName!]);
       const phone = this.excelService.normalizePhoneText(row.cells[headerLookup.phone!]);
-      const guardianPhone = this.excelService.normalizePhoneText(
-        row.cells[headerLookup.guardianPhone!],
-      );
+      const guardianPhone = headerLookup.guardianPhone
+        ? this.excelService.normalizePhoneText(row.cells[headerLookup.guardianPhone])
+        : '';
       const rawGradeLevel = this.excelService.normalizeCellText(row.cells[headerLookup.gradeLevel!]);
       const rawRegDate = headerLookup.registrationDate ? row.cells[headerLookup.registrationDate] : null;
       const rawStatus = headerLookup.status
@@ -322,6 +331,29 @@ export class StudentsExcelService {
       const rawNotes = headerLookup.notes
         ? this.excelService.normalizeCellText(row.cells[headerLookup.notes])
         : '';
+
+      let isSkipped = false;
+      if (rawCode) {
+        if (rawCode.length > 40) {
+          errors.push('كود الطالب يتجاوز الحد الأقصى (40 حرفاً)');
+        } else {
+          const upperCode = rawCode.toUpperCase();
+          if (seenInFileCodes.has(upperCode)) {
+            errors.push(`كود الطالب "${rawCode}" مكرر داخل نفس الملف`);
+          } else {
+            seenInFileCodes.add(upperCode);
+          }
+
+          if (existingCodes.has(upperCode)) {
+            if (duplicateStrategy === 'skip') {
+              isSkipped = true;
+              warnings.push(`كود الطالب "${rawCode}" مسجل مسبقاً — سيتم تخطي هذا الصف`);
+            } else {
+              errors.push(`كود الطالب "${rawCode}" مسجل مسبقاً في قاعدة البيانات`);
+            }
+          }
+        }
+      }
 
       if (!fullName || fullName.length < 2) {
         errors.push('اسم الطالب مطلوب ويجب ألا يقل عن حرفين');
@@ -335,8 +367,8 @@ export class StudentsExcelService {
         errors.push('هاتف الطالب يتجاوز الحد الأقصى (30 حرفاً)');
       }
 
-      if (!guardianPhone || guardianPhone.length < 6) {
-        errors.push('هاتف ولي الأمر مطلوب (6 أرقام على الأقل)');
+      if (guardianPhone && guardianPhone.length < 6) {
+        errors.push('هاتف ولي الأمر (إن وُجد) يجب ألا يقل عن 6 أرقام');
       } else if (guardianPhone.length > 30) {
         errors.push('هاتف ولي الأمر يتجاوز الحد الأقصى (30 حرفاً)');
       }
@@ -346,12 +378,15 @@ export class StudentsExcelService {
         errors.push('الصف الدراسي مطلوب');
       } else if (rawGradeLevel.length > 80) {
         errors.push('اسم الصف الدراسي يتجاوز الحد الأقصى (80 حرفاً)');
-      } else if (gradeLookup.size > 0) {
-        const canonical = gradeLookup.get(rawGradeLevel.toLowerCase());
-        if (!canonical) {
+      } else if (gradeLookup.size > 0 && !isSkipped) {
+        const matched = gradeLookup.get(rawGradeLevel.toLowerCase());
+        if (!matched) {
           errors.push(`الصف الدراسي "${rawGradeLevel}" غير مسجل في الصفوف الدراسية المفعّلة`);
         } else {
-          resolvedGradeLevel = canonical;
+          resolvedGradeLevel = matched.name;
+          if (!matched.isActive) {
+            warnings.push(`الصف الدراسي "${matched.name}" معطّل حالياً في إعدادات الصفوف`);
+          }
         }
       }
 
@@ -382,29 +417,6 @@ export class StudentsExcelService {
         errors.push('الملاحظات تتجاوز الحد الأقصى (2000 حرف)');
       }
 
-      let isSkipped = false;
-      if (rawCode) {
-        if (rawCode.length > 40) {
-          errors.push('كود الطالب يتجاوز الحد الأقصى (40 حرفاً)');
-        } else {
-          const upperCode = rawCode.toUpperCase();
-          if (seenInFileCodes.has(upperCode)) {
-            errors.push(`كود الطالب "${rawCode}" مكرر داخل نفس الملف`);
-          } else {
-            seenInFileCodes.add(upperCode);
-          }
-
-          if (existingCodes.has(upperCode)) {
-            if (duplicateStrategy === 'skip') {
-              isSkipped = true;
-              warnings.push(`كود الطالب "${rawCode}" مسجل مسبقاً — سيتم تخطي هذا الصف`);
-            } else {
-              errors.push(`كود الطالب "${rawCode}" مسجل مسبقاً في قاعدة البيانات`);
-            }
-          }
-        }
-      }
-
       if (fullName && phone) {
         const namePhoneKey = `${fullName.toLowerCase()}|${phone}`;
         if (seenInFileNamePhones.has(namePhoneKey)) {
@@ -419,7 +431,10 @@ export class StudentsExcelService {
       }
 
       let rowStatus: ExcelImportPreviewRow['status'] = 'valid';
-      if (errors.length > 0) {
+      if (isSkipped && errors.length === 0) {
+        rowStatus = 'skip';
+        skippedCount += 1;
+      } else if (errors.length > 0 && !isSkipped) {
         rowStatus = 'error';
         errorCount += 1;
       } else if (isSkipped) {
@@ -440,7 +455,7 @@ export class StudentsExcelService {
           studentCode: rawCode || null,
           fullName,
           phone,
-          guardianPhone,
+          guardianPhone: guardianPhone || null,
           gradeLevel: resolvedGradeLevel,
           registrationDate,
           status,

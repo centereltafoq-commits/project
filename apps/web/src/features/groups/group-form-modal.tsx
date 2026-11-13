@@ -42,8 +42,30 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const isEdit = Boolean(group);
-  const { options: dynamicGradeOptions } = useGradeLevels(true);
-  const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
+  const { gradeLevels: allGradeLevels } = useGradeLevels(false);
+  const activeGradeOptions = React.useMemo(() => {
+    const active = allGradeLevels
+      .filter((g) => g.isActive)
+      .map((g) => ({ value: g.name, label: g.name }));
+    return active.length > 0 ? active : GRADE_LEVEL_OPTIONS;
+  }, [allGradeLevels]);
+
+  const gradeOptions = React.useMemo(() => {
+    const currentGrade = group?.gradeLevel;
+    if (!currentGrade || activeGradeOptions.some((o) => o.value === currentGrade)) {
+      return activeGradeOptions;
+    }
+    const matchedAll = allGradeLevels.find((g) => g.name === currentGrade);
+    return [
+      {
+        value: currentGrade,
+        label: matchedAll ? `${currentGrade} (غير مفعّل)` : `${currentGrade} (سجل سابق)`,
+      },
+      ...activeGradeOptions,
+    ];
+  }, [activeGradeOptions, allGradeLevels, group?.gradeLevel]);
+
+  const defaultGrade = activeGradeOptions[0]?.value ?? 'الثالث الثانوي';
 
   const [form, setForm] = React.useState({
     groupCode: '',
@@ -62,7 +84,12 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
 
   const { data: lookupsData } = useQuery<{
     teachers: Array<{ id: string; fullName: string; specialization?: string }>;
-    assistants: Array<{ id: string; fullName: string }>;
+    assistants: Array<{
+      id: string;
+      fullName: string;
+      calculationMethod?: string;
+      rateValue?: string;
+    }>;
   }>({
     queryKey: ['groups-lookups'],
     enabled: open,
@@ -75,7 +102,7 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
         groupCode: '',
         name: '',
         subject: '',
-        gradeLevel: gradeOptions[0]?.value ?? 'الثالث الثانوي',
+        gradeLevel: defaultGrade,
         primaryTeacherId: '',
         defaultClassroomId: '',
         maxStudents: '50',
@@ -186,6 +213,50 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          const monthlyPrice = Number(policyForm.monthlyPrice || 0);
+          const teacherShare = Number(policyForm.teacherSharePerStudent || 0);
+          const centerShare = Number(policyForm.centerSharePerStudent || 0);
+          if (
+            (policyForm.revenueSplitMethod === GroupRevenueSplitMethod.ACTUAL_ATTENDANCE_RATIO ||
+              policyForm.revenueSplitMethod === GroupRevenueSplitMethod.FIXED_PER_STUDENT) &&
+            teacherShare + centerShare > monthlyPrice + 0.001
+          ) {
+            notify(
+              `مجموع نصيب المدرس والسنتر (${teacherShare + centerShare} ج.م) لا يمكن أن يتجاوز الاشتراك الشهري للطالب (${monthlyPrice} ج.م)`,
+              'error',
+            );
+            return;
+          }
+          if (
+            policyForm.revenueSplitMethod === GroupRevenueSplitMethod.CUSTOM_PERCENTAGE &&
+            (Number(policyForm.teacherPercentage || 0) < 0 ||
+              Number(policyForm.teacherPercentage || 0) > 100)
+          ) {
+            notify('نسبة المدرس المئوية يجب أن تكون بين 0% و 100%', 'error');
+            return;
+          }
+          if (
+            policyForm.fullMonthAbsencePolicy ===
+              FullMonthAbsencePolicy.CHARGE_FIXED_RESERVATION_FEE &&
+            Number(policyForm.fullAbsenceFixedFee || 0) > monthlyPrice + 0.001
+          ) {
+            notify('رسوم حجز المقعد لا يمكن أن تتجاوز قيمة الاشتراك الشهري', 'error');
+            return;
+          }
+          for (const lnk of assistantLinks.filter((l) => l.assistantId)) {
+            const asst = lookupsData?.assistants.find((a) => a.id === lnk.assistantId);
+            const effectiveMethod = lnk.overrideCalculationMethod || asst?.calculationMethod;
+            const effectiveRate = lnk.overrideRateValue
+              ? Number(lnk.overrideRateValue)
+              : Number(asst?.rateValue || 0);
+            if (
+              effectiveMethod === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT &&
+              effectiveRate > 100
+            ) {
+              notify('نسبة عمولة المساعد لا يمكن أن تتجاوز 100%', 'error');
+              return;
+            }
+          }
           mutation.mutate();
         }}
         className="space-y-5"
@@ -228,7 +299,12 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
           onSlotsChange={setSlots}
           assistantLinks={assistantLinks}
           onAssistantLinksChange={setAssistantLinks}
-          assistantOptions={(lookupsData?.assistants ?? []).map((a) => ({ value: a.id, label: a.fullName }))}
+          assistantOptions={(lookupsData?.assistants ?? []).map((a) => ({
+            value: a.id,
+            label: a.fullName,
+            calculationMethod: a.calculationMethod,
+            rateValue: a.rateValue,
+          }))}
         />
         <Textarea label="ملاحظات المجموعة" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         <div className="flex justify-end gap-2 pt-2">

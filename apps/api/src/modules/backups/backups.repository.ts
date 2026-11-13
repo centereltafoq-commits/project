@@ -127,10 +127,17 @@ export class BackupsRepository {
     return deleted;
   }
 
+  async findInProgressRecords() {
+    return this.db
+      .select()
+      .from(backupRecords)
+      .where(eq(backupRecords.status, 'IN_PROGRESS'));
+  }
+
   async fixRestoredInProgressRecords() {
     await this.db
       .update(backupRecords)
-      .set({ status: 'SUCCESS' })
+      .set({ status: 'FAILED', errorMessage: 'النسخة غير مكتملة أثناء الاستعادة' })
       .where(eq(backupRecords.status, 'IN_PROGRESS'));
   }
 }

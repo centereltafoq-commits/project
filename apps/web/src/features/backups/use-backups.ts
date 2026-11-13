@@ -45,8 +45,9 @@ export function useBackupMutations() {
   const restoreMutation = useMutation({
     mutationFn: ({ id, password }: { id: string; password: string }) =>
       backupsApi.restore(id, password),
-    onSuccess: () => {
-      queryClient.invalidateQueries();
+    onSuccess: async () => {
+      await queryClient.invalidateQueries();
+      await queryClient.refetchQueries({ queryKey: ['settings'] });
     },
   });
 

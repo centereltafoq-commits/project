@@ -22,7 +22,12 @@ import {
 } from '../../../database/schemas';
 import { normalizePagination } from '../../../common/utils/pagination.util';
 import { TeacherPayoutsQueryDto } from '../dto/payments-payouts.dto';
-import { parseMoney, roundMoney, toMoneyString } from '../utils/money.util';
+import {
+  assertPayoutWithinRemainingBalance,
+  parseMoney,
+  roundMoney,
+  toMoneyString,
+} from '../utils/money.util';
 
 export interface CreateTeacherPayoutTxInput {
   referenceNumber: string;
@@ -130,9 +135,7 @@ export class TeacherPayoutsRepository {
         )
         .for('update');
 
-      if (monthly?.isClosed) {
-        throw new ConflictException('الشهر المالي مغلق نهائياً ولا يمكن تسجيل صرفيات عليه');
-      }
+      assertPayoutWithinRemainingBalance(monthly, input.amount);
 
       const [created] = await tx
         .insert(teacherPayouts)

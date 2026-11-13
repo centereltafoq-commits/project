@@ -68,9 +68,9 @@ export class SessionSheetRepository {
   async upsertSessionAttendance(params: {
     sessionId: string;
     actorUserId: string;
-    topic?: string;
-    inserts: Array<{ studentId: string; status: string; notes?: string }>;
-    updates: Array<{ studentId: string; status: string; notes?: string }>;
+    topic?: string | null;
+    inserts: Array<{ studentId: string; status: string; notes: string | null }>;
+    updates: Array<{ studentId: string; status: string; notes: string | null }>;
   }) {
     return this.db.transaction(async (tx) => {
       if (params.inserts.length > 0) {

@@ -70,21 +70,19 @@ export class CalendarRepository {
         .leftJoin(classrooms, eq(sessions.classroomId, classrooms.id))
         .where(and(...sessionConditions))
         .orderBy(asc(sessions.sessionDate), asc(sessions.startTime)),
-      params.teacherId
-        ? Promise.resolve([])
-        : this.db
-            .select({
-              id: classroomMaintenances.id,
-              startAt: classroomMaintenances.startAt,
-              endAt: classroomMaintenances.endAt,
-              reason: classroomMaintenances.reason,
-              classroomId: classrooms.id,
-              classroomName: classrooms.name,
-              roomNumber: classrooms.roomNumber,
-            })
-            .from(classroomMaintenances)
-            .innerJoin(classrooms, eq(classroomMaintenances.classroomId, classrooms.id))
-            .where(and(...maintConditions)),
+      this.db
+        .select({
+          id: classroomMaintenances.id,
+          startAt: classroomMaintenances.startAt,
+          endAt: classroomMaintenances.endAt,
+          reason: classroomMaintenances.reason,
+          classroomId: classrooms.id,
+          classroomName: classrooms.name,
+          roomNumber: classrooms.roomNumber,
+        })
+        .from(classroomMaintenances)
+        .innerJoin(classrooms, eq(classroomMaintenances.classroomId, classrooms.id))
+        .where(and(...maintConditions)),
       this.db
         .select({
           id: classrooms.id,

@@ -101,6 +101,15 @@ export function AssistantFormModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          const numRate = Number(form.rateValue || 0);
+          if (!Number.isFinite(numRate) || numRate < 0) {
+            notify('قيمة النسبة أو المبلغ يجب أن تكون رقماً غير سالب', 'error');
+            return;
+          }
+          if (isPercent && numRate > 100) {
+            notify('نسبة عمولة المساعد لا يمكن أن تتجاوز 100%', 'error');
+            return;
+          }
           mutation.mutate();
         }}
         className="space-y-4"
@@ -150,6 +159,7 @@ export function AssistantFormModal({
             type="number"
             step="0.01"
             min={0}
+            max={isPercent ? 100 : undefined}
             required
             value={form.rateValue}
             onChange={(e) => setForm({ ...form, rateValue: e.target.value })}

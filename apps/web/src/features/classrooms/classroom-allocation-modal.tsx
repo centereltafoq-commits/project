@@ -222,8 +222,9 @@ export function ClassroomAllocationModal({
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['group-detail'] });
       queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['groups-lookups'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),
   });
@@ -231,19 +232,27 @@ export function ClassroomAllocationModal({
   // Release mutation
   const releaseMutation = useMutation({
     mutationFn: async (groupId: string) => {
-      if (!classroom) return;
+      if (!classroom) {
+        throw new Error('لم يتم تحديد القاعة');
+      }
       return apiClient.delete(`/classrooms/${classroom.id}/allocate-group/${groupId}`);
     },
-    onSuccess: () => {
+    onSuccess: (_data, releasedGroupId) => {
       notify('تم تحرير القاعة وإلغاء تسكين المجموعة بنجاح', 'success');
+      if (selectedGroupId === releasedGroupId) {
+        setSelectedGroupId('');
+        setDraftSlots([]);
+      }
       queryClient.invalidateQueries({ queryKey: ['classroom-allocated-groups'] });
       queryClient.invalidateQueries({ queryKey: ['classroom-unallocated-groups'] });
       queryClient.invalidateQueries({ queryKey: ['classroom-schedule'] });
       queryClient.invalidateQueries({ queryKey: ['classrooms'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['group-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['groups-lookups'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),
   });

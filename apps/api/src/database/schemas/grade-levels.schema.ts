@@ -22,6 +22,7 @@ export const gradeLevels = pgTable(
   },
   (t) => [
     uniqueIndex('uq_grade_levels_name').on(t.name),
+    uniqueIndex('uq_grade_levels_code').on(t.code),
     index('idx_grade_levels_order').on(t.orderIndex),
     index('idx_grade_levels_active').on(t.isActive),
   ],

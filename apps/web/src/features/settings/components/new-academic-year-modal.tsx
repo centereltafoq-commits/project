@@ -61,6 +61,20 @@ export function NewAcademicYearModal({
       return;
     }
 
+    const trimmedYear = newAcademicYear.trim();
+    if (trimmedYear) {
+      const yearMatch = /^(\d{4})\s*[\/\-]\s*(\d{4})$/.exec(trimmedYear);
+      if (
+        !yearMatch ||
+        Number(yearMatch[1]) < 2000 ||
+        Number(yearMatch[1]) > 2099 ||
+        Number(yearMatch[2]) !== Number(yearMatch[1]) + 1
+      ) {
+        notify('صيغة العام الدراسي الجديد غير صالحة، يجب أن تكون عامين متتاليين مثل: 2027 / 2028', 'error');
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
       setProgressStage('backup');

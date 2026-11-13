@@ -61,8 +61,12 @@ describe('ClassroomsService - Flexible Allocation & Conflict Prevention', () => 
         scheduleSlots: slots ?? [{ dayOfWeek: 0, startTime: '16:00', endTime: '18:00', classroomId: roomId }],
       })),
       releaseGroup: vi.fn().mockResolvedValue({
-        ...sampleGroup,
-        defaultClassroomId: null,
+        group: {
+          ...sampleGroup,
+          defaultClassroomId: null,
+        },
+        wasLinked: true,
+        clearedSessionsCount: 0,
       }),
       create: vi.fn(),
       update: vi.fn(),
@@ -256,6 +260,18 @@ describe('ClassroomsService - Flexible Allocation & Conflict Prevention', () => 
       await expect(
         service.releaseGroup('room-1', 'non-existent', mockActor),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ConflictException when group is not linked to classroom', async () => {
+      mockRepo.releaseGroup.mockResolvedValueOnce({
+        group: sampleGroup,
+        wasLinked: false,
+        clearedSessionsCount: 0,
+      });
+
+      await expect(
+        service.releaseGroup('room-1', 'group-1', mockActor),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

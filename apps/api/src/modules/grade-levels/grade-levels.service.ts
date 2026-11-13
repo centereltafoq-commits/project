@@ -34,6 +34,14 @@ export class GradeLevelsService {
       throw new ConflictException('يوجد صف دراسي مسجل مسبقاً بهذا الاسم');
     }
 
+    const normalizedCode = dto.code?.trim();
+    if (normalizedCode && this.gradeLevelsRepository.findByCode) {
+      const existingByCode = await this.gradeLevelsRepository.findByCode(normalizedCode);
+      if (existingByCode) {
+        throw new ConflictException('يوجد صف دراسي مسجل مسبقاً بهذا الكود');
+      }
+    }
+
     const created = await this.gradeLevelsRepository.create(dto);
 
     await this.audit.record({
@@ -58,7 +66,15 @@ export class GradeLevelsService {
       }
     }
 
-    const updated = await this.gradeLevelsRepository.update(id, dto);
+    const normalizedCode = dto.code !== undefined ? dto.code.trim() : undefined;
+    if (normalizedCode && this.gradeLevelsRepository.findByCode) {
+      const duplicateCode = await this.gradeLevelsRepository.findByCode(normalizedCode);
+      if (duplicateCode && duplicateCode.id !== id) {
+        throw new ConflictException('يوجد صف دراسي آخر مسجل بنفس هذا الكود');
+      }
+    }
+
+    const updated = await this.gradeLevelsRepository.update(id, dto, gradeLevel.name);
 
     await this.audit.record({
       actorUserId: actor?.id ?? null,

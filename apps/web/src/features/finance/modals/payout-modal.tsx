@@ -27,7 +27,7 @@ interface PayoutModalProps {
   onOpenChange: (open: boolean) => void;
   yearMonth: string;
   preset: PayoutTargetPreset | null;
-  options: Array<{ value: string; label: string }>;
+  options: Array<{ value: string; label: string; remainingBalance?: number }>;
 }
 
 export function PayoutModal({
@@ -47,11 +47,18 @@ export function PayoutModal({
   const [payoutDate, setPayoutDate] = React.useState(getTodayIsoDate());
   const [referenceNumber, setReferenceNumber] = React.useState('');
   const [notes, setNotes] = React.useState('');
+  const [formError, setFormError] = React.useState<string | null>(null);
 
   const isTeacher = mode === 'teacher';
+  const selectedOption = React.useMemo(
+    () => options.find((o) => o.value === targetId),
+    [options, targetId],
+  );
+  const effectiveRemaining = preset?.remainingBalance ?? selectedOption?.remainingBalance;
 
   React.useEffect(() => {
     if (!open) return;
+    setFormError(null);
     if (preset) {
       setTargetId(preset.id);
       setAmount(preset.remainingBalance > 0 ? String(preset.remainingBalance) : '');
@@ -95,8 +102,45 @@ export function PayoutModal({
         'success',
       );
     },
-    onError: (err) => notify(extractErrorMessage(err), 'error'),
+    onError: (err) => {
+      const msg = extractErrorMessage(err);
+      setFormError(msg);
+      notify(msg, 'error');
+    },
   });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    const numAmount = Number(amount);
+    if (!targetId) {
+      const msg = isTeacher ? 'يرجى اختيار المدرس' : 'يرجى اختيار المساعد';
+      setFormError(msg);
+      notify(msg, 'error');
+      return;
+    }
+    if (!Number.isFinite(numAmount) || numAmount <= 0) {
+      const msg = 'مبلغ الصرف يجب أن يكون أكبر من صفر';
+      setFormError(msg);
+      notify(msg, 'error');
+      return;
+    }
+    if (effectiveRemaining !== undefined) {
+      if (effectiveRemaining <= 0) {
+        const msg = 'لا يوجد رصيد متبقٍ مستحق للصرف في هذا الشهر';
+        setFormError(msg);
+        notify(msg, 'error');
+        return;
+      }
+      if (numAmount > effectiveRemaining) {
+        const msg = `مبلغ الصرف يتجاوز الرصيد المتبقي المستحق (${formatCurrency(effectiveRemaining)})`;
+        setFormError(msg);
+        notify(msg, 'error');
+        return;
+      }
+    }
+    payoutMutation.mutate();
+  };
 
   return (
     <Modal
@@ -106,12 +150,17 @@ export function PayoutModal({
       description="تسجيل صرفية مالية وتحديث الرصيد المتبقي للشهر المحدد تلقائياً"
     >
       <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          payoutMutation.mutate();
-        }}
+        onSubmit={handleSubmit}
         className="space-y-4"
       >
+        {formError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive"
+          >
+            {formError}
+          </div>
+        )}
         {preset ? (
           <div className="rounded-xl border border-border bg-muted/30 p-3.5 text-sm space-y-1">
             <div className="font-bold text-foreground">
@@ -132,7 +181,15 @@ export function PayoutModal({
             searchPlaceholder={isTeacher ? 'ابحث باسم المدرس أو الكود...' : 'ابحث باسم المساعد أو الكود...'}
             placeholder={isTeacher ? 'اختر المدرس...' : 'اختر المساعد...'}
             value={targetId}
-            onChange={(e) => setTargetId(e.target.value)}
+            onChange={(e) => {
+              const nextId = e.target.value;
+              setTargetId(nextId);
+              setFormError(null);
+              const opt = options.find((o) => o.value === nextId);
+              if (opt?.remainingBalance !== undefined) {
+                setAmount(opt.remainingBalance > 0 ? String(opt.remainingBalance) : '');
+              }
+            }}
             options={options}
           />
         )}
@@ -143,9 +200,13 @@ export function PayoutModal({
             type="number"
             step="0.01"
             min="0.01"
+            max={effectiveRemaining !== undefined && effectiveRemaining > 0 ? effectiveRemaining : undefined}
             required
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setFormError(null);
+            }}
           />
           <Select
             searchable

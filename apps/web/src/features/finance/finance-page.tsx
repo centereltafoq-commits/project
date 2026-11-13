@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Banknote,
@@ -46,7 +47,16 @@ import { PaymentsHistoryTab } from './tabs/payments-history-tab';
 import { StudentBillingTab } from './tabs/student-billing-tab';
 import { TeacherDuesTab } from './tabs/teacher-dues-tab';
 
+const VALID_FINANCE_TABS = new Set([
+  'student-billing',
+  'payments-history',
+  'teacher-dues',
+  'assistant-dues',
+  'expenses',
+]);
+
 export function FinancePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const { hasPermission } = useAuth();
@@ -56,6 +66,20 @@ export function FinancePage() {
     hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT) ||
     hasPermission(PERMISSIONS.FINANCE_PAYOUTS) ||
     canCloseMonth;
+
+  const rawTab = searchParams.get('tab');
+  const activeTab = rawTab && VALID_FINANCE_TABS.has(rawTab) ? rawTab : 'student-billing';
+
+  const handleTabChange = (nextTab: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', nextTab);
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
   const [closeConfirmOpen, setCloseConfirmOpen] = React.useState(false);
@@ -206,7 +230,7 @@ export function FinancePage() {
         />
       </div>
 
-      <Tabs defaultValue="student-billing">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="no-print">
           <TabsTrigger value="student-billing">
             <GraduationCap className="h-4 w-4" />

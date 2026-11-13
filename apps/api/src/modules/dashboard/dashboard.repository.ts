@@ -68,6 +68,7 @@ export class DashboardRepository {
       this.db
         .select({
           groupsCount: sql<number>`COUNT(*) FILTER (WHERE ${groups.isActive} = true)::int`,
+          scheduledGroupsCount: sql<number>`COUNT(*) FILTER (WHERE ${groups.isActive} = true AND jsonb_array_length(COALESCE(${groups.scheduleSlots}, '[]'::jsonb)) > 0)::int`,
         })
         .from(groups),
       this.db
@@ -212,6 +213,7 @@ export class DashboardRepository {
       teachersCount: Number(teacherStats?.teachersCount ?? 0),
       assistantsCount: Number(assistantStats?.assistantsCount ?? 0),
       groupsCount: Number(groupStats?.groupsCount ?? 0),
+      scheduledGroupsCount: Number(groupStats?.scheduledGroupsCount ?? 0),
       todaySessionsCount: todaySessionsRows.filter((s) => s.status !== 'CANCELLED').length,
       todaySessions: todaySessionsRows,
       todayAttendance: {

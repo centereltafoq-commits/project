@@ -27,6 +27,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
 
   const [search, setSearch] = React.useState('');
   const [topic, setTopic] = React.useState('');
+  const [saveError, setSaveError] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<
     Record<string, { status: AttendanceStatus; notes: string }>
   >({});
@@ -37,7 +38,11 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
     queryFn: async () => (await apiClient.get(`/attendance/sessions/${sessionId}/sheet`)).data,
   });
 
+  const isMonthClosed = Boolean(data?.isMonthClosed);
+  const isSheetEditable = canRecord && !isMonthClosed;
+
   React.useEffect(() => {
+    setSaveError(null);
     if (!data) return;
     setTopic(data.session.topic ?? '');
     const initial: Record<string, { status: AttendanceStatus; notes: string }> = {};
@@ -47,10 +52,10 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
       }
     }
     setDraft(initial);
-  }, [data]);
+  }, [data, sessionId]);
 
   const markAllPresent = () => {
-    if (!data) return;
+    if (!data || !isSheetEditable) return;
     setDraft((prev) => {
       const next = { ...prev };
       for (const s of data.students) {
@@ -68,16 +73,22 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (isMonthClosed) {
+        throw new Error(
+          `الشهر المالي (${data?.session.yearMonth}) مغلق نهائياً ولا يمكن حفظ أو تعديل الحضور فيه.`,
+        );
+      }
       const records = Object.entries(draft).map(([studentId, val]) => ({
         studentId,
         status: val.status,
-        notes: val.notes || undefined,
+        notes: val.notes.trim(),
       }));
       return apiClient.post(`/attendance/sessions/${sessionId}/record`, {
-        topic: topic || undefined,
+        topic: topic.trim(),
         records,
       });
     },
+    onMutate: () => setSaveError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session-sheet', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
@@ -88,7 +99,11 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
       notify('تم حفظ كشف الحضور بنجاح وتحديث حالة الحصة', 'success');
       onClose();
     },
-    onError: (err) => notify(extractErrorMessage(err), 'error'),
+    onError: (err) => {
+      const msg = extractErrorMessage(err);
+      setSaveError(msg);
+      notify(msg, 'error');
+    },
   });
 
   const filteredStudents = React.useMemo(() => {
@@ -134,6 +149,24 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
         </div>
       ) : (
         <div className="space-y-4">
+          {isMonthClosed && (
+            <div
+              role="alert"
+              className="rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-xs font-semibold text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-300"
+            >
+              الشهر المالي ({data.session.yearMonth}) مغلق نهائياً — العرض للقراءة فقط ولا يمكن حفظ أو تعديل الحضور.
+            </div>
+          )}
+
+          {saveError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+            >
+              {saveError}
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 p-3 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="neutral">إجمالي المقيدين بتاريخ الحصة: {data.students.length}</Badge>
@@ -141,7 +174,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
               <Badge variant="danger">غائب: {liveCounts.absent}</Badge>
               <Badge variant="warning">بعذر: {liveCounts.excused}</Badge>
             </div>
-            {canRecord && (
+            {isSheetEditable && (
               <Button type="button" size="sm" variant="secondary" onClick={markAllPresent}>
                 <CheckCheck className="h-4 w-4" />
                 تحضير الكل
@@ -162,7 +195,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
             </div>
             <Input
               placeholder="عنوان الدرس المشروح في هذه الحصة..."
-              disabled={!canRecord}
+              disabled={!isSheetEditable}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
             />
@@ -188,7 +221,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
                       key={st.studentId}
                       student={st}
                       current={draft[st.studentId]}
-                      canRecord={canRecord}
+                      canRecord={isSheetEditable}
                       canOverride={canOverride}
                       onStatusChange={(status) =>
                         setDraft((prev) => ({
@@ -254,12 +287,12 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
               {canRecord && (
                 <Button
                   type="button"
-                  disabled={Object.keys(draft).length === 0}
+                  disabled={Object.keys(draft).length === 0 || isMonthClosed}
                   isLoading={saveMutation.isPending}
                   onClick={() => saveMutation.mutate()}
                 >
                   <Save className="h-4 w-4" />
-                  حفظ كشف الحضور
+                  {isMonthClosed ? 'الشهر مغلق' : 'حفظ كشف الحضور'}
                 </Button>
               )}
             </div>

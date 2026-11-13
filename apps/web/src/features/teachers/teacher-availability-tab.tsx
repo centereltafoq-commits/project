@@ -25,6 +25,32 @@ export function TeacherAvailabilityTab({
     setSlots(initialSlots);
   }, [initialSlots]);
 
+  const validationError = React.useMemo(() => {
+    for (let i = 0; i < slots.length; i++) {
+      const a = slots[i];
+      const aStart = a.startTime.slice(0, 5);
+      const aEnd = a.endTime.slice(0, 5);
+      if (!aStart || !aEnd || aStart >= aEnd) {
+        const dayLabel = ARABIC_DAYS[Number(a.dayOfWeek)] ?? String(a.dayOfWeek);
+        return `وقت النهاية يجب أن يكون بعد وقت البداية ليوم ${dayLabel}.`;
+      }
+      for (let j = i + 1; j < slots.length; j++) {
+        const b = slots[j];
+        if (Number(a.dayOfWeek) !== Number(b.dayOfWeek)) continue;
+        const bStart = b.startTime.slice(0, 5);
+        const bEnd = b.endTime.slice(0, 5);
+        const dayLabel = ARABIC_DAYS[Number(a.dayOfWeek)] ?? String(a.dayOfWeek);
+        if (aStart === bStart && aEnd === bEnd) {
+          return `لا يمكن تكرار نفس فترة الإتاحة مرتين (يوم ${dayLabel}: ${aStart} - ${aEnd}).`;
+        }
+        if (aStart < bEnd && aEnd > bStart) {
+          return `يوجد تداخل بين فترتي إتاحة في يوم ${dayLabel} (${aStart} - ${aEnd} و ${bStart} - ${bEnd}).`;
+        }
+      }
+    }
+    return null;
+  }, [slots]);
+
   const saveMutation = useMutation({
     mutationFn: async () =>
       apiClient.put(`/teachers/${teacherId}/availability`, {
@@ -42,10 +68,20 @@ export function TeacherAvailabilityTab({
     onError: (err) => notify(extractErrorMessage(err), 'error'),
   });
 
+  const handleSave = () => {
+    if (validationError) {
+      notify(validationError, 'error');
+      return;
+    }
+    saveMutation.mutate();
+  };
+
   const addSlot = () => {
+    const usedDays = new Set(slots.map((s) => Number(s.dayOfWeek)));
+    const nextDay = [0, 1, 2, 3, 4, 5, 6].find((d) => !usedDays.has(d)) ?? 0;
     setSlots((prev) => [
       ...prev,
-      { dayOfWeek: 0, startTime: '14:00', endTime: '18:00', isActive: true },
+      { dayOfWeek: nextDay, startTime: '14:00', endTime: '18:00', isActive: true },
     ]);
   };
 
@@ -76,7 +112,7 @@ export function TeacherAvailabilityTab({
               type="button"
               size="sm"
               isLoading={saveMutation.isPending}
-              onClick={() => saveMutation.mutate()}
+              onClick={handleSave}
             >
               <Save className="h-4 w-4" />
               حفظ الإتاحة
@@ -85,6 +121,14 @@ export function TeacherAvailabilityTab({
         )}
       </CardHeader>
       <CardContent className="space-y-3">
+        {validationError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+          >
+            {validationError}
+          </div>
+        )}
         {slots.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {canEdit

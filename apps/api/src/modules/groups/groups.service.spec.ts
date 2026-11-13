@@ -239,4 +239,26 @@ describe('GroupsService - Classroom Unassigned Rule, Conflict Validation & RBAC 
     expect(managerLookups.teachers).toHaveLength(1);
     expect(managerLookups.assistants).toHaveLength(1);
   });
+
+  it('rejects financial policy when teacherSharePerStudent + centerSharePerStudent exceeds monthlyPrice', async () => {
+    await expect(
+      service.create(
+        {
+          name: 'مجموعة أنصبة متجاوزة',
+          subject: 'كيمياء',
+          gradeLevel: 'الثالث الثانوي',
+          primaryTeacherId: 'tch-1',
+          monthlySessionsCount: 8,
+          monthlyPrice: 320,
+          scheduleSlots: [{ dayOfWeek: 2, startTime: '14:00', endTime: '16:00' }],
+          financialPolicy: {
+            ...samplePolicy,
+            teacherSharePerStudent: 245,
+            centerSharePerStudent: 80,
+          },
+        },
+        ownerActor,
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
 });

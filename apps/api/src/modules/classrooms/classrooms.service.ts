@@ -357,7 +357,10 @@ export class ClassroomsService {
       throw new NotFoundException('المجموعة المطلوبة غير موجودة');
     }
 
-    await this.repository.releaseGroup(classroomId, groupId, true);
+    const releaseResult = await this.repository.releaseGroup(classroomId, groupId, true);
+    if (!releaseResult?.group || !releaseResult.wasLinked) {
+      throw new ConflictException('هذه المجموعة غير مسكنة في هذه القاعة بالفعل');
+    }
 
     await this.audit.record({
       actorUserId: actor.id,
@@ -369,10 +372,18 @@ export class ClassroomsService {
         classroomId,
         groupId,
       },
+      afterData: {
+        classroomId,
+        groupId,
+        clearedSessionsCount: releaseResult.clearedSessionsCount,
+      },
     });
 
     await this.invalidateCaches();
 
-    return { success: true };
+    return {
+      success: true,
+      clearedSessionsCount: releaseResult.clearedSessionsCount,
+    };
   }
 }

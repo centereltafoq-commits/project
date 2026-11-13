@@ -165,7 +165,7 @@ describe('SettingsService', () => {
   describe('uploadLogo & removeLogo', () => {
     it('uploads valid image, updates settings repository, and logs audit event', async () => {
       const mockFile = {
-        buffer: Buffer.from('fake-image-bytes'),
+        buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00]),
         originalname: 'logo.png',
         mimetype: 'image/png',
       } as any;
@@ -184,6 +184,30 @@ describe('SettingsService', () => {
           action: 'system.settings_logo_uploaded',
           actorUserId: userId,
         }),
+      );
+    });
+
+    it('rejects corrupted raster image bytes disguised as PNG', async () => {
+      const corruptPng = {
+        buffer: Buffer.from('not-a-valid-png-file'),
+        originalname: 'corrupt.png',
+        mimetype: 'image/png',
+      } as any;
+
+      await expect(service.uploadLogo(corruptPng)).rejects.toThrow(
+        /محتوى ملف الصورة تالف أو لا يطابق صيغة الصورة المحددة/,
+      );
+    });
+
+    it('rejects malformed SVG without valid svg root tag', async () => {
+      const corruptSvg = {
+        buffer: Buffer.from('plain garbage not svg'),
+        originalname: 'broken.svg',
+        mimetype: 'image/svg+xml',
+      } as any;
+
+      await expect(service.uploadLogo(corruptSvg)).rejects.toThrow(
+        /محتوى ملف SVG غير صالح أو تالف/,
       );
     });
 

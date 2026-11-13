@@ -1,3 +1,4 @@
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 
 /**
@@ -53,4 +54,34 @@ export function generateReferenceCode(
     suffix += ALPHANUMERIC[bytes[i]! % ALPHANUMERIC.length];
   }
   return `${prefix}-${compactMonth}-${suffix}`;
+}
+
+/**
+ * Ensures a staff payout cannot exceed the remaining unpaid dues for the month
+ * and rejects payouts on closed financial periods.
+ */
+export function assertPayoutWithinRemainingBalance(
+  monthly:
+    | { totalDues: string | number; totalPaidOut: string | number; isClosed: boolean }
+    | undefined,
+  requestedAmount: number,
+): void {
+  if (monthly?.isClosed) {
+    throw new ConflictException('الشهر المالي مغلق نهائياً ولا يمكن تسجيل صرفيات عليه');
+  }
+
+  const totalDues = monthly ? parseMoney(monthly.totalDues) : 0;
+  const totalPaidOut = monthly ? parseMoney(monthly.totalPaidOut) : 0;
+  const remaining = roundMoney(Math.max(0, totalDues - totalPaidOut));
+  const cleanAmount = roundMoney(requestedAmount);
+
+  if (!monthly || remaining <= 0) {
+    throw new BadRequestException('لا يوجد رصيد متبقٍ مستحق للصرف في هذا الشهر');
+  }
+
+  if (cleanAmount > remaining) {
+    throw new BadRequestException(
+      `المبلغ المطلوب صرفه (${cleanAmount} ج.م) يتجاوز الرصيد المتبقي المستحق (${remaining} ج.م)`,
+    );
+  }
 }

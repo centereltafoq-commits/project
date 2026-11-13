@@ -44,8 +44,9 @@ export function GroupsPage() {
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
 
-  const { options: dynamicGradeOptions } = useGradeLevels(true);
-  const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
+  const { options: dynamicGradeOptions } = useGradeLevels(false);
+  const baseGradeOptions =
+    dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
 
   const { data, isLoading } = useQuery<PaginatedResult<GroupRow>>({
     queryKey: ['groups', page, limit, debouncedSearch, gradeFilter, activeFilter],
@@ -62,6 +63,19 @@ export function GroupsPage() {
       return res.data;
     },
   });
+
+  const gradeOptions = React.useMemo(() => {
+    const map = new Map(baseGradeOptions.map((o) => [o.value, o]));
+    for (const row of data?.data ?? []) {
+      if (row.gradeLevel && !map.has(row.gradeLevel)) {
+        map.set(row.gradeLevel, { value: row.gradeLevel, label: row.gradeLevel });
+      }
+    }
+    if (gradeFilter && !map.has(gradeFilter)) {
+      map.set(gradeFilter, { value: gradeFilter, label: gradeFilter });
+    }
+    return Array.from(map.values());
+  }, [baseGradeOptions, data?.data, gradeFilter]);
 
   const { data: editingDetail } = useQuery<GroupDetailData>({
     queryKey: ['group-detail', editingGroupId],

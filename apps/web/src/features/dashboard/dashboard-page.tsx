@@ -23,7 +23,6 @@ import { formatYearMonthAr, getCurrentYearMonth } from '@/lib/formatters';
 import { DashboardAcademicTab } from './components/dashboard-academic-tab';
 import { DashboardFinanceTab } from './components/dashboard-finance-tab';
 import { DashboardHeroKpis } from './components/dashboard-hero-kpis';
-import { DashboardMonthlySessionsCard } from './components/dashboard-monthly-sessions-card';
 import { DashboardOperationsTab } from './components/dashboard-operations-tab';
 import { DashboardSummaryData } from './dashboard.types';
 
@@ -45,10 +44,10 @@ export function DashboardPage() {
     });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="لوحة التحكم التنفيذية"
-        description={`نظرة شاملة ومباشرة على الأداء الأكاديمي والمالي والتشغيلي للسنتر — ${formatYearMonthAr(yearMonth)}`}
+        description={`مركز القيادة اليومي والأداء المالي لشهر ${formatYearMonthAr(yearMonth)}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <MonthPicker
@@ -81,16 +80,16 @@ export function DashboardPage() {
       />
 
       {isLoading ? (
-        <div className="space-y-6">
-          {/* Skeleton for 4 Hero Cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, idx) => (
               <Card key={idx} className="h-28 animate-pulse bg-muted/50" />
             ))}
           </div>
-          {/* Skeleton for tabs & main card */}
-          <div className="h-10 w-80 animate-pulse rounded-lg bg-muted/50" />
-          <Card className="h-96 animate-pulse bg-muted/50" />
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+            <Card className="h-80 animate-pulse bg-muted/50 xl:col-span-7" />
+            <Card className="h-80 animate-pulse bg-muted/50 xl:col-span-5" />
+          </div>
         </div>
       ) : isError || !data ? (
         <Card className="p-8 text-center">
@@ -103,15 +102,12 @@ export function DashboardPage() {
           </Button>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {/* 1. الشريط العلوي الثابت لأهم 4 أرقام حيوية */}
+        <div className="space-y-5">
+          {/* 1. الشريط العلوي الموجز بدون تكرار */}
           <DashboardHeroKpis data={data} />
 
-          {/* 2. مؤشرات حركة الحصص والتحصيل الشهري (المنفذة، المستحقة، المسددة، والمتأخرات) */}
-          <DashboardMonthlySessionsCard data={data} />
-
-          {/* 3. التبويبات التنفيذية المنظمة */}
-          <Tabs defaultValue="operations" className="space-y-5">
+          {/* 2. التبويبات التنفيذية بنظام Bento Grid */}
+          <Tabs defaultValue="operations" className="space-y-4">
             <TabsList className={`grid w-full ${canViewFinance ? 'grid-cols-3' : 'grid-cols-2'} sm:w-auto`}>
               <TabsTrigger value="operations" className="gap-2 font-bold">
                 <Activity className="h-4 w-4 text-primary" />

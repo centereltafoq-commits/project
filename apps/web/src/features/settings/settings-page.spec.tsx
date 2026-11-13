@@ -108,14 +108,30 @@ describe('SettingsPage Component', () => {
     renderComponent();
 
     const fileInput = await screen.findByTestId('logo-file-input');
-    const fakeFile = new File(['fake-png-content'], 'center-logo.png', {
+    const validPngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00]);
+    const validPngFile = new File([validPngHeader], 'center-logo.png', {
       type: 'image/png',
     });
 
-    fireEvent.change(fileInput, { target: { files: [fakeFile] } });
+    fireEvent.change(fileInput, { target: { files: [validPngFile] } });
 
     await waitFor(() => {
-      expect(settingsApi.uploadLogo).toHaveBeenCalledWith(fakeFile);
+      expect(settingsApi.uploadLogo).toHaveBeenCalledWith(validPngFile);
+    });
+  });
+
+  it('rejects corrupted PNG image before uploading', async () => {
+    renderComponent();
+
+    const fileInput = await screen.findByTestId('logo-file-input');
+    const corruptFile = new File(['not-a-real-png'], 'broken.png', {
+      type: 'image/png',
+    });
+
+    fireEvent.change(fileInput, { target: { files: [corruptFile] } });
+
+    await waitFor(() => {
+      expect(settingsApi.uploadLogo).not.toHaveBeenCalled();
     });
   });
 

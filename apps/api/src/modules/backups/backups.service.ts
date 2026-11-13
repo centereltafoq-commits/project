@@ -194,6 +194,13 @@ export class BackupsService {
       });
 
       const stats = fs.statSync(targetFilePath);
+      if (!stats.isFile() || stats.size <= 0) {
+        throw new Error('ملف النسخة الاحتياطية الناتج فارغ');
+      }
+
+      const fileBytes = fs.readFileSync(targetFilePath);
+      this.normalizeAndValidateBackupBuffer(fileBytes, true);
+
       const checksum = hash.digest('hex');
       const destinations: string[] = ['SERVER_STORAGE'];
 
@@ -283,6 +290,77 @@ export class BackupsService {
     }
   }
 
+  private assertValidSqlDumpContent(sqlBuffer: Buffer): string {
+    if (sqlBuffer.subarray(0, 8192).includes(0x00)) {
+      throw new BadRequestException(
+        'محتوى ملف SQL غير صالح. الملف يبدو أنه ملف ثنائي تنفيذي وليس ملف نصي لأوامر SQL',
+      );
+    }
+
+    const text = sqlBuffer.toString('utf-8');
+    if (text.trim().length === 0) {
+      throw new BadRequestException('ملف SQL فارغ ولا يحتوي على أوامر قاعدة البيانات');
+    }
+
+    if (text.includes('\uFFFD')) {
+      throw new BadRequestException(
+        'محتوى ملف النسخة الاحتياطية غير صالح ولا يمثل أوامر SQL نصية صالحة',
+      );
+    }
+
+    const hasSqlStatement =
+      /(?:^|[\r\n;])\s*(?:--[^\r\n]*[\r\n]+\s*)?(?:CREATE|INSERT|COPY|ALTER|DROP|UPDATE|DELETE|BEGIN|COMMIT|SET|SELECT|TRUNCATE|COMMENT|DO|GRANT|REVOKE)\b/i.test(
+        text,
+      ) && text.includes(';');
+
+    if (!hasSqlStatement) {
+      throw new BadRequestException(
+        'ملف النسخة الاحتياطية لا يحتوي على أوامر SQL صالحة لقاعدة البيانات',
+      );
+    }
+
+    return text;
+  }
+
+  private normalizeAndValidateBackupBuffer(
+    buffer: Buffer,
+    expectGzipExtension: boolean,
+  ): Buffer {
+    const hasGzipMagic =
+      buffer.length >= 2 && buffer[0] === 0x1f && buffer[1] === 0x8b;
+
+    if (expectGzipExtension && !hasGzipMagic) {
+      throw new BadRequestException(
+        'ملف النسخة المضغوطة (.sql.gz) تالف أو غير صالح. الملف لا يحتوي على بيانات Gzip صحيحة',
+      );
+    }
+
+    if (hasGzipMagic) {
+      let decompressed: Buffer;
+      try {
+        decompressed = zlib.gunzipSync(buffer);
+      } catch (err: any) {
+        throw new BadRequestException(
+          expectGzipExtension
+            ? `فشل التحقق من سلامة الملف المضغوط (.sql.gz): ${err.message}`
+            : `فشل التحقق من سلامة الملف المضغوط: ${err.message}`,
+        );
+      }
+      if (decompressed.length === 0 || decompressed.toString('utf-8').trim().length === 0) {
+        throw new BadRequestException('ملف النسخة الاحتياطية فارغ ولا يحتوي على أي بيانات');
+      }
+      this.assertValidSqlDumpContent(decompressed);
+      return buffer;
+    }
+
+    this.assertValidSqlDumpContent(buffer);
+    try {
+      return zlib.gzipSync(buffer, { level: 9 });
+    } catch (err: any) {
+      throw new BadRequestException(`فشل ضغط ملف SQL إلى gzip: ${err.message}`);
+    }
+  }
+
   async uploadBackupFile(
     file: UploadedMulterFile,
     actor?: AuthenticatedUser | string,
@@ -302,55 +380,7 @@ export class BackupsService {
       );
     }
 
-    let finalBuffer: Buffer;
-    if (isGz) {
-      if (file.buffer.length < 2 || file.buffer[0] !== 0x1f || file.buffer[1] !== 0x8b) {
-        throw new BadRequestException(
-          'ملف النسخة المضغوطة (.sql.gz) تالف أو غير صالح. الملف لا يحتوي على بيانات Gzip صحيحة',
-        );
-      }
-      try {
-        const decompressed = zlib.gunzipSync(file.buffer);
-        if (decompressed.length === 0 || decompressed.toString('utf-8').trim().length === 0) {
-          throw new BadRequestException('ملف النسخة الاحتياطية فارغ ولا يحتوي على أي بيانات');
-        }
-      } catch (err: any) {
-        if (err instanceof BadRequestException) throw err;
-        throw new BadRequestException(`فشل التحقق من سلامة الملف المضغوط (.sql.gz): ${err.message}`);
-      }
-      finalBuffer = file.buffer;
-    } else {
-      // Plain .sql file
-      if (file.buffer.length >= 2 && file.buffer[0] === 0x1f && file.buffer[1] === 0x8b) {
-        // SQL file is already gzipped
-        try {
-          const decompressed = zlib.gunzipSync(file.buffer);
-          if (decompressed.length === 0 || decompressed.toString('utf-8').trim().length === 0) {
-            throw new BadRequestException('ملف النسخة الاحتياطية فارغ ولا يحتوي على أي بيانات');
-          }
-        } catch (err: any) {
-          if (err instanceof BadRequestException) throw err;
-          throw new BadRequestException(`فشل التحقق من سلامة الملف المضغوط: ${err.message}`);
-        }
-        finalBuffer = file.buffer;
-      } else {
-        // Plain text SQL: check for null bytes to reject binary executables
-        if (file.buffer.subarray(0, 4096).includes(0x00)) {
-          throw new BadRequestException(
-            'محتوى ملف SQL غير صالح. الملف يبدو أنه ملف ثنائي تنفيذي وليس ملف نصي لأوامر SQL',
-          );
-        }
-        const text = file.buffer.toString('utf-8').trim();
-        if (text.length === 0) {
-          throw new BadRequestException('ملف SQL فارغ ولا يحتوي على أوامر قاعدة البيانات');
-        }
-        try {
-          finalBuffer = zlib.gzipSync(file.buffer, { level: 9 });
-        } catch (err: any) {
-          throw new BadRequestException(`فشل ضغط ملف SQL إلى gzip: ${err.message}`);
-        }
-      }
-    }
+    const finalBuffer = this.normalizeAndValidateBackupBuffer(file.buffer, isGz);
 
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -409,12 +439,19 @@ export class BackupsService {
     const actorName = typeof actor === 'object' ? actor?.fullName : null;
     await this.verifyAdminPassword(actorId!, passwordPlain);
     const record = await this.getRecordById(id);
+    if (record.status && record.status !== 'SUCCESS') {
+      throw new BadRequestException('لا يمكن استعادة نسخة احتياطية غير مكتملة أو فاشلة');
+    }
     if (!fs.existsSync(record.filePath)) {
       throw new NotFoundException('ملف النسخة الاحتياطية غير موجود على القرص الصلب');
     }
 
+    const fileBuffer = fs.readFileSync(record.filePath);
+    if (fileBuffer.length === 0) {
+      throw new BadRequestException('ملف النسخة الاحتياطية فارغ أو تالف على القرص الصلب');
+    }
+
     if (record.checksum) {
-      const fileBuffer = fs.readFileSync(record.filePath);
       const computed = crypto.createHash('sha256').update(fileBuffer).digest('hex');
       if (computed !== record.checksum) {
         throw new BadRequestException(
@@ -423,8 +460,14 @@ export class BackupsService {
       }
     }
 
+    this.normalizeAndValidateBackupBuffer(
+      fileBuffer,
+      record.fileName?.toLowerCase().endsWith('.gz') ?? true,
+    );
+
+    await this.cacheService.invalidatePrefix('');
     await this.executeRestore(record.filePath);
-    await this.repository.fixRestoredInProgressRecords();
+    await this.reconcileInProgressRecordsAfterRestore();
     await this.cacheService.invalidatePrefix('');
 
     await this.auditLogsService.record({
@@ -450,12 +493,18 @@ export class BackupsService {
     const actorId = typeof actor === 'object' ? actor?.id : actor;
     const actorName = typeof actor === 'object' ? actor?.fullName : null;
     await this.verifyAdminPassword(actorId!, passwordPlain);
+    if (!buffer || buffer.length === 0) {
+      throw new BadRequestException('ملف النسخة الاحتياطية فارغ أو مفقود');
+    }
+
+    const normalizedBuffer = this.normalizeAndValidateBackupBuffer(buffer, false);
     const tempFile = path.join(this.storageDir, `temp-restore-${Date.now()}.sql.gz`);
-    fs.writeFileSync(tempFile, buffer);
+    fs.writeFileSync(tempFile, normalizedBuffer);
 
     try {
+      await this.cacheService.invalidatePrefix('');
       await this.executeRestore(tempFile);
-      await this.repository.fixRestoredInProgressRecords();
+      await this.reconcileInProgressRecordsAfterRestore();
       await this.cacheService.invalidatePrefix('');
 
       await this.auditLogsService.record({
@@ -479,10 +528,72 @@ export class BackupsService {
     }
   }
 
+  private async reconcileInProgressRecordsAfterRestore(): Promise<void> {
+    if (typeof this.repository.findInProgressRecords !== 'function') {
+      await this.repository.fixRestoredInProgressRecords();
+      return;
+    }
+
+    const pendingRecords = await this.repository.findInProgressRecords();
+    for (const rec of pendingRecords) {
+      if (rec.filePath && fs.existsSync(rec.filePath)) {
+        try {
+          const stats = fs.statSync(rec.filePath);
+          if (stats.isFile() && stats.size > 0) {
+            const bytes = fs.readFileSync(rec.filePath);
+            this.normalizeAndValidateBackupBuffer(bytes, true);
+            const checksum = crypto.createHash('sha256').update(bytes).digest('hex');
+            await this.repository.updateRecord(rec.id, {
+              status: 'SUCCESS',
+              fileSizeBytes: stats.size,
+              checksum,
+            });
+            continue;
+          }
+        } catch {
+          // Fall through to mark invalid/corrupt archive as FAILED
+        }
+      }
+
+      await this.repository.updateRecord(rec.id, {
+        status: 'FAILED',
+        errorMessage: 'ملف النسخة الاحتياطية مفقود أو تالف بعد الاستعادة',
+      });
+    }
+  }
+
+  private prepareRestoreSql(rawSql: string): string {
+    return rawSql.replace(
+      /\bDROP TABLE IF EXISTS\s+((?:"[^"]+"|[^\s;])+(?:\.(?:"[^"]+"|[^\s;])+)?)\s*;/gi,
+      'DROP TABLE IF EXISTS $1 CASCADE;',
+    );
+  }
+
+  private filterCriticalRestoreErrors(errOutput: string): string[] {
+    return errOutput
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => /^(?:ERROR|FATAL|psql:\s*error):/i.test(line))
+      .filter(
+        (line) =>
+          !/unrecognized configuration parameter "transaction_timeout"/i.test(line) &&
+          !/schema "public" already exists/i.test(line) &&
+          !/role "[^"]+" does not exist/i.test(line),
+      );
+  }
+
   private async executeRestore(filePath: string): Promise<void> {
     const { dbUrl, password } = this.getDbCredentials();
-    const gunzip = zlib.createGunzip();
-    const fileStream = fs.createReadStream(filePath);
+    const compressedBytes = fs.readFileSync(filePath);
+    const hasGzipMagic =
+      compressedBytes.length >= 2 &&
+      compressedBytes[0] === 0x1f &&
+      compressedBytes[1] === 0x8b;
+    const rawSqlBuffer = hasGzipMagic
+      ? zlib.gunzipSync(compressedBytes)
+      : compressedBytes;
+    const rawSql = this.assertValidSqlDumpContent(rawSqlBuffer);
+    const preparedSql = this.prepareRestoreSql(rawSql);
 
     return new Promise((resolve, reject) => {
       let isSettled = false;
@@ -503,40 +614,48 @@ export class BackupsService {
         env: { ...process.env, ...(password ? { PGPASSWORD: password } : {}) },
       });
 
-      fileStream.on('error', safeReject);
-      gunzip.on('error', safeReject);
       psql.stdin.on('error', (err: any) => {
         if (err.code !== 'EPIPE') safeReject(err);
       });
       psql.on('error', safeReject);
 
-      fileStream.pipe(gunzip).pipe(psql.stdin);
-
       let errOutput = '';
       psql.stderr.on('data', (c) => (errOutput += c.toString()));
 
       psql.on('close', (code) => {
-        if (code === 0) {
-          safeResolve();
-        } else {
-          const lowerErr = errOutput.toLowerCase();
-          if (
-            lowerErr.includes('fatal:') ||
-            lowerErr.includes('password authentication failed') ||
-            lowerErr.includes('connection refused') ||
-            lowerErr.includes('could not connect')
-          ) {
-            safeReject(
-              new BadRequestException(
-                `فشل الاتصال بقاعدة البيانات أثناء الاستعادة: ${errOutput.slice(0, 300)}`,
-              ),
-            );
-          } else {
-            this.logger.warn(`psql exited with code ${code}: ${errOutput}`);
-            safeResolve(); // psql warnings on clean drop/recreate are normal
-          }
+        const lowerErr = errOutput.toLowerCase();
+        if (
+          lowerErr.includes('fatal:') ||
+          lowerErr.includes('password authentication failed') ||
+          lowerErr.includes('connection refused') ||
+          lowerErr.includes('could not connect')
+        ) {
+          safeReject(
+            new BadRequestException(
+              `فشل الاتصال بقاعدة البيانات أثناء الاستعادة: ${errOutput.slice(0, 300)}`,
+            ),
+          );
+          return;
         }
+
+        const criticalErrors = this.filterCriticalRestoreErrors(errOutput);
+        if (criticalErrors.length > 0) {
+          this.logger.error(`Restore SQL errors (code ${code}): ${criticalErrors.join(' | ')}`);
+          safeReject(
+            new BadRequestException(
+              `تعذر استعادة قاعدة البيانات بالكامل: ${criticalErrors[0].slice(0, 250)}`,
+            ),
+          );
+          return;
+        }
+
+        if (code !== 0) {
+          this.logger.warn(`psql exited with code ${code}: ${errOutput}`);
+        }
+        safeResolve();
       });
+
+      psql.stdin.end(preparedSql, 'utf-8');
     });
   }
 

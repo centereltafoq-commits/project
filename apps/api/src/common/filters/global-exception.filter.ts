@@ -35,6 +35,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           message = body.message;
         }
       }
+      if (
+        status === HttpStatus.TOO_MANY_REQUESTS &&
+        /throttler|too many requests/i.test(message)
+      ) {
+        message = 'تم تجاوز الحد المسموح من المحاولات، يرجى الانتظار دقيقة ثم المحاولة مرة أخرى';
+      }
     } else if (exception instanceof Error) {
       if (
         (exception as any).name === 'MulterError' ||

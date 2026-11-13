@@ -17,8 +17,30 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const isEdit = Boolean(student);
-  const { options: dynamicGradeOptions } = useGradeLevels(true);
-  const gradeOptions = dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
+  const { gradeLevels: allGradeLevels } = useGradeLevels(false);
+  const activeGradeOptions = React.useMemo(() => {
+    const active = allGradeLevels
+      .filter((g) => g.isActive)
+      .map((g) => ({ value: g.name, label: g.name }));
+    return active.length > 0 ? active : GRADE_LEVEL_OPTIONS;
+  }, [allGradeLevels]);
+
+  const gradeOptions = React.useMemo(() => {
+    const currentGrade = student?.gradeLevel;
+    if (!currentGrade || activeGradeOptions.some((o) => o.value === currentGrade)) {
+      return activeGradeOptions;
+    }
+    const matchedAll = allGradeLevels.find((g) => g.name === currentGrade);
+    return [
+      {
+        value: currentGrade,
+        label: matchedAll ? `${currentGrade} (غير مفعّل)` : `${currentGrade} (سجل سابق)`,
+      },
+      ...activeGradeOptions,
+    ];
+  }, [activeGradeOptions, allGradeLevels, student?.gradeLevel]);
+
+  const defaultGrade = activeGradeOptions[0]?.value || 'الصف الأول الثانوي';
 
   const [form, setForm] = React.useState({
     studentCode: '',
@@ -32,12 +54,13 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
   });
 
   React.useEffect(() => {
+    if (!open) return;
     if (student) {
       setForm({
         studentCode: student.studentCode,
         fullName: student.fullName,
         phone: student.phone,
-        guardianPhone: student.guardianPhone,
+        guardianPhone: student.guardianPhone ?? '',
         gradeLevel: student.gradeLevel,
         registrationDate: student.registrationDate?.slice(0, 10) || getTodayIsoDate(),
         status: student.status,
@@ -49,22 +72,27 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
         fullName: '',
         phone: '',
         guardianPhone: '',
-        gradeLevel: gradeOptions[0]?.value || 'الصف الأول الثانوي',
+        gradeLevel: defaultGrade,
         registrationDate: getTodayIsoDate(),
         status: StudentStatus.ACTIVE,
         notes: '',
       });
     }
-  }, [student, open, gradeOptions]);
+  }, [student, open, defaultGrade]);
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const normalizedGuardian = form.guardianPhone.trim();
       if (isEdit && student) {
         const { studentCode: _code, ...payload } = form;
-        return apiClient.patch(`/students/${student.id}`, payload);
+        return apiClient.patch(`/students/${student.id}`, {
+          ...payload,
+          guardianPhone: normalizedGuardian,
+        });
       }
       return apiClient.post('/students', {
         ...form,
+        guardianPhone: normalizedGuardian || undefined,
         studentCode: form.studentCode.trim() || undefined,
       });
     },
@@ -117,8 +145,7 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
             placeholder="010xxxxxxxx"
           />
           <Input
-            label="رقم هاتف ولي الأمر"
-            required
+            label="رقم هاتف ولي الأمر (اختياري)"
             value={form.guardianPhone}
             onChange={(e) => setForm({ ...form, guardianPhone: e.target.value })}
             placeholder="011xxxxxxxx"

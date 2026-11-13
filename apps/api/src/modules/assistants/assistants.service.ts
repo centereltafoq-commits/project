@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { AssistantCalculationMethod, PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
@@ -54,7 +54,24 @@ export class AssistantsService {
     return this.maskAssistantRow(assistant, actor);
   }
 
+  private validateRateForMethod(
+    calculationMethod: AssistantCalculationMethod | string,
+    rateValue: number,
+  ): void {
+    if (!Number.isFinite(rateValue) || rateValue < 0) {
+      throw new BadRequestException('قيمة النسبة أو الأجر لا يمكن أن تكون سالبة');
+    }
+    if (
+      calculationMethod === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT &&
+      rateValue > 100
+    ) {
+      throw new BadRequestException('نسبة عمولة المساعد لا يمكن أن تتجاوز 100%');
+    }
+  }
+
   async create(dto: CreateAssistantDto, actor: AuthenticatedUser) {
+    this.validateRateForMethod(dto.calculationMethod, dto.rateValue);
+
     const assistantCode = dto.assistantCode?.trim() || (await this.generateUniqueAssistantCode());
     if (dto.assistantCode) {
       const dup = await this.repository.findByCode(assistantCode);
@@ -85,6 +102,11 @@ export class AssistantsService {
 
   async update(id: string, dto: UpdateAssistantDto, actor: AuthenticatedUser) {
     const existing = await this.getById(id);
+    const effectiveMethod = dto.calculationMethod ?? existing.calculationMethod;
+    const effectiveRate =
+      dto.rateValue !== undefined ? dto.rateValue : Number(existing.rateValue);
+    this.validateRateForMethod(effectiveMethod, effectiveRate);
+
     const updated = await this.repository.update(id, {
       ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
       ...(dto.phone !== undefined ? { phone: dto.phone.trim() } : {}),

@@ -20,7 +20,7 @@ export const students = pgTable(
     studentCode: varchar('student_code', { length: 40 }).notNull(),
     fullName: varchar('full_name', { length: 160 }).notNull(),
     phone: varchar('phone', { length: 30 }).notNull(),
-    guardianPhone: varchar('guardian_phone', { length: 30 }).notNull(),
+    guardianPhone: varchar('guardian_phone', { length: 30 }),
     gradeLevel: varchar('grade_level', { length: 80 }).notNull(),
     registrationDate: date('registration_date').notNull(),
     status: varchar('status', { length: 24 }).default('ACTIVE').notNull(),

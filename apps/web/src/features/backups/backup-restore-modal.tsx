@@ -5,6 +5,7 @@ import { Button } from '@/design-system/components/button';
 import { Input } from '@/design-system/components/input';
 import { Modal } from '@/design-system/components/modal';
 import { useToast } from '@/design-system/components/toast';
+import { extractErrorMessage } from '@/lib/api-client';
 import { formatDateTimeAr } from '@/lib/formatters';
 import { BackupRecord } from './backups.types';
 import { useBackupMutations } from './use-backups';
@@ -40,8 +41,10 @@ export function BackupRestoreModal({ open, onOpenChange, record }: BackupRestore
         },
         onError: (err: any) => {
           setErrorMsg(
-            err.response?.data?.message ||
-              'فشلت عملية الاستعادة. تأكد من صحة كلمة المرور.',
+            extractErrorMessage(
+              err,
+              'فشلت عملية الاستعادة. تأكد من صحة كلمة المرور وسلامة النسخة.',
+            ),
           );
         },
       },

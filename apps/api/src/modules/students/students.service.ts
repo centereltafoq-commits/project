@@ -41,7 +41,7 @@ export class StudentsService {
       studentCode,
       fullName: dto.fullName.trim(),
       phone: dto.phone.trim(),
-      guardianPhone: dto.guardianPhone.trim(),
+      guardianPhone: dto.guardianPhone?.trim() || null,
       gradeLevel: dto.gradeLevel.trim(),
       registrationDate,
       status: dto.status ?? StudentStatus.ACTIVE,
@@ -65,7 +65,9 @@ export class StudentsService {
     const updated = await this.repository.update(id, {
       ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
       ...(dto.phone !== undefined ? { phone: dto.phone.trim() } : {}),
-      ...(dto.guardianPhone !== undefined ? { guardianPhone: dto.guardianPhone.trim() } : {}),
+      ...(dto.guardianPhone !== undefined
+        ? { guardianPhone: dto.guardianPhone?.trim() || null }
+        : {}),
       ...(dto.gradeLevel !== undefined ? { gradeLevel: dto.gradeLevel.trim() } : {}),
       ...(dto.registrationDate !== undefined ? { registrationDate: dto.registrationDate } : {}),
       ...(dto.status !== undefined ? { status: dto.status } : {}),

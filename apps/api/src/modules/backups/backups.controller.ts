@@ -83,16 +83,27 @@ export class BackupsController {
     @Res() res: Response,
   ) {
     const record = await this.backupsService.getRecordById(id);
+    if (record.status !== 'SUCCESS') {
+      throw new BadRequestException('لا يمكن تنزيل نسخة احتياطية غير مكتملة أو فاشلة');
+    }
     if (!fs.existsSync(record.filePath)) {
       throw new NotFoundException('ملف النسخة الاحتياطية غير موجود على القرص الصلب');
     }
 
+    const stats = fs.statSync(record.filePath);
+    if (!stats.isFile() || stats.size <= 0) {
+      throw new BadRequestException('ملف النسخة الاحتياطية فارغ أو تالف على القرص الصلب');
+    }
+
+    const asciiFileName = record.fileName.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '');
+    const encodedFileName = encodeURIComponent(record.fileName);
+
     res.setHeader('Content-Type', 'application/gzip');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${record.fileName}"`,
+      `attachment; filename="${asciiFileName}"; filename*=UTF-8''${encodedFileName}`,
     );
-    res.setHeader('Content-Length', record.fileSizeBytes);
+    res.setHeader('Content-Length', stats.size);
 
     const stream = fs.createReadStream(record.filePath);
     stream.on('error', () => {

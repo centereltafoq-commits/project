@@ -52,6 +52,7 @@ export interface DashboardSummaryResponse {
   teachersCount: number;
   assistantsCount: number;
   groupsCount: number;
+  scheduledGroupsCount?: number;
   todaySessionsCount: number;
   todaySessions: DashboardTodaySessionItem[];
   todayAttendance: DashboardTodayAttendance;

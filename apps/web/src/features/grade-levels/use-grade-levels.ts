@@ -12,7 +12,7 @@ export function useGradeLevels(activeOnly = true) {
   const options = useMemo(() => {
     return (query.data || []).map((item) => ({
       value: item.name,
-      label: item.name,
+      label: item.isActive ? item.name : `${item.name} (غير مفعّل)`,
     }));
   }, [query.data]);
 

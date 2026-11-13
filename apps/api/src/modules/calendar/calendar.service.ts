@@ -87,13 +87,16 @@ export class CalendarService {
 
     if (canViewClassrooms) {
       for (const m of data.maintenances) {
-        maintenanceRoomIds.add(m.classroomId);
         const segments = expandMaintenanceDays({
           startAt: m.startAt,
           endAt: m.endAt,
           fromDate,
           toDate,
         });
+
+        if (segments.length > 0) {
+          maintenanceRoomIds.add(m.classroomId);
+        }
 
         for (const seg of segments) {
           events.push({
@@ -145,7 +148,7 @@ export class CalendarService {
     const classroomsSummary = {
       total: classroomBreakdown.length,
       available: classroomBreakdown.filter((c) => c.state === 'AVAILABLE').length,
-      occupied: classroomBreakdown.filter((c) => c.state === 'OCCUPIED').length,
+      occupied: classroomBreakdown.filter((c) => occupiedRoomIds.has(c.id)).length,
       maintenance: classroomBreakdown.filter(
         (c) => c.state === 'MAINTENANCE' || c.state === 'INACTIVE',
       ).length,

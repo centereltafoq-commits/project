@@ -6,9 +6,11 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { AssistantCalculationMethod } from '@edu-center/shared';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
@@ -52,7 +54,9 @@ export class CreateAssistantDto {
 
   @Type(() => Number)
   @IsNumber({}, { message: 'قيمة النسبة أو المبلغ يجب أن تكون رقماً' })
-  @Min(0)
+  @Min(0, { message: 'القيمة المالية أو النسبة لا يمكن أن تكون سالبة' })
+  @ValidateIf((o) => o.calculationMethod === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT)
+  @Max(100, { message: 'نسبة عمولة المساعد لا يمكن أن تتجاوز 100%' })
   rateValue: number;
 
   @IsOptional()

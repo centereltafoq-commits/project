@@ -22,7 +22,12 @@ import {
 } from '../../../database/schemas';
 import { normalizePagination } from '../../../common/utils/pagination.util';
 import { AssistantPayoutsQueryDto } from '../dto/payments-payouts.dto';
-import { parseMoney, roundMoney, toMoneyString } from '../utils/money.util';
+import {
+  assertPayoutWithinRemainingBalance,
+  parseMoney,
+  roundMoney,
+  toMoneyString,
+} from '../utils/money.util';
 
 export interface CreateAssistantPayoutTxInput {
   referenceNumber: string;
@@ -132,9 +137,7 @@ export class AssistantPayoutsRepository {
         )
         .for('update');
 
-      if (monthly?.isClosed) {
-        throw new ConflictException('الشهر المالي مغلق نهائياً ولا يمكن تسجيل صرفيات عليه');
-      }
+      assertPayoutWithinRemainingBalance(monthly, input.amount);
 
       const [created] = await tx
         .insert(assistantPayouts)

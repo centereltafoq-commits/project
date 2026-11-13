@@ -102,9 +102,30 @@ export class TeachersService {
     actor: AuthenticatedUser,
   ) {
     await this.getById(id);
-    for (const slot of dto.slots) {
-      if (slot.startTime >= slot.endTime) {
+    const ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+    for (let i = 0; i < dto.slots.length; i++) {
+      const slotA = dto.slots[i]!;
+      if (slotA.startTime >= slotA.endTime) {
         throw new BadRequestException('وقت نهاية الإتاحة يجب أن يكون بعد وقت البداية');
+      }
+
+      for (let j = i + 1; j < dto.slots.length; j++) {
+        const slotB = dto.slots[j]!;
+        if (Number(slotA.dayOfWeek) !== Number(slotB.dayOfWeek)) continue;
+
+        const dayName = ARABIC_DAYS[Number(slotA.dayOfWeek)] ?? String(slotA.dayOfWeek);
+        if (slotA.startTime === slotB.startTime && slotA.endTime === slotB.endTime) {
+          throw new ConflictException(
+            `تكرار فترة الإتاحة مرفوض: يوم ${dayName} (${slotA.startTime} - ${slotA.endTime}) مكررة`,
+          );
+        }
+
+        if (slotA.startTime < slotB.endTime && slotA.endTime > slotB.startTime) {
+          throw new ConflictException(
+            `تعارض في أوقات إتاحة المدرس يوم ${dayName}: (${slotA.startTime} - ${slotA.endTime}) تتداخل مع (${slotB.startTime} - ${slotB.endTime})`,
+          );
+        }
       }
     }
 

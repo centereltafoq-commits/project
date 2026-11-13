@@ -11,7 +11,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { PERMISSIONS } from '@edu-center/shared';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, StatCard } from '@/design-system';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
 import { DashboardSummaryData } from '../dashboard.types';
 
@@ -27,69 +27,102 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
   const canViewStudents = hasPermission(PERMISSIONS.STUDENTS_VIEW);
   const canViewTeachers =
     hasPermission(PERMISSIONS.TEACHERS_VIEW) || hasPermission(PERMISSIONS.TEACHERS_VIEW_OWN);
+  const canViewAssistants = hasPermission(PERMISSIONS.ASSISTANTS_VIEW);
   const canViewGroups = hasPermission(PERMISSIONS.GROUPS_VIEW);
+
   const { present, absent, excused } = data.todayAttendance;
   const totalMarked = present + absent + excused;
 
   const attendanceRate = totalMarked > 0 ? Math.round((present / totalMarked) * 100) : 0;
   const absentRate = totalMarked > 0 ? Math.round((absent / totalMarked) * 100) : 0;
+  const activeStudentRate =
+    data.totalStudents > 0 ? Math.round((data.activeStudents / data.totalStudents) * 100) : 0;
+
+  const structureCards = [
+    {
+      title: 'الطلاب المسجلون',
+      value: data.totalStudents,
+      subtitle: `${data.activeStudents} نشط حالياً (${activeStudentRate}%)`,
+      icon: GraduationCap,
+      iconClass: 'bg-primary/10 text-primary',
+      to: canViewStudents ? '/students' : null,
+    },
+    {
+      title: 'هيئة التدريس',
+      value: data.teachersCount,
+      subtitle: 'مدرسون متعاقدون بمجموعات',
+      icon: UserCheck,
+      iconClass: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+      to: canViewTeachers ? '/teachers' : null,
+    },
+    {
+      title: 'المساعدون',
+      value: data.assistantsCount,
+      subtitle: 'مساعدو الحصص والمتابعة',
+      icon: Users,
+      iconClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+      to: canViewAssistants ? '/assistants' : null,
+    },
+    {
+      title: 'المجموعات الدراسية',
+      value: data.groupsCount,
+      subtitle: `${data.scheduledGroupsCount ?? 0} بجدول أسبوعي`,
+      icon: BookOpen,
+      iconClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+      to: canViewGroups ? '/groups' : null,
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* 1. هيكل السنتر الأكاديمي والكوادر */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground">
-            الهيكل الأكاديمي والكوادر التعليمية المسجلة
-          </h3>
-        </div>
+    <div className="space-y-5">
+      {/* 1. هيكل السنتر الأكاديمي والكوادر (بطاقات مباشرة بدون تكرار روابط أسفلها) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {structureCards.map((item) => {
+          const Icon = item.icon;
+          const cardBody = (
+            <Card className="h-full p-4 transition-all hover:border-primary/40 hover:shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="text-xs font-semibold text-muted-foreground">{item.title}</span>
+                  <p className="mt-1 text-2xl font-black text-foreground tabular-nums">
+                    {item.value}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{item.subtitle}</p>
+                </div>
+                <div className={`rounded-xl p-2.5 ${item.iconClass}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+              {item.to && (
+                <div className="mt-3 flex items-center justify-end gap-1 text-[11px] font-bold text-primary">
+                  <span>فتح القسم</span>
+                  <ArrowLeft className="h-3 w-3" />
+                </div>
+              )}
+            </Card>
+          );
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="الطلاب المسجلون"
-            value={data.totalStudents}
-            subtitle={`${data.activeStudents} طالب نشط بحالة اشتراك فعالة`}
-            icon={GraduationCap}
-            tone="primary"
-          />
+          return item.to ? (
+            <Link key={item.title} to={item.to} className="block h-full">
+              {cardBody}
+            </Link>
+          ) : (
+            <div key={item.title}>{cardBody}</div>
+          );
+        })}
+      </div>
 
-          <StatCard
-            title="هيئة التدريس (المدرسون)"
-            value={data.teachersCount}
-            subtitle="مدرسون متعاقدون بمجموعات معتمدة"
-            icon={UserCheck}
-            tone="purple"
-          />
-
-          <StatCard
-            title="المساعدون والمشرفون"
-            value={data.assistantsCount}
-            subtitle="مساعدون مسند إليهم مهام ومجموعات"
-            icon={Users}
-            tone="primary"
-          />
-
-          <StatCard
-            title="المجموعات الدراسية"
-            value={data.groupsCount}
-            subtitle="مجموعات نشطة بمواعيد أسبوعية"
-            icon={BookOpen}
-            tone="success"
-          />
-        </div>
-      </section>
-
-      {/* 2. تحليل حضور وغياب اليوم مع شريط بياني متناسق */}
+      {/* 2. تحليل حضور وغياب اليوم */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
               <CalendarCheck className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-base">تحليل مؤشرات حضور وغياب اليوم</CardTitle>
+              <CardTitle className="text-base">تحليل التزام الحضور والغياب اليوم</CardTitle>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                إجمالي الطلاب المرصودة حالتهم حتى اللحظة: {totalMarked} طالب
+                إجمالي الطلاب المرصودة حالتهم حتى الآن: {totalMarked} طالب
               </p>
             </div>
           </div>
@@ -102,21 +135,21 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
             </Link>
           )}
         </CardHeader>
-        <CardContent className="space-y-5 pt-4">
+
+        <CardContent className="space-y-4 pt-4">
           {totalMarked === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              لم يتم رصد حضور الطلاب في حصص اليوم حتى الآن. سيظهر التحليل فور بدء أول حصة ورصد دفتر الحضور.
+              لم يتم رصد حضور الطلاب في حصص اليوم حتى الآن. سيظهر التحليل فور رصد أول حصة.
             </div>
           ) : (
             <>
-              {/* مربعات تصنيف الحالات */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 text-center">
                   <div className="flex items-center justify-center gap-1.5 text-emerald-700 dark:text-emerald-300">
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="text-xs font-bold">حاضرون</span>
                   </div>
-                  <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                  <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
                     {present}
                   </p>
                   <span className="text-[11px] text-muted-foreground">
@@ -129,7 +162,7 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
                     <XCircle className="h-4 w-4" />
                     <span className="text-xs font-bold">غائبون</span>
                   </div>
-                  <p className="mt-1 text-2xl font-black text-rose-600 dark:text-rose-400">
+                  <p className="mt-1 text-2xl font-black text-rose-600 dark:text-rose-400 tabular-nums">
                     {absent}
                   </p>
                   <span className="text-[11px] text-muted-foreground">
@@ -142,20 +175,17 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
                     <Clock className="h-4 w-4" />
                     <span className="text-xs font-bold">غياب بعذر</span>
                   </div>
-                  <p className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-400">
+                  <p className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
                     {excused}
                   </p>
-                  <span className="text-[11px] text-muted-foreground">
-                    بعذر مقبول وموثق
-                  </span>
+                  <span className="text-[11px] text-muted-foreground">بعذر مقبول وموثق</span>
                 </div>
               </div>
 
-              {/* شريط توزيع بياني متعدد الألوان */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold text-muted-foreground">
                   <span>مخطط توزيع الحالات</span>
-                  <span className="text-emerald-600 font-extrabold">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
                     نسبة الالتزام بالحضور: {attendanceRate}%
                   </span>
                 </div>
@@ -181,66 +211,6 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
           )}
         </CardContent>
       </Card>
-
-      {/* 3. بطاقات الوصول السريع للأقسام الأكاديمية */}
-      {(canViewStudents || canViewTeachers || canViewGroups) && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {canViewStudents && (
-            <Link
-              to="/students"
-              className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
-            >
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-primary/10 p-2 text-primary">
-                  <GraduationCap className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold">دليل الطلاب والصفوف الدراسية</p>
-                  <p className="text-xs text-muted-foreground">تعديل الملفات وأرقام الهواتف</p>
-                </div>
-              </div>
-              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          )}
-
-          {canViewTeachers && (
-            <Link
-              to="/teachers"
-              className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
-            >
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-purple-500/10 p-2 text-purple-600">
-                  <UserCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold">هيئة التدريس والمواد</p>
-                  <p className="text-xs text-muted-foreground">ملفات المدرسين والمجموعات المسندة</p>
-                </div>
-              </div>
-              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          )}
-
-          {canViewGroups && (
-            <Link
-              to="/groups"
-              className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-muted/30"
-            >
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
-                  <BookOpen className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold">المجموعات الدراسية والجداول</p>
-                  <p className="text-xs text-muted-foreground">المواعيد الأسبوعية والأسعار</p>
-                </div>
-              </div>
-              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          )}
-        </div>
-      )}
     </div>
   );
 }
-

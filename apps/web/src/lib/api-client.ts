@@ -76,13 +76,34 @@ apiClient.interceptors.response.use(
   },
 );
 
-export function extractErrorMessage(err: unknown): string {
+export function extractErrorMessage(
+  err: unknown,
+  fallback = 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى',
+): string {
   if (axios.isAxiosError(err)) {
-    const msg = err.response?.data?.message;
-    if (typeof msg === 'string') return msg;
-    if (Array.isArray(msg)) return msg[0];
+    if (!err.response) {
+      return 'تعذر الاتصال بالخادم، يرجى التأكد من تشغيل الخادم واتصالك بالشبكة';
+    }
+    const status = err.response.status;
+    const msg = err.response.data?.message;
+    if (Array.isArray(msg) && msg[0]) return String(msg[0]);
+    if (typeof msg === 'string' && msg.trim().length > 0) {
+      if (status === 429 || /throttler|too many requests/i.test(msg)) {
+        return 'تم تجاوز الحد المسموح من المحاولات، يرجى الانتظار دقيقة ثم المحاولة مرة أخرى';
+      }
+      return msg;
+    }
+    if (status === 429) {
+      return 'تم تجاوز الحد المسموح من المحاولات، يرجى الانتظار دقيقة ثم المحاولة مرة أخرى';
+    }
+    if (status === 401) {
+      return 'بيانات الدخول غير صحيحة أو انتهت صلاحية الجلسة';
+    }
+    if (status === 403) {
+      return 'ليس لديك صلاحية لتنفيذ هذا الإجراء';
+    }
   }
-  if (err instanceof Error) return err.message;
-  return 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى';
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
 }
 

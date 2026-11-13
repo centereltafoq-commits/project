@@ -16,7 +16,12 @@ interface ScheduleAndAssistantsEditorProps {
   onSlotsChange: (slots: GroupScheduleSlotItem[]) => void;
   assistantLinks: AssistantDraftLink[];
   onAssistantLinksChange: (links: AssistantDraftLink[]) => void;
-  assistantOptions: Array<{ value: string; label: string }>;
+  assistantOptions: Array<{
+    value: string;
+    label: string;
+    calculationMethod?: string;
+    rateValue?: string;
+  }>;
 }
 
 export function GroupScheduleAssistantsEditor({
@@ -127,7 +132,12 @@ export function GroupScheduleAssistantsEditor({
             إضافة مساعد
           </Button>
         </div>
-        {assistantLinks.map((lnk, idx) => (
+        {assistantLinks.map((lnk, idx) => {
+          const baseAssistant = assistantOptions.find((a) => a.value === lnk.assistantId);
+          const effectiveMethod = lnk.overrideCalculationMethod || baseAssistant?.calculationMethod;
+          const isPercentOverride =
+            effectiveMethod === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT;
+          return (
           <div key={idx} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-4">
             <Select
               label="المساعد"
@@ -163,10 +173,11 @@ export function GroupScheduleAssistantsEditor({
               options={ASSISTANT_CALC_METHOD_OPTIONS}
             />
             <Input
-              label="قيمة مخصصة"
+              label={isPercentOverride ? 'نسبة مخصصة (%)' : 'قيمة مخصصة'}
               type="number"
               step="0.01"
               min={0}
+              max={isPercentOverride ? 100 : undefined}
               placeholder="افتراضي"
               value={lnk.overrideRateValue}
               onChange={(e) =>
@@ -189,7 +200,8 @@ export function GroupScheduleAssistantsEditor({
               إزالة
             </Button>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
