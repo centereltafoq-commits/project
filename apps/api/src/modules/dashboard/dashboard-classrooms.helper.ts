@@ -18,7 +18,6 @@ export async function queryClassroomsLiveSnapshot(
     status: string;
     inMaintenanceNow: boolean;
     activeSessionTitle: string | null;
-    activeBookingTitle: string | null;
   }>(sql`
     SELECT
       c.id,
@@ -39,22 +38,13 @@ export async function queryClassroomsLiveSnapshot(
           AND s.start_time <= ${currentTime}
           AND s.end_time > ${currentTime}
         LIMIT 1
-      ) AS "activeSessionTitle",
-      (
-        SELECT cb.title FROM classroom_bookings cb
-        WHERE cb.classroom_id = c.id
-          AND cb.booking_date = ${todayDate}
-          AND cb.status = 'CONFIRMED'
-          AND cb.start_time <= ${currentTime}
-          AND cb.end_time > ${currentTime}
-        LIMIT 1
-      ) AS "activeBookingTitle"
+      ) AS "activeSessionTitle"
     FROM classrooms c
     ORDER BY c.room_number ASC
   `);
 
   const classroomsLive: DashboardClassroomLiveItem[] = res.rows.map((c) => {
-    const occupantTitle = c.activeSessionTitle || c.activeBookingTitle || null;
+    const occupantTitle = c.activeSessionTitle || null;
     let liveState: DashboardClassroomLiveItem['liveState'] = 'AVAILABLE';
     if (c.status === 'INACTIVE') {
       liveState = 'INACTIVE';

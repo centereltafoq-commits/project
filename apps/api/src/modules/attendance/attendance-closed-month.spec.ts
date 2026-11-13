@@ -1,11 +1,10 @@
 import { ConflictException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AttendanceStatus, MakeupStatus, SystemRole } from '@edu-center/shared';
+import { AttendanceStatus, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { AttendanceService } from './attendance.service';
-import { MakeupsService } from './makeups.service';
 
-describe('Attendance & Makeups Closed-Month Lock Enforcement', () => {
+describe('Attendance Closed-Month Lock Enforcement', () => {
   const actor: AuthenticatedUser = {
     id: 'usr-admin',
     email: 'admin@center.com',
@@ -16,12 +15,10 @@ describe('Attendance & Makeups Closed-Month Lock Enforcement', () => {
 
   let repository: any;
   let sheetRepository: any;
-  let makeupsRepository: any;
   let audit: any;
   let cache: any;
   let settlementService: any;
   let attendanceService: AttendanceService;
-  let makeupsService: MakeupsService;
 
   beforeEach(() => {
     repository = {
@@ -48,21 +45,6 @@ describe('Attendance & Makeups Closed-Month Lock Enforcement', () => {
       upsertSessionAttendance: vi.fn(),
     };
 
-    makeupsRepository = {
-      findById: vi.fn().mockResolvedValue({
-        id: 'mk-1',
-        studentId: 'stu-1',
-        originalSessionId: 'ses-1',
-        isFree: true,
-        extraFee: '0.00',
-        status: MakeupStatus.PENDING,
-        scheduledAt: null,
-      }),
-      findStudentAttendance: vi.fn(),
-      create: vi.fn(),
-      updateAndSyncOriginalAttendance: vi.fn(),
-    };
-
     audit = { record: vi.fn().mockResolvedValue(undefined) };
     cache = { invalidatePrefix: vi.fn().mockResolvedValue(undefined) };
     settlementService = {
@@ -80,14 +62,6 @@ describe('Attendance & Makeups Closed-Month Lock Enforcement', () => {
       audit,
       cache,
       settlementService,
-    );
-
-    makeupsService = new MakeupsService(
-      repository,
-      makeupsRepository,
-      audit,
-      settlementService,
-      cache,
     );
   });
 
@@ -131,31 +105,6 @@ describe('Attendance & Makeups Closed-Month Lock Enforcement', () => {
       ),
     ).rejects.toThrow(ConflictException);
     expect(sheetRepository.upsertSessionAttendance).not.toHaveBeenCalled();
-  });
-
-  it('rejects creating or updating a makeup session tied to a closed month', async () => {
-    await expect(
-      makeupsService.createMakeup(
-        {
-          studentId: 'stu-1',
-          originalSessionId: 'ses-1',
-          isFree: true,
-        },
-        actor,
-      ),
-    ).rejects.toThrow(ConflictException);
-    expect(makeupsRepository.create).not.toHaveBeenCalled();
-
-    await expect(
-      makeupsService.updateMakeup(
-        'mk-1',
-        {
-          status: MakeupStatus.COMPLETED,
-        },
-        actor,
-      ),
-    ).rejects.toThrow(ConflictException);
-    expect(makeupsRepository.updateAndSyncOriginalAttendance).not.toHaveBeenCalled();
   });
 });
 

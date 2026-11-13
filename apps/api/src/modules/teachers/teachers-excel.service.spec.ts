@@ -39,7 +39,6 @@ describe('TeachersExcelService', () => {
           specialization: 'الرياضيات',
           contractDate: '2026-09-01',
           employmentStatus: TeacherEmploymentStatus.ACTIVE,
-          canApproveBookings: true,
           notes: 'خبرة 10 سنوات',
           assignedGroupsCount: 4,
         },
@@ -76,7 +75,6 @@ describe('TeachersExcelService', () => {
         { key: 'specialization', header: 'التخصص *' },
         { key: 'contractDate', header: 'تاريخ التعاقد (YYYY-MM-DD)', numFmt: '@' },
         { key: 'employmentStatus', header: 'حالة التعاقد' },
-        { key: 'canApproveBookings', header: 'الموافقة على الحجوزات' },
         { key: 'notes', header: 'ملاحظات' },
       ],
       rows,
@@ -112,7 +110,7 @@ describe('TeachersExcelService', () => {
     expect(parsed.rows).toHaveLength(0);
   });
 
-  it('previews rows, normalizes digits, statuses and booking flag, and detects errors & duplicates', async () => {
+  it('previews rows, normalizes digits and statuses, and detects errors & duplicates', async () => {
     const file = await buildXlsxUpload([
       {
         teacherCode: '',
@@ -121,7 +119,6 @@ describe('TeachersExcelService', () => {
         specialization: 'الفيزياء',
         contractDate: '2026-10-15',
         employmentStatus: 'نشط',
-        canApproveBookings: 'نعم',
       },
       {
         teacherCode: 'TCH-9999',
@@ -135,7 +132,6 @@ describe('TeachersExcelService', () => {
         phone: '01099998888',
         specialization: 'اللغة العربية',
         employmentStatus: 'في إجازة',
-        canApproveBookings: 'لا',
       },
       {
         teacherCode: '',
@@ -144,7 +140,6 @@ describe('TeachersExcelService', () => {
         specialization: '',
         contractDate: 'not-a-date',
         employmentStatus: 'قيمة خطأ',
-        canApproveBookings: 'ربما',
       },
     ]);
 
@@ -158,13 +153,11 @@ describe('TeachersExcelService', () => {
     expect(preview.rows[0].status).toBe('valid');
     expect(preview.rows[0].data.phone).toBe('01211112222');
     expect(preview.rows[0].data.employmentStatus).toBe(TeacherEmploymentStatus.ACTIVE);
-    expect(preview.rows[0].data.canApproveBookings).toBe(true);
 
     expect(preview.rows[1].status).toBe('skip');
 
     expect(preview.rows[2].status).toBe('valid');
     expect(preview.rows[2].data.employmentStatus).toBe(TeacherEmploymentStatus.ON_LEAVE);
-    expect(preview.rows[2].data.canApproveBookings).toBe(false);
     expect(preview.rows[2].warnings.length).toBeGreaterThan(0);
 
     expect(preview.rows[3].status).toBe('error');
@@ -239,7 +232,6 @@ describe('TeachersExcelService', () => {
 
     expect(parsed.rows).toHaveLength(1);
     expect(parsed.rows[0].cells['رقم الهاتف']).toBe('01033334444');
-    expect(parsed.rows[0].cells['الموافقة على الحجوزات']).toBe('نعم');
   });
 });
 

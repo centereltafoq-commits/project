@@ -25,8 +25,6 @@ describe('Audit Translations & Utilities', () => {
     expect(getActionArabicLabel('system.settings_update')).toBe('تحديث إعدادات النظام والهوية');
     expect(getActionArabicLabel('CREATE_GRADE_LEVEL')).toBe('إضافة صف دراسي جديد');
     expect(getActionArabicLabel('FINANCE_COLLECT_PAYMENT')).toBe('تحصيل مدفوعات طالب');
-    expect(getActionArabicLabel('CANCEL_SINGLE_BOOKING')).toBe('إلغاء موعد حجز');
-    expect(getActionArabicLabel('REVIEW_BOOKING_CONFIRMED')).toBe('تأكيد طلب الحجز وتخصيص قاعة');
     expect(getActionArabicLabel('CREATE_CLASSROOM_MAINTENANCE')).toBe('تسجيل جدول صيانة قاعة');
     expect(getActionArabicLabel('FINANCE_TEACHER_PAYOUT')).toBe('صرف مستحقات مدرس');
     expect(getActionArabicLabel('FINANCE_ASSISTANT_PAYOUT')).toBe('صرف مستحقات مساعد');
@@ -48,7 +46,6 @@ describe('Audit Translations & Utilities', () => {
     expect(getEntityArabicLabel('TEACHER')).toBe('المدرسين');
     expect(getEntityArabicLabel('ASSISTANT')).toBe('المساعدين');
     expect(getEntityArabicLabel('SESSION')).toBe('حصص المجموعات');
-    expect(getEntityArabicLabel('BOOKING_REQUEST')).toBe('طلبات الحجز');
     expect(getEntityArabicLabel('GRADE_LEVEL')).toBe('الصفوف الدراسية');
     expect(getEntityArabicLabel('BACKUP')).toBe('النسخ الاحتياطي');
     expect(getEntityArabicLabel('SETTINGS')).toBe('إعدادات النظام');

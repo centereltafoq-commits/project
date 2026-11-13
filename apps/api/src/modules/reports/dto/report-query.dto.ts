@@ -10,7 +10,6 @@ export const REPORT_TYPES = [
   'assistant-statement',
   'collections',
   'expenses',
-  'bookings',
   'classrooms',
   'financial-summary',
 ] as const;

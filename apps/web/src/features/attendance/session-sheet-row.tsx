@@ -23,11 +23,6 @@ const STATUS_BUTTONS: Array<{
     label: 'بعذر',
     activeClass: 'bg-amber-500 text-white border-amber-500 shadow-sm',
   },
-  {
-    value: AttendanceStatus.MAKEUP_ATTENDED,
-    label: 'حصة تعويضية',
-    activeClass: 'bg-violet-600 text-white border-violet-600 shadow-sm',
-  },
 ];
 
 interface SessionSheetRowProps {

@@ -29,14 +29,13 @@ export function renderClassroomsReport(ctx: ReportPrintContext): ReportTemplateR
             </span>
           </td>
           <td style="text-align: center; font-weight: bold;">${r.sessionsCount ?? 0} حصة</td>
-          <td style="text-align: center; font-weight: bold;">${r.confirmedBookingsCount ?? 0} حجز</td>
         </tr>
       `,
           )
           .join('')
       : `
         <tr>
-          <td colspan="7" style="text-align: center; color: #64748b; padding: 18px;">
+          <td colspan="6" style="text-align: center; color: #64748b; padding: 18px;">
             لا توجد بيانات قاعات مسجلة مطابقة لمعايير البحث
           </td>
         </tr>
@@ -62,7 +61,6 @@ export function renderClassroomsReport(ctx: ReportPrintContext): ReportTemplateR
               <th style="width: 100px; text-align: center;">السعة القصوى</th>
               <th style="width: 90px; text-align: center;">الحالة</th>
               <th style="width: 90px; text-align: center;">الحصص</th>
-              <th style="width: 100px; text-align: center;">الحجوزات</th>
             </tr>
           </thead>
           <tbody>

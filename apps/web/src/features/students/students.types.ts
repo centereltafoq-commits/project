@@ -1,8 +1,6 @@
 import {
   AttendanceStatus,
-  BookingStatus,
   EnrollmentStatus,
-  MakeupStatus,
   StudentStatus,
 } from '@edu-center/shared';
 
@@ -27,7 +25,6 @@ export interface StudentMonthlyBreakdownItem {
   presentCount: number;
   absentCount: number;
   excusedCount: number;
-  makeupCount: number;
   sessionPrice: number;
   totalDue: number;
   totalPaid: number;
@@ -71,7 +68,6 @@ export interface StudentProfileData {
     presentCount: number;
     absentCount: number;
     excusedCount: number;
-    makeupCount: number;
     totalDue: number;
     totalPaid: number;
     remaining: number;
@@ -83,29 +79,6 @@ export interface StudentProfileData {
     amount: string;
     paymentDate: string;
     paymentMethod: string;
-    notes: string | null;
-  }>;
-  bookings: Array<{
-    id: string;
-    requestType: string;
-    purpose: string;
-    requestedDate: string;
-    startTime: string;
-    endTime: string;
-    durationMinutes: number;
-    status: BookingStatus;
-    teacherName: string;
-    classroomName: string | null;
-  }>;
-  makeupSessions: Array<{
-    id: string;
-    absenceDate: string;
-    scheduledAt: string | null;
-    status: MakeupStatus;
-    isFree: boolean;
-    extraFee: string;
-    groupName: string;
-    classroomName: string | null;
     notes: string | null;
   }>;
 }

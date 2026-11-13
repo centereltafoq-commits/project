@@ -109,7 +109,6 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
       present: vals.filter((v) => v.status === AttendanceStatus.PRESENT).length,
       absent: vals.filter((v) => v.status === AttendanceStatus.ABSENT).length,
       excused: vals.filter((v) => v.status === AttendanceStatus.EXCUSED).length,
-      makeup: vals.filter((v) => v.status === AttendanceStatus.MAKEUP_ATTENDED).length,
     };
   }, [draft]);
 
@@ -141,7 +140,6 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
               <Badge variant="success">حاضر: {liveCounts.present}</Badge>
               <Badge variant="danger">غائب: {liveCounts.absent}</Badge>
               <Badge variant="warning">بعذر: {liveCounts.excused}</Badge>
-              <Badge variant="purple">تعويضي: {liveCounts.makeup}</Badge>
             </div>
             {canRecord && (
               <Button type="button" size="sm" variant="secondary" onClick={markAllPresent}>

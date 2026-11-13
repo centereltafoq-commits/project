@@ -6,9 +6,9 @@ import * as argon2 from 'argon2';
 import { DEFAULT_ROLE_PERMISSIONS, SystemRole } from '@edu-center/shared';
 import * as schema from '../schemas';
 import { permissions, rolePermissions, roles, users } from '../schemas';
-import { seedMaintenanceAndBookings } from './seed-bookings.runner';
+import { seedMaintenanceAndAvailability } from './seed-maintenance.runner';
 import { seedCatalogEntities } from './seed-catalog.runner';
-import { seedStaffSettlementsAndExpenses } from './seed-finance-bookings.runner';
+import { seedStaffSettlementsAndExpenses } from './seed-finance.runner';
 import { buildSeedPermissionsList, SEED_ROLES_DATA } from './seed-identity.data';
 import { seedEnrollmentsAndSessions } from './seed-operations.runner';
 import { seedAttendanceAndStudentPayments } from './seed-student-finance.runner';
@@ -140,7 +140,7 @@ async function runSeed(): Promise<void> {
       groupSessionsMap,
     );
     await seedStaffSettlementsAndExpenses(db, ctx, groupAccs);
-    await seedMaintenanceAndBookings(db, ctx);
+    await seedMaintenanceAndAvailability(db, ctx);
 
     console.info(
       `[Seed] Completed successfully! Seeded ${permList.length} permissions, 5 roles, 5 users, 5 classrooms, 4 teachers, 3 assistants, ${catalog.studentIds.length} students, and 4 groups for ${yearMonth}.`,

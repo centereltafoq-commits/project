@@ -102,10 +102,10 @@ export function StudentBillingTab({
         render: (r) => (
           <div className="text-xs space-y-0.5">
             <span className="font-bold text-foreground">
-              حضر {r.presentCount + r.makeupAttendedCount} من {r.eligibleSessions} حصة
+              حضر {r.presentCount} من {r.eligibleSessions} حصة
             </span>
             <div className="text-[11px] text-muted-foreground">
-              غياب: {r.absentCount} | إذن: {r.excusedCount} {r.makeupAttendedCount > 0 && `| تعويض: ${r.makeupAttendedCount}`}
+              غياب: {r.absentCount} | إذن: {r.excusedCount}
             </div>
           </div>
         ),
@@ -116,11 +116,6 @@ export function StudentBillingTab({
         render: (r) => (
           <div>
             <span className="font-medium text-xs">{formatCurrency(r.sessionPriceSnapshot)}</span>
-            {r.extraMakeupFees > 0 && (
-              <div className="text-[10px] text-amber-600 font-medium">
-                + تعويضي {formatCurrency(r.extraMakeupFees)}
-              </div>
-            )}
           </div>
         ),
       },

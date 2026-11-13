@@ -4,12 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   BookOpen,
-  CalendarClock,
   CheckCircle2,
   CreditCard,
   Edit3,
   Phone,
-  RefreshCw,
   UserCheck,
   Wallet,
 } from 'lucide-react';
@@ -42,8 +40,6 @@ import {
   StudentMonthlyFinancialTab,
 } from './student-academic-tabs';
 import {
-  StudentBookingsTab,
-  StudentMakeupsTab,
   StudentPaymentsTab,
 } from './student-activity-tabs';
 import { STUDENT_STATUS_META, StudentProfileData } from './students.types';
@@ -144,7 +140,7 @@ export function StudentProfilePage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="حضور الشهر المحدد"
-          value={`${monthTotals.presentCount + monthTotals.makeupCount} / ${monthTotals.totalSessions}`}
+          value={`${monthTotals.presentCount} / ${monthTotals.totalSessions}`}
           subtitle={`غياب: ${monthTotals.absentCount} • بعذر: ${monthTotals.excusedCount}`}
           icon={UserCheck}
           tone="primary"
@@ -182,20 +178,6 @@ export function StudentProfilePage() {
               icon={BookOpen}
               tone="purple"
             />
-            <StatCard
-              title="الحصص التعويضية"
-              value={data.makeupSessions.length}
-              subtitle="إجمالي طلبات التعويض"
-              icon={RefreshCw}
-              tone="success"
-            />
-            <StatCard
-              title="المواعيد والحجوزات"
-              value={data.bookings.length}
-              subtitle="طلبات الحجز المسجلة"
-              icon={CalendarClock}
-              tone="warning"
-            />
           </>
         )}
       </div>
@@ -222,14 +204,6 @@ export function StudentProfilePage() {
               المدفوعات ({data.payments.length})
             </TabsTrigger>
           )}
-          <TabsTrigger value="makeups">
-            <RefreshCw className="h-4 w-4" />
-            الحصص التعويضية ({data.makeupSessions.length})
-          </TabsTrigger>
-          <TabsTrigger value="bookings">
-            <CalendarClock className="h-4 w-4" />
-            المواعيد والحجوزات ({data.bookings.length})
-          </TabsTrigger>
         </TabsList>
 
         {canViewFinance && (
@@ -248,12 +222,6 @@ export function StudentProfilePage() {
             <StudentPaymentsTab data={data} />
           </TabsContent>
         )}
-        <TabsContent value="makeups">
-          <StudentMakeupsTab data={data} />
-        </TabsContent>
-        <TabsContent value="bookings">
-          <StudentBookingsTab data={data} />
-        </TabsContent>
       </Tabs>
 
       <StudentFormModal open={editOpen} onOpenChange={setEditOpen} student={student} />

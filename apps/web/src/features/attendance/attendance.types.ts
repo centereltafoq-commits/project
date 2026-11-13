@@ -1,4 +1,4 @@
-import { AttendanceStatus, MakeupStatus, SessionStatus } from '@edu-center/shared';
+import { AttendanceStatus, SessionStatus } from '@edu-center/shared';
 
 export interface AttendanceLookups {
   groups: Array<{
@@ -78,32 +78,9 @@ export interface SessionSheetResponse {
     presentCount: number;
     absentCount: number;
     excusedCount: number;
-    makeupCount: number;
     unrecordedCount: number;
   };
   students: SheetStudentRow[];
-}
-
-export interface MakeupSessionRow {
-  id: string;
-  studentId: string;
-  studentName: string;
-  studentCode: string;
-  originalSessionId: string;
-  groupId: string;
-  groupName: string;
-  groupCode: string;
-  absenceDate: string;
-  scheduledAt: string | null;
-  classroomId: string | null;
-  classroomName: string | null;
-  roomNumber: string | null;
-  status: MakeupStatus | string;
-  isFree: boolean;
-  extraFee: string;
-  approvedByName: string | null;
-  notes: string | null;
-  createdAt: string;
 }
 
 export const SESSION_STATUS_META: Record<
@@ -113,14 +90,4 @@ export const SESSION_STATUS_META: Record<
   [SessionStatus.SCHEDULED]: { label: 'مجدولة', variant: 'info' },
   [SessionStatus.COMPLETED]: { label: 'مكتملة', variant: 'success' },
   [SessionStatus.CANCELLED]: { label: 'ملغاة', variant: 'danger' },
-};
-
-export const MAKEUP_STATUS_META: Record<
-  string,
-  { label: string; variant: 'warning' | 'info' | 'success' | 'danger' | 'neutral' }
-> = {
-  [MakeupStatus.PENDING]: { label: 'قيد الانتظار', variant: 'warning' },
-  [MakeupStatus.SCHEDULED]: { label: 'مجدولة', variant: 'info' },
-  [MakeupStatus.COMPLETED]: { label: 'تم الحضور', variant: 'success' },
-  [MakeupStatus.CANCELLED]: { label: 'ملغاة', variant: 'danger' },
 };

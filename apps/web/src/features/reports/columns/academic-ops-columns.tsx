@@ -1,18 +1,6 @@
 import { Badge, TableColumn } from '@/design-system';
-import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
 
 type Row = Record<string, unknown>;
-
-const BOOKING_VARIANT: Record<
-  string,
-  'warning' | 'success' | 'danger' | 'neutral' | 'purple'
-> = {
-  PENDING: 'warning',
-  CONFIRMED: 'success',
-  REJECTED: 'danger',
-  CANCELLED: 'neutral',
-  COMPLETED: 'purple',
-};
 
 export function getStudentsColumns(): TableColumn<Row>[] {
   return [
@@ -99,11 +87,6 @@ export function getAttendanceColumns(): TableColumn<Row>[] {
       render: (r) => <Badge variant="warning">{Number(r.excusedCount)}</Badge>,
     },
     {
-      key: 'makeupCount',
-      header: 'التعويضي',
-      render: (r) => <Badge variant="purple">{Number(r.makeupCount)}</Badge>,
-    },
-    {
       key: 'attendanceRate',
       header: 'نسبة الحضور',
       render: (r) => {
@@ -114,56 +97,6 @@ export function getAttendanceColumns(): TableColumn<Row>[] {
           </Badge>
         );
       },
-    },
-  ];
-}
-
-export function getBookingsColumns(): TableColumn<Row>[] {
-  return [
-    {
-      key: 'requestTypeAr',
-      header: 'النوع',
-      render: (r) => <Badge variant="info">{String(r.requestTypeAr)}</Badge>,
-    },
-    {
-      key: 'partyLabel',
-      header: 'الطالب / المدرس',
-      render: (r) => <span className="font-bold">{r.partyLabel ? String(r.partyLabel) : '—'}</span>,
-    },
-    {
-      key: 'purpose',
-      header: 'الغرض من الموعد',
-      render: (r) => <span className="text-xs font-medium">{r.purpose ? String(r.purpose) : '—'}</span>,
-    },
-    {
-      key: 'dateAndTime',
-      header: 'التاريخ والوقت',
-      render: (r) => {
-        const slot = r.timeSlot ? String(r.timeSlot) : '';
-        const [start, end] = slot.includes('-')
-          ? slot.split('-').map((s) => s.trim())
-          : [slot, ''];
-        return (
-          <div className="text-xs">
-            <div className="font-semibold">{formatDateAr(r.requestedDate as string)}</div>
-            <div className="text-muted-foreground">{formatTimeRangeAr(start, end)}</div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'classroomLabel',
-      header: 'القاعة',
-      render: (r) => <span className="text-xs font-semibold">{r.classroomLabel ? String(r.classroomLabel) : '—'}</span>,
-    },
-    {
-      key: 'status',
-      header: 'الحالة',
-      render: (r) => (
-        <Badge variant={BOOKING_VARIANT[String(r.status)] || 'neutral'}>
-          {String(r.statusAr)}
-        </Badge>
-      ),
     },
   ];
 }
@@ -202,11 +135,6 @@ export function getClassroomsColumns(): TableColumn<Row>[] {
       key: 'sessionsCount',
       header: 'عدد الحصص بالشهر',
       render: (r) => <Badge variant="info">{Number(r.sessionsCount)} حصة</Badge>,
-    },
-    {
-      key: 'confirmedBookingsCount',
-      header: 'الحجوزات المعتمدة',
-      render: (r) => <Badge variant="purple">{Number(r.confirmedBookingsCount)} حجز</Badge>,
     },
   ];
 }

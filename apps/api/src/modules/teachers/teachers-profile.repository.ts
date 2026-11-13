@@ -3,14 +3,12 @@ import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   attendance,
-  bookingRequests,
   classrooms,
   enrollments,
   financialPolicies,
   groups,
   groupTeachers,
   sessions,
-  students,
   teacherAvailability,
   teacherDues,
   teacherMonthlyRecords,
@@ -34,7 +32,6 @@ export class TeachersProfileRepository {
       storedDues,
       storedMonthlyRecordRows,
       payouts,
-      bookings,
     ] = await Promise.all([
       this.db
         .select({
@@ -101,27 +98,6 @@ export class TeachersProfileRepository {
         .from(teacherPayouts)
         .where(eq(teacherPayouts.teacherId, teacherId))
         .orderBy(desc(teacherPayouts.payoutDate), desc(teacherPayouts.createdAt)),
-
-      this.db
-        .select({
-          id: bookingRequests.id,
-          requestType: bookingRequests.requestType,
-          purpose: bookingRequests.purpose,
-          requestedDate: bookingRequests.requestedDate,
-          startTime: bookingRequests.startTime,
-          endTime: bookingRequests.endTime,
-          durationMinutes: bookingRequests.durationMinutes,
-          expectedAttendees: bookingRequests.expectedAttendees,
-          status: bookingRequests.status,
-          studentName: students.fullName,
-          classroomName: classrooms.name,
-          notes: bookingRequests.notes,
-        })
-        .from(bookingRequests)
-        .leftJoin(students, eq(bookingRequests.studentId, students.id))
-        .leftJoin(classrooms, eq(bookingRequests.assignedClassroomId, classrooms.id))
-        .where(eq(bookingRequests.teacherId, teacherId))
-        .orderBy(desc(bookingRequests.requestedDate)),
     ]);
 
     const dedupGroupsMap = new Map<string, (typeof assignedGroupsRaw)[number]>();
@@ -146,7 +122,7 @@ export class TeachersProfileRepository {
             this.db
               .select({
                 groupId: sessions.groupId,
-                presentEntries: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} IN ('PRESENT', 'MAKEUP_ATTENDED'))::int`,
+                presentEntries: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'PRESENT')::int`,
               })
               .from(attendance)
               .innerJoin(sessions, eq(attendance.sessionId, sessions.id))
@@ -161,7 +137,6 @@ export class TeachersProfileRepository {
       storedDues,
       storedMonthlyRecord: storedMonthlyRecordRows[0] ?? null,
       payouts,
-      bookings,
       monthSessions,
       monthAttendanceCounts,
     };

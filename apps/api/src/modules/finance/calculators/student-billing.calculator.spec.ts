@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   AttendanceStatus,
   FullMonthAbsencePolicy,
-  MakeupStatus,
   SessionStatus,
 } from '@edu-center/shared';
 import { calculateStudentMonthlyBilling } from './student-billing.calculator';
@@ -34,23 +33,21 @@ describe('calculateStudentMonthlyBilling', () => {
         { sessionId: 's-4', status: AttendanceStatus.PRESENT },
         { sessionId: 's-5', status: AttendanceStatus.PRESENT },
         { sessionId: 's-6', status: AttendanceStatus.PRESENT },
-        { sessionId: 's-7', status: AttendanceStatus.MAKEUP_ATTENDED },
+        { sessionId: 's-7', status: AttendanceStatus.PRESENT },
         { sessionId: 's-8', status: AttendanceStatus.ABSENT },
         { sessionId: 's-9', status: AttendanceStatus.EXCUSED },
         { sessionId: 's-10', status: AttendanceStatus.ABSENT },
       ],
-      makeups: [{ isFree: true, extraFee: 0, status: MakeupStatus.COMPLETED }],
     });
 
     expect(result.sessionPriceSnapshot).toBe(18);
-    expect(result.presentCount).toBe(6);
-    expect(result.makeupAttendedCount).toBe(1);
+    expect(result.presentCount).toBe(7);
     expect(result.attendedCount).toBe(7);
     expect(result.totalDue).toBe(126);
     expect(result.remainingBalance).toBe(126);
   });
 
-  it('adds non-free extraMakeupFees and charges EXCUSED only when chargeExcusedAbsence is true', () => {
+  it('charges EXCUSED only when chargeExcusedAbsence is true', () => {
     const result = calculateStudentMonthlyBilling({
       enrollment: {
         startDate: '2026-10-01',
@@ -66,19 +63,14 @@ describe('calculateStudentMonthlyBilling', () => {
       attendances: [
         { sessionId: 's-1', status: AttendanceStatus.PRESENT },
         { sessionId: 's-2', status: AttendanceStatus.EXCUSED },
-        { sessionId: 's-3', status: AttendanceStatus.MAKEUP_ATTENDED },
-      ],
-      makeups: [
-        { isFree: false, extraFee: 25, status: MakeupStatus.COMPLETED },
-        { isFree: false, extraFee: 50, status: MakeupStatus.CANCELLED },
+        { sessionId: 's-3', status: AttendanceStatus.PRESENT },
       ],
       currentTotalPaid: 40,
     });
 
-    expect(result.billableSessionsCount).toBe(3); // 1 present + 1 makeup + 1 excused
-    expect(result.extraMakeupFees).toBe(25);
-    expect(result.totalDue).toBe(79); // (3 * 18) + 25 = 79
-    expect(result.remainingBalance).toBe(39);
+    expect(result.billableSessionsCount).toBe(3); // 2 present + 1 excused
+    expect(result.totalDue).toBe(54); // 3 * 18 = 54
+    expect(result.remainingBalance).toBe(14);
   });
 
   it('enforces mid-month enrollment rule: sessions before startDate or after endDate are NEVER charged', () => {
@@ -186,9 +178,7 @@ describe('calculateStudentMonthlyBilling', () => {
         presentCount: 7,
         absentCount: 3,
         excusedCount: 0,
-        makeupAttendedCount: 0,
         sessionPriceSnapshot: 18,
-        extraMakeupFees: 0,
         totalDue: 126,
         totalPaid: 50,
       },
@@ -232,39 +222,6 @@ describe('calculateStudentMonthlyBilling', () => {
     expect(result.billableSessionsCount).toBe(3);
     expect(result.sessionPriceSnapshot).toBe(166.67);
     expect(result.totalDue).toBe(500); // Exactly 500, NOT 500.01!
-  });
-
-  it('counts completed makeups from makeups list even if attendance record is absent', () => {
-    const result = calculateStudentMonthlyBilling({
-      enrollment: {
-        startDate: '2026-10-01',
-        agreedMonthlyPrice: 200,
-        agreedSessionsCount: 4,
-        agreedSessionPrice: 50,
-      },
-      policy: {
-        fullMonthAbsencePolicy: FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
-        fullAbsenceFixedFee: 0,
-        chargeExcusedAbsence: false,
-      },
-      sessions: [
-        { id: 's-1', sessionDate: '2026-10-05', status: SessionStatus.COMPLETED },
-        { id: 's-2', sessionDate: '2026-10-12', status: SessionStatus.COMPLETED },
-      ],
-      attendances: [
-        { sessionId: 's-1', status: AttendanceStatus.PRESENT },
-        { sessionId: 's-2', status: AttendanceStatus.ABSENT },
-      ],
-      makeups: [
-        { isFree: true, extraFee: 0, status: MakeupStatus.COMPLETED },
-      ],
-    });
-
-    // 1 present + 1 completed makeup = 2 attended
-    expect(result.presentCount).toBe(1);
-    expect(result.makeupAttendedCount).toBe(1);
-    expect(result.attendedCount).toBe(2);
-    expect(result.totalDue).toBe(100);
   });
 
   it('handles overpayments by flooring remainingBalance at 0 without negative balances', () => {

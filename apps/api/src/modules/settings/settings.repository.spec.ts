@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SettingsRepository } from './settings.repository';
 import {
   systemSettings,
-  makeupSessions,
   attendance,
   paymentAllocations,
   payments,
@@ -14,10 +13,6 @@ import {
   teacherMonthlyRecords,
   assistantMonthlyRecords,
   expenses,
-  classroomBookings,
-  bookingApprovals,
-  bookingRequests,
-  bookingSeries,
   enrollments,
   sessions,
   groupTeachers,
@@ -131,8 +126,7 @@ describe('SettingsRepository', () => {
       expect(mockDb.transaction).toHaveBeenCalled();
       expect(result).toEqual({ success: true, purgedStudents: false });
 
-      // Verify attendance and makeups are purged
-      expect(mockTx.delete).toHaveBeenCalledWith(makeupSessions);
+      // Verify attendance is purged
       expect(mockTx.delete).toHaveBeenCalledWith(attendance);
 
       // Verify financial transactions are purged
@@ -146,12 +140,6 @@ describe('SettingsRepository', () => {
       expect(mockTx.delete).toHaveBeenCalledWith(teacherMonthlyRecords);
       expect(mockTx.delete).toHaveBeenCalledWith(assistantMonthlyRecords);
       expect(mockTx.delete).toHaveBeenCalledWith(expenses);
-
-      // Verify bookings are purged
-      expect(mockTx.delete).toHaveBeenCalledWith(classroomBookings);
-      expect(mockTx.delete).toHaveBeenCalledWith(bookingApprovals);
-      expect(mockTx.delete).toHaveBeenCalledWith(bookingRequests);
-      expect(mockTx.delete).toHaveBeenCalledWith(bookingSeries);
 
       // Verify enrollments and sessions are purged
       expect(mockTx.delete).toHaveBeenCalledWith(enrollments);

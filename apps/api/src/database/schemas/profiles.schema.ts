@@ -3,6 +3,8 @@ import {
   uuid,
   varchar,
   date,
+  integer,
+  boolean,
   numeric,
   text,
   timestamp,
@@ -46,7 +48,6 @@ export const teachers = pgTable(
     specialization: varchar('specialization', { length: 100 }).notNull(),
     contractDate: date('contract_date').notNull(),
     employmentStatus: varchar('employment_status', { length: 24 }).default('ACTIVE').notNull(),
-    canApproveBookings: varchar('can_approve_bookings', { length: 10 }).default('true').notNull(),
     notes: text('notes'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -81,5 +82,20 @@ export const assistants = pgTable(
     index('idx_assistants_name').on(t.fullName),
     index('idx_assistants_status').on(t.status),
   ],
+);
+
+export const teacherAvailability = pgTable(
+  'teacher_availability',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    teacherId: uuid('teacher_id')
+      .notNull()
+      .references(() => teachers.id, { onDelete: 'cascade' }),
+    dayOfWeek: integer('day_of_week').notNull(), // 0-6
+    startTime: varchar('start_time', { length: 8 }).notNull(),
+    endTime: varchar('end_time', { length: 8 }).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+  },
+  (t) => [index('idx_teacher_avail_teacher_day').on(t.teacherId, t.dayOfWeek)],
 );
 

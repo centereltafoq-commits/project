@@ -24,7 +24,6 @@ export interface ParsedTeacherImportRow {
   specialization: string;
   contractDate: string;
   employmentStatus: TeacherEmploymentStatus;
-  canApproveBookings: boolean;
   notes: string | null;
 }
 
@@ -45,17 +44,6 @@ const TEACHER_STATUS_PARSE_MAP: Record<string, TeacherEmploymentStatus> = {
   'غير نشط': TeacherEmploymentStatus.INACTIVE,
 };
 
-const BOOLEAN_PARSE_MAP: Record<string, boolean> = {
-  نعم: true,
-  TRUE: true,
-  '1': true,
-  YES: true,
-  لا: false,
-  FALSE: false,
-  '0': false,
-  NO: false,
-};
-
 const TEACHER_HEADER_ALIASES: Record<keyof ParsedTeacherImportRow, string[]> = {
   teacherCode: ['كود المدرس (اختياري)', 'كود المدرس', 'teacherCode', 'code'],
   fullName: ['اسم المدرس *', 'اسم المدرس', 'الاسم الكامل', 'fullName', 'name'],
@@ -63,7 +51,6 @@ const TEACHER_HEADER_ALIASES: Record<keyof ParsedTeacherImportRow, string[]> = {
   specialization: ['التخصص *', 'التخصص', 'المادة', 'specialization'],
   contractDate: ['تاريخ التعاقد (YYYY-MM-DD)', 'تاريخ التعاقد', 'contractDate'],
   employmentStatus: ['حالة التعاقد', 'الحالة', 'employmentStatus'],
-  canApproveBookings: ['الموافقة على الحجوزات', 'اعتماد الحجوزات', 'canApproveBookings'],
   notes: ['ملاحظات', 'notes'],
 };
 
@@ -90,12 +77,6 @@ export class TeachersExcelService {
           width: 18,
           dropdownValues: ['نشط', 'في إجازة', 'غير نشط'],
         },
-        {
-          key: 'canApproveBookings',
-          header: 'الموافقة على الحجوزات',
-          width: 22,
-          dropdownValues: ['نعم', 'لا'],
-        },
         { key: 'notes', header: 'ملاحظات', width: 30 },
       ],
       rows: [],
@@ -110,7 +91,6 @@ export class TeachersExcelService {
           'عمود الهاتف مضبوط بصيغة نص (@) للحفاظ على الصفر البادئ (مثل 01012345678).',
           'تاريخ التعاقد اختياري بصيغة YYYY-MM-DD، وإذا تُرك فارغاً يُسجَّل بتاريخ اليوم.',
           'حالة التعاقد اختيارية (نشط / في إجازة / غير نشط) وتُعيَّن افتراضياً إلى "نشط".',
-          'عمود الموافقة على الحجوزات اختياري (نعم / لا) ويُعيَّن افتراضياً إلى "نعم".',
           'المثال التوضيحي بالأسفل للقراءة فقط ولن يتم استيراده إلا إذا أُدخل في الورقة الأولى.',
         ],
         sampleHeaders: [
@@ -120,7 +100,6 @@ export class TeachersExcelService {
           'التخصص *',
           'تاريخ التعاقد (YYYY-MM-DD)',
           'حالة التعاقد',
-          'الموافقة على الحجوزات',
           'ملاحظات',
         ],
         sampleRow: [
@@ -130,17 +109,12 @@ export class TeachersExcelService {
           'الرياضيات',
           new Date().toISOString().slice(0, 10),
           'نشط',
-          'نعم',
           'خبرة 8 سنوات',
         ],
         referenceLists: [
           {
             title: 'حالات التعاقد المقبولة:',
             items: ['نشط (ACTIVE)', 'في إجازة (ON_LEAVE)', 'غير نشط (INACTIVE)'],
-          },
-          {
-            title: 'قيم الموافقة على الحجوزات المقبولة:',
-            items: ['نعم (true)', 'لا (false)'],
           },
         ],
       },
@@ -197,7 +171,6 @@ export class TeachersExcelService {
       specialization: row.data.specialization,
       contractDate: row.data.contractDate,
       employmentStatus: row.data.employmentStatus,
-      canApproveBookings: row.data.canApproveBookings,
       notes: row.data.notes,
     }));
 
@@ -240,7 +213,6 @@ export class TeachersExcelService {
         { key: 'assignedGroupsCount', header: 'المجموعات المسندة', width: 18 },
         { key: 'contractDate', header: 'تاريخ التعاقد', width: 18, numFmt: '@' },
         { key: 'employmentStatus', header: 'حالة التعاقد', width: 16 },
-        { key: 'canApproveBookings', header: 'الموافقة على الحجوزات', width: 20 },
         { key: 'notes', header: 'ملاحظات', width: 32 },
       ],
       rows: rows.map((row) => ({
@@ -253,7 +225,6 @@ export class TeachersExcelService {
         employmentStatus:
           TEACHER_STATUS_LABELS[row.employmentStatus as TeacherEmploymentStatus] ??
           row.employmentStatus,
-        canApproveBookings: row.canApproveBookings ? 'نعم' : 'لا',
         notes: row.notes ?? '',
       })),
     });
@@ -322,9 +293,6 @@ export class TeachersExcelService {
       const rawStatus = headerLookup.employmentStatus
         ? this.excelService.normalizeCellText(row.cells[headerLookup.employmentStatus])
         : '';
-      const rawCanApprove = headerLookup.canApproveBookings
-        ? this.excelService.normalizeCellText(row.cells[headerLookup.canApproveBookings])
-        : '';
       const rawNotes = headerLookup.notes
         ? this.excelService.normalizeCellText(row.cells[headerLookup.notes])
         : '';
@@ -367,16 +335,6 @@ export class TeachersExcelService {
           errors.push('حالة التعاقد غير صالحة (المسموح: نشط، في إجازة، غير نشط)');
         } else {
           employmentStatus = mappedStatus;
-        }
-      }
-
-      let canApproveBookings = true;
-      if (rawCanApprove) {
-        const normalizedFlag = this.excelService.normalizeArabicDigits(rawCanApprove).toUpperCase();
-        if (!(normalizedFlag in BOOLEAN_PARSE_MAP)) {
-          errors.push('قيمة الموافقة على الحجوزات غير صالحة (المسموح: نعم أو لا)');
-        } else {
-          canApproveBookings = BOOLEAN_PARSE_MAP[normalizedFlag];
         }
       }
 
@@ -445,7 +403,6 @@ export class TeachersExcelService {
           specialization,
           contractDate,
           employmentStatus,
-          canApproveBookings,
           notes: rawNotes || null,
         },
         errors,

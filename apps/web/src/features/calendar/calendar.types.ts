@@ -4,8 +4,6 @@ export type CalendarViewMode = 'day' | 'week' | 'month';
 
 export type CalendarEventCategory =
   | 'GROUP_SESSION'
-  | 'PENDING_BOOKING'
-  | 'CONFIRMED_BOOKING'
   | 'CLASSROOM_MAINTENANCE';
 
 export interface UnifiedCalendarEvent {
@@ -71,20 +69,6 @@ export const EVENT_CATEGORY_STYLES: Record<
       'border-blue-500/40 bg-blue-500/15 text-blue-800 dark:text-blue-200 hover:bg-blue-500/25',
     dotClass: 'bg-blue-500',
     badgeVariant: 'info',
-  },
-  CONFIRMED_BOOKING: {
-    label: 'الحجوزات المعتمدة والقاعات المشغولة',
-    pillClass:
-      'border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-500/25',
-    dotClass: 'bg-emerald-500',
-    badgeVariant: 'success',
-  },
-  PENDING_BOOKING: {
-    label: 'طلبات الحجز المعلقة',
-    pillClass:
-      'border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-200 hover:bg-amber-500/25',
-    dotClass: 'bg-amber-500',
-    badgeVariant: 'warning',
   },
   CLASSROOM_MAINTENANCE: {
     label: 'مواعيد صيانة القاعات',

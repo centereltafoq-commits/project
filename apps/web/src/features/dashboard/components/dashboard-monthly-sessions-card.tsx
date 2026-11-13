@@ -26,8 +26,7 @@ export function DashboardMonthlySessionsCard({ data }: DashboardMonthlySessionsC
   const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
   const canAccessAttendance =
     hasPermission(PERMISSIONS.ATTENDANCE_VIEW) ||
-    hasPermission(PERMISSIONS.SESSIONS_VIEW) ||
-    hasPermission(PERMISSIONS.MAKEUP_MANAGE);
+    hasPermission(PERMISSIONS.SESSIONS_VIEW);
 
   const stats = data.monthlySessionsStats ?? {
     totalSessions: 0,

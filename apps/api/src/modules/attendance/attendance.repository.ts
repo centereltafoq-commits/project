@@ -4,7 +4,6 @@ import { ClassroomStatus, SessionStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   attendance,
-  classroomBookings,
   classroomMaintenances,
   classrooms,
   groups,
@@ -135,7 +134,7 @@ export class AttendanceRepository {
         .select({
           sessionId: attendance.sessionId,
           recordedCount: count(),
-          presentCount: sql<number>`count(*) filter (where ${attendance.status} in ('PRESENT', 'MAKEUP_ATTENDED'))`,
+          presentCount: sql<number>`count(*) filter (where ${attendance.status} = 'PRESENT')`,
         })
         .from(attendance)
         .where(inArray(attendance.sessionId, sessionIds))
@@ -243,7 +242,7 @@ export class AttendanceRepository {
       };
     }
 
-    // 2. If classroom is specified, check classroom status, maintenances, bookings, and other sessions
+    // 2. If classroom is specified, check classroom status, maintenances, and other sessions
     if (params.classroomId) {
       const [room] = await this.db
         .select()
@@ -315,33 +314,6 @@ export class AttendanceRepository {
         return {
           hasConflict: true,
           message: `القاعة (${room.name}) مشغولة بحصة (${roomSessionOverlap[0].groupName}) من ${roomSessionOverlap[0].startTime} إلى ${roomSessionOverlap[0].endTime}`,
-        };
-      }
-
-      // Check overlapping confirmed booking
-      const bookingOverlap = await this.db
-        .select({
-          id: classroomBookings.id,
-          title: classroomBookings.title,
-          startTime: classroomBookings.startTime,
-          endTime: classroomBookings.endTime,
-        })
-        .from(classroomBookings)
-        .where(
-          and(
-            eq(classroomBookings.classroomId, params.classroomId),
-            eq(classroomBookings.bookingDate, params.date),
-            eq(classroomBookings.status, 'CONFIRMED'),
-            lt(classroomBookings.startTime, params.endTime),
-            gt(classroomBookings.endTime, params.startTime),
-          ),
-        )
-        .limit(1);
-
-      if (bookingOverlap.length > 0) {
-        return {
-          hasConflict: true,
-          message: `القاعة (${room.name}) محجوزة لموعد آخر (${bookingOverlap[0].title}) من ${bookingOverlap[0].startTime} إلى ${bookingOverlap[0].endTime}`,
         };
       }
     }

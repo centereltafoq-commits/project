@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gte, sql } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   assistantDues,
@@ -7,7 +7,6 @@ import {
   assistantPayouts,
   assistants,
   attendance,
-  bookingRequests,
   classrooms,
   expenses,
   groups,
@@ -48,8 +47,6 @@ export class DashboardRepository {
       [teacherPaidRow],
       [assistantPaidRow],
       [expensesRow],
-      [pendingBookingsRow],
-      upcomingRows,
       roomsSnapshot,
     ] = await Promise.all([
       this.db
@@ -98,7 +95,6 @@ export class DashboardRepository {
           present: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'PRESENT')::int`,
           absent: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'ABSENT')::int`,
           excused: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'EXCUSED')::int`,
-          makeup: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'MAKEUP_ATTENDED')::int`,
         })
         .from(attendance)
         .innerJoin(sessions, eq(attendance.sessionId, sessions.id))
@@ -113,15 +109,15 @@ export class DashboardRepository {
         .where(eq(sessions.yearMonth, yearMonth)),
       this.db
         .select({
-          totalBillableSessions: sql<number>`COALESCE(SUM(${studentMonthlyRecords.presentCount} + ${studentMonthlyRecords.makeupAttendedCount}), 0)::int`,
+          totalBillableSessions: sql<number>`COALESCE(SUM(${studentMonthlyRecords.presentCount}), 0)::int`,
           totalPaidSessions: sql<number>`COALESCE(SUM(
             CASE 
               WHEN ${studentMonthlyRecords.sessionPriceSnapshot} > 0 
               THEN LEAST(
-                ${studentMonthlyRecords.presentCount} + ${studentMonthlyRecords.makeupAttendedCount}, 
+                ${studentMonthlyRecords.presentCount}, 
                 FLOOR(${studentMonthlyRecords.totalPaid} / ${studentMonthlyRecords.sessionPriceSnapshot})::int
               )
-              ELSE (${studentMonthlyRecords.presentCount} + ${studentMonthlyRecords.makeupAttendedCount})
+              ELSE ${studentMonthlyRecords.presentCount}
             END
           ), 0)::int`,
           totalUnpaidSessions: sql<number>`COALESCE(SUM(
@@ -129,7 +125,7 @@ export class DashboardRepository {
               WHEN ${studentMonthlyRecords.sessionPriceSnapshot} > 0 
               THEN GREATEST(
                 0, 
-                (${studentMonthlyRecords.presentCount} + ${studentMonthlyRecords.makeupAttendedCount}) - FLOOR(${studentMonthlyRecords.totalPaid} / ${studentMonthlyRecords.sessionPriceSnapshot})::int
+                ${studentMonthlyRecords.presentCount} - FLOOR(${studentMonthlyRecords.totalPaid} / ${studentMonthlyRecords.sessionPriceSnapshot})::int
               )
               ELSE 0
             END
@@ -182,38 +178,6 @@ export class DashboardRepository {
         })
         .from(expenses)
         .where(eq(expenses.yearMonth, yearMonth)),
-      this.db
-        .select({ pendingCount: sql<number>`COUNT(*)::int` })
-        .from(bookingRequests)
-        .where(eq(bookingRequests.status, 'PENDING')),
-      this.db
-        .select({
-          id: bookingRequests.id,
-          requestType: bookingRequests.requestType,
-          purpose: bookingRequests.purpose,
-          requestedDate: bookingRequests.requestedDate,
-          startTime: bookingRequests.startTime,
-          endTime: bookingRequests.endTime,
-          teacherName: teachers.fullName,
-          studentName: students.fullName,
-          classroomName: classrooms.name,
-          roomNumber: classrooms.roomNumber,
-        })
-        .from(bookingRequests)
-        .innerJoin(teachers, eq(bookingRequests.teacherId, teachers.id))
-        .leftJoin(students, eq(bookingRequests.studentId, students.id))
-        .leftJoin(
-          classrooms,
-          sql`${classrooms.id} = COALESCE(${bookingRequests.assignedClassroomId}, ${bookingRequests.requestedClassroomId})`,
-        )
-        .where(
-          and(
-            eq(bookingRequests.status, 'CONFIRMED'),
-            gte(bookingRequests.requestedDate, todayDate),
-          ),
-        )
-        .orderBy(asc(bookingRequests.requestedDate), asc(bookingRequests.startTime))
-        .limit(5),
       queryClassroomsLiveSnapshot(this.db, todayDate, currentTime),
     ]);
 
@@ -254,7 +218,6 @@ export class DashboardRepository {
         present: Number(todayAttRow?.present ?? 0),
         absent: Number(todayAttRow?.absent ?? 0),
         excused: Number(todayAttRow?.excused ?? 0),
-        makeup: Number(todayAttRow?.makeup ?? 0),
       },
       monthlySessionsStats: {
         totalSessions: Number(monthlySessionsRow?.totalSessions ?? 0),
@@ -275,8 +238,6 @@ export class DashboardRepository {
       totalExpenses,
       netCenterResult,
       netCashFlow,
-      pendingBookingsCount: Number(pendingBookingsRow?.pendingCount ?? 0),
-      upcomingAppointments: upcomingRows,
       classroomsSummary: roomsSnapshot.classroomsSummary,
       classroomsLive: roomsSnapshot.classroomsLive,
     };

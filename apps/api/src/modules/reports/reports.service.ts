@@ -52,13 +52,11 @@ export class ReportsService {
     const canSeeTeachers =
       perms.includes(PERMISSIONS.TEACHERS_VIEW) ||
       perms.includes(PERMISSIONS.FINANCE_VIEW) ||
-      perms.includes(PERMISSIONS.BOOKINGS_VIEW) ||
       perms.includes(PERMISSIONS.ATTENDANCE_VIEW);
     const canSeeStudents =
       perms.includes(PERMISSIONS.STUDENTS_VIEW) ||
       perms.includes(PERMISSIONS.FINANCE_VIEW) ||
-      perms.includes(PERMISSIONS.ATTENDANCE_VIEW) ||
-      perms.includes(PERMISSIONS.BOOKINGS_VIEW);
+      perms.includes(PERMISSIONS.ATTENDANCE_VIEW);
 
     return {
       groups: canSeeGroups ? result.groups : [],
@@ -136,7 +134,6 @@ export class ReportsService {
       'assistant-statement': PERMISSIONS.FINANCE_VIEW,
       collections: PERMISSIONS.FINANCE_VIEW,
       expenses: PERMISSIONS.FINANCE_VIEW,
-      bookings: PERMISSIONS.BOOKINGS_VIEW,
       classrooms: PERMISSIONS.CLASSROOMS_VIEW,
       'financial-summary': PERMISSIONS.FINANCE_VIEW,
     };
@@ -186,8 +183,6 @@ export class ReportsService {
         return this.cashflowRepo.getCollectionsReport(query, yearMonth, pg);
       case 'expenses':
         return this.cashflowRepo.getExpensesReport(query, yearMonth, pg);
-      case 'bookings':
-        return this.operationsRepo.getBookingsReport(query, yearMonth, pg);
       case 'classrooms':
         return this.operationsRepo.getClassroomsReport(query, yearMonth, pg);
       case 'financial-summary':

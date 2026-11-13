@@ -3,7 +3,6 @@ import { formatCurrency } from '@/lib/formatters';
 import { ReportSummaryKpiItem, ReportTypeSlug } from '../reports.types';
 import {
   getAttendanceColumns,
-  getBookingsColumns,
   getClassroomsColumns,
   getStudentsColumns,
 } from './academic-ops-columns';
@@ -47,9 +46,6 @@ export function resolveReportColumns(
       break;
     case 'expenses':
       cols = getExpensesColumns();
-      break;
-    case 'bookings':
-      cols = getBookingsColumns();
       break;
     case 'classrooms':
       cols = getClassroomsColumns();

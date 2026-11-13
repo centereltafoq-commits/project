@@ -47,26 +47,6 @@ export const ACTION_TRANSLATIONS: Record<string, string> = {
   SESSION_CREATE: 'إنشاء حصة دراسية جديدة',
   GENERATE_MONTH_SESSIONS: 'توليد حصص الشهر للمجموعة تلقائياً',
   SESSION_GENERATE_MONTH: 'توليد حصص الشهر للمجموعة تلقائياً',
-  CREATE_MAKEUP_SESSION: 'جدولة حصة تعويضية',
-  MAKEUP_SESSION_CREATE: 'جدولة حصة تعويضية',
-  MAKEUP_SCHEDULE: 'جدولة حصة تعويضية',
-  UPDATE_MAKEUP_SESSION: 'تعديل حصة تعويضية',
-  MAKEUP_SESSION_UPDATE: 'تعديل حصة تعويضية',
-
-  // Bookings
-  CREATE_BOOKING_REQUEST: 'طلب حجز موعد جديد',
-  BOOKING_CREATE: 'طلب حجز موعد جديد',
-  CREATE_BOOKING_SERIES: 'إنشاء سلسلة حجوزات دورية',
-  BOOKING_SERIES_CREATE: 'إنشاء سلسلة حجوزات دورية',
-  REVIEW_BOOKING_APPROVED: 'اعتماد وتأكيد طلب الحجز',
-  REVIEW_BOOKING_CONFIRMED: 'تأكيد طلب الحجز وتخصيص قاعة',
-  REVIEW_BOOKING_REJECTED: 'رفض طلب الحجز',
-  REVIEW_BOOKING_MODIFIED: 'تعديل تفاصيل طلب الحجز',
-  BOOKING_APPROVE: 'اعتماد طلب حجز وتخصيص قاعة',
-  CANCEL_SINGLE_BOOKING: 'إلغاء موعد حجز',
-  BOOKING_CANCEL: 'إلغاء موعد حجز',
-  COMPLETE_BOOKING: 'إتمام وتنفيذ الحجز',
-  BOOKING_COMPLETE: 'إتمام وتنفيذ الحجز',
 
   // Classrooms
   CREATE_CLASSROOM: 'إضافة قاعة دراسية جديدة',
@@ -181,10 +161,6 @@ export const ENTITY_TRANSLATIONS: Record<string, string> = {
   sessions: 'حصص المجموعات',
   group_session: 'حصص المجموعات',
   group_sessions: 'حصص المجموعات',
-  MAKEUP_SESSION: 'الحصص التعويضية',
-  MAKEUP_SESSIONS: 'الحصص التعويضية',
-  makeup_session: 'الحصص التعويضية',
-  makeup_sessions: 'الحصص التعويضية',
   ENROLLMENT: 'اشتراكات الطلاب بالمجموعات',
   ENROLLMENTS: 'اشتراكات الطلاب بالمجموعات',
   enrollment: 'اشتراكات الطلاب بالمجموعات',
@@ -214,14 +190,6 @@ export const ENTITY_TRANSLATIONS: Record<string, string> = {
   monthly_settlement: 'التسويات الشهرية',
   monthly_settlements: 'التسويات الشهرية',
   MONTHLY_SETTLEMENT: 'التسويات الشهرية',
-  BOOKING: 'حجوزات المواعيد',
-  BOOKINGS: 'حجوزات المواعيد',
-  booking: 'حجوزات المواعيد',
-  bookings: 'حجوزات المواعيد',
-  BOOKING_REQUEST: 'طلبات الحجز',
-  booking_request: 'طلبات الحجز',
-  BOOKING_SERIES: 'سلاسل الحجوزات الدورية',
-  booking_series: 'سلاسل الحجوزات الدورية',
   CLASSROOM: 'القاعات الدراسية',
   CLASSROOMS: 'القاعات الدراسية',
   classroom: 'القاعات الدراسية',
@@ -283,10 +251,6 @@ const ACTION_WORDS_MAP: Record<string, string> = {
   CLASSROOM: 'قاعة',
   CLASSROOMS: 'القاعات',
   MAINTENANCE: 'صيانة',
-  BOOKING: 'حجز',
-  BOOKINGS: 'الحجوزات',
-  SERIES: 'سلسلة دورية',
-  REQUEST: 'طلب',
   EXPENSE: 'مصروف',
   EXPENSES: 'المصروفات',
   PAYMENT: 'دفع',
@@ -375,15 +339,9 @@ export function getSearchTermEquivalents(searchTerm: string): string[] {
     equivalents.add('SESSION');
     equivalents.add('ATTENDANCE');
   }
-  if (term.includes('تعويض') || term.includes('تعويضية')) {
-    equivalents.add('MAKEUP');
-  }
   if (term.includes('اشتراك') || term.includes('تسجيل')) {
     equivalents.add('ENROLLMENT');
     equivalents.add('CREATE');
-  }
-  if (term.includes('حجز') || term.includes('ميعاد') || term.includes('موعد')) {
-    equivalents.add('BOOKING');
   }
   if (term.includes('قاع') || term.includes('غرف') || term.includes('فصل')) {
     equivalents.add('CLASSROOM');

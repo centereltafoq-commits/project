@@ -4,7 +4,6 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -16,27 +15,21 @@ import {
 } from '../../common/decorators/permissions.decorator';
 import { AttendanceService } from './attendance.service';
 import { RecordSessionAttendanceDto } from './dto/attendance-record.dto';
-import { CreateMakeupDto, MakeupQueryDto, UpdateMakeupDto } from './dto/makeup.dto';
 import {
   CreateSessionDto,
   GenerateMonthSessionsDto,
   SessionQueryDto,
 } from './dto/session.dto';
-import { MakeupsService } from './makeups.service';
 
 @Controller('attendance')
 export class AttendanceController {
-  constructor(
-    private readonly attendanceService: AttendanceService,
-    private readonly makeupsService: MakeupsService,
-  ) {}
+  constructor(private readonly attendanceService: AttendanceService) {}
 
   @Get('lookups')
   @RequireAnyPermissions(
     PERMISSIONS.ATTENDANCE_VIEW,
     PERMISSIONS.SESSIONS_VIEW,
     PERMISSIONS.SESSIONS_MANAGE,
-    PERMISSIONS.MAKEUP_MANAGE,
   )
   async getLookups(@CurrentUser() actor: AuthenticatedUser) {
     return this.attendanceService.getLookups(actor);
@@ -80,30 +73,5 @@ export class AttendanceController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.attendanceService.recordSessionAttendance(sessionId, dto, actor);
-  }
-
-  @Get('makeups')
-  @RequireAnyPermissions(PERMISSIONS.ATTENDANCE_VIEW, PERMISSIONS.MAKEUP_MANAGE)
-  async listMakeups(@Query() query: MakeupQueryDto) {
-    return this.makeupsService.listMakeups(query);
-  }
-
-  @Post('makeups')
-  @RequirePermissions(PERMISSIONS.MAKEUP_MANAGE)
-  async createMakeup(
-    @Body() dto: CreateMakeupDto,
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    return this.makeupsService.createMakeup(dto, actor);
-  }
-
-  @Patch('makeups/:id')
-  @RequirePermissions(PERMISSIONS.MAKEUP_MANAGE)
-  async updateMakeup(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateMakeupDto,
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    return this.makeupsService.updateMakeup(id, dto, actor);
   }
 }

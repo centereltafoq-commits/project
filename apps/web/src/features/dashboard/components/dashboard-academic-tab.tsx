@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Clock,
   GraduationCap,
-  Layers,
   UserCheck,
   Users,
   XCircle,
@@ -24,14 +23,13 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
   const { hasPermission } = useAuth();
   const canAccessAttendance =
     hasPermission(PERMISSIONS.ATTENDANCE_VIEW) ||
-    hasPermission(PERMISSIONS.SESSIONS_VIEW) ||
-    hasPermission(PERMISSIONS.MAKEUP_MANAGE);
+    hasPermission(PERMISSIONS.SESSIONS_VIEW);
   const canViewStudents = hasPermission(PERMISSIONS.STUDENTS_VIEW);
   const canViewTeachers =
     hasPermission(PERMISSIONS.TEACHERS_VIEW) || hasPermission(PERMISSIONS.TEACHERS_VIEW_OWN);
   const canViewGroups = hasPermission(PERMISSIONS.GROUPS_VIEW);
-  const { present, absent, excused, makeup } = data.todayAttendance;
-  const totalMarked = present + absent + excused + makeup;
+  const { present, absent, excused } = data.todayAttendance;
+  const totalMarked = present + absent + excused;
 
   const attendanceRate = totalMarked > 0 ? Math.round((present / totalMarked) * 100) : 0;
   const absentRate = totalMarked > 0 ? Math.round((absent / totalMarked) * 100) : 0;
@@ -112,7 +110,7 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
           ) : (
             <>
               {/* مربعات تصنيف الحالات */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 text-center">
                   <div className="flex items-center justify-center gap-1.5 text-emerald-700 dark:text-emerald-300">
                     <CheckCircle2 className="h-4 w-4" />
@@ -148,20 +146,7 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
                     {excused}
                   </p>
                   <span className="text-[11px] text-muted-foreground">
-                    مؤهلون لحصص تعويضية
-                  </span>
-                </div>
-
-                <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3.5 text-center">
-                  <div className="flex items-center justify-center gap-1.5 text-purple-700 dark:text-purple-300">
-                    <Layers className="h-4 w-4" />
-                    <span className="text-xs font-bold">حضور تعويضي</span>
-                  </div>
-                  <p className="mt-1 text-2xl font-black text-purple-600 dark:text-purple-400">
-                    {makeup}
-                  </p>
-                  <span className="text-[11px] text-muted-foreground">
-                    حضروا كتعويض لحصص سابقة
+                    بعذر مقبول وموثق
                   </span>
                 </div>
               </div>
@@ -179,11 +164,6 @@ export function DashboardAcademicTab({ data }: DashboardAcademicTabProps) {
                     title={`حاضر: ${present}`}
                     className="bg-emerald-500 transition-all duration-300"
                     style={{ width: `${(present / totalMarked) * 100}%` }}
-                  />
-                  <div
-                    title={`تعويضي: ${makeup}`}
-                    className="bg-purple-500 transition-all duration-300"
-                    style={{ width: `${(makeup / totalMarked) * 100}%` }}
                   />
                   <div
                     title={`بعذر: ${excused}`}

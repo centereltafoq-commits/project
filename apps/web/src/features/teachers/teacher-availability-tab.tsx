@@ -61,9 +61,9 @@ export function TeacherAvailabilityTab({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>أوقات الإتاحة الأسبوعية للمواعيد والحصص الإضافية</CardTitle>
+          <CardTitle>أوقات الإتاحة الأسبوعية</CardTitle>
           <p className="text-xs text-muted-foreground">
-            تُستخدم هذه الفترات للتحقق من توافر المدرس عند حجز مواعيد إضافية أو حصص تعويضية
+            تُستخدم هذه الفترات لبيان الأوقات الأسبوعية المتاحة للمدرس داخل السنتر
           </p>
         </div>
         {canEdit && (

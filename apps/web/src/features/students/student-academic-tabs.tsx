@@ -20,7 +20,6 @@ const ATTENDANCE_STATUS_BADGE: Record<
   PRESENT: { label: 'حاضر', variant: 'success' },
   ABSENT: { label: 'غائب', variant: 'danger' },
   EXCUSED: { label: 'غياب بعذر', variant: 'warning' },
-  MAKEUP_ATTENDED: { label: 'حضر تعويضي', variant: 'purple' },
 };
 
 export function StudentMonthlyFinancialTab({ data }: { data: StudentProfileData }) {
@@ -35,7 +34,6 @@ export function StudentMonthlyFinancialTab({ data }: { data: StudentProfileData 
               <th className="px-4 py-3">حضور</th>
               <th className="px-4 py-3">غياب</th>
               <th className="px-4 py-3">بعذر</th>
-              <th className="px-4 py-3">تعويضي</th>
               <th className="px-4 py-3">سعر الحصة</th>
               <th className="px-4 py-3">المستحق</th>
               <th className="px-4 py-3">المدفوع</th>
@@ -46,7 +44,7 @@ export function StudentMonthlyFinancialTab({ data }: { data: StudentProfileData 
           <tbody className="divide-y divide-border">
             {data.monthlyBreakdown.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-10 text-center text-muted-foreground">
                   لا توجد اشتراكات أو سجلات مالية لهذا الشهر
                 </td>
               </tr>
@@ -62,7 +60,6 @@ export function StudentMonthlyFinancialTab({ data }: { data: StudentProfileData 
                   <td className="px-4 py-3 font-semibold text-emerald-600">{item.presentCount}</td>
                   <td className="px-4 py-3 font-semibold text-rose-600">{item.absentCount}</td>
                   <td className="px-4 py-3 text-amber-600">{item.excusedCount}</td>
-                  <td className="px-4 py-3 text-violet-600">{item.makeupCount}</td>
                   <td className="px-4 py-3">{formatCurrency(item.sessionPrice)}</td>
                   <td className="px-4 py-3 font-bold">{formatCurrency(item.totalDue)}</td>
                   <td className="px-4 py-3 font-semibold text-emerald-600">
@@ -90,7 +87,6 @@ export function StudentMonthlyFinancialTab({ data }: { data: StudentProfileData 
                 <td className="px-4 py-3 text-emerald-600">{data.monthTotals.presentCount}</td>
                 <td className="px-4 py-3 text-rose-600">{data.monthTotals.absentCount}</td>
                 <td className="px-4 py-3 text-amber-600">{data.monthTotals.excusedCount}</td>
-                <td className="px-4 py-3 text-violet-600">{data.monthTotals.makeupCount}</td>
                 <td className="px-4 py-3">—</td>
                 <td className="px-4 py-3">{formatCurrency(data.monthTotals.totalDue)}</td>
                 <td className="px-4 py-3 text-emerald-600">

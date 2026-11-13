@@ -141,7 +141,6 @@ describe('Print Service (Modular Enterprise A4 & POS Print Engine)', () => {
     'assistant-statement',
     'collections',
     'expenses',
-    'bookings',
     'classrooms',
     'financial-summary',
   ];

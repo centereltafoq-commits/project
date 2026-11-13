@@ -73,7 +73,7 @@ export function ClassroomMaintenanceModal({
       onOpenChange={onOpenChange}
       size="lg"
       title={`جدول صيانة القاعة: ${classroom.name} (${classroom.roomNumber})`}
-      description="تمنع فترات الصيانة المجدولة حجز القاعة تلقائياً خلال الوقت المحدد"
+      description="تمنع فترات الصيانة المجدولة تشغيل القاعة تلقائياً خلال الوقت المحدد"
     >
       <div className="space-y-5">
         {canManageClassrooms && (

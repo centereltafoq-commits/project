@@ -38,7 +38,6 @@ describe('computeStudentMonthlyBreakdown', () => {
         { groupId: 'grp-1', sessionId: 's-4', status: AttendanceStatus.EXCUSED },
       ],
       studentPayments: [],
-      studentMakeups: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
@@ -82,7 +81,6 @@ describe('computeStudentMonthlyBreakdown', () => {
         { groupId: 'grp-1', sessionId: 's-2', status: AttendanceStatus.EXCUSED },
       ],
       studentPayments: [],
-      studentMakeups: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
@@ -119,7 +117,6 @@ describe('computeStudentMonthlyBreakdown', () => {
         { groupId: 'grp-1', sessionId: 's-2', status: AttendanceStatus.ABSENT },
       ],
       studentPayments: [],
-      studentMakeups: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
@@ -155,7 +152,6 @@ describe('computeStudentMonthlyBreakdown', () => {
         { groupId: 'grp-1', sessionId: 's-2', status: AttendanceStatus.ABSENT },
       ],
       studentPayments: [],
-      studentMakeups: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
@@ -194,7 +190,6 @@ describe('computeStudentMonthlyBreakdown', () => {
         { groupId: 'grp-1', sessionId: 's-2', status: AttendanceStatus.ABSENT },
       ],
       studentPayments: [],
-      studentMakeups: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
@@ -231,7 +226,6 @@ describe('computeStudentMonthlyBreakdown', () => {
         { groupId: 'grp-1', sessionId: 's-1', status: AttendanceStatus.PRESENT },
       ],
       studentPayments: [{ id: 'p-1', yearMonth: '2026-11', amount: '150.00' }],
-      studentMakeups: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
@@ -272,7 +266,6 @@ describe('computeStudentMonthlyBreakdown', () => {
         { groupId: 'grp-1', sessionId: 's-3', status: AttendanceStatus.PRESENT },
       ],
       studentPayments: [],
-      studentMakeups: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);
@@ -327,7 +320,6 @@ describe('computeStudentMonthlyBreakdown', () => {
           amount: '1000.00', // 1000 paid: 600 to grp-1, 400 unallocated credit
         },
       ],
-      studentMakeups: [],
     };
 
     const result = computeStudentMonthlyBreakdown('2026-11', bundle);

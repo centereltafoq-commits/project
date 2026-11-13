@@ -38,18 +38,12 @@ const PERMISSION_META_MAP: Record<PermissionCode, { module: string; nameAr: stri
   [PERMISSIONS.ATTENDANCE_VIEW]: { module: 'ATTENDANCE', nameAr: 'عرض سجلات الحضور والغياب' },
   [PERMISSIONS.ATTENDANCE_RECORD]: { module: 'ATTENDANCE', nameAr: 'تسجيل الحضور والغياب اليومي' },
   [PERMISSIONS.ATTENDANCE_OVERRIDE]: { module: 'ATTENDANCE', nameAr: 'تعديل سجلات الحضور السابقة' },
-  [PERMISSIONS.MAKEUP_MANAGE]: { module: 'ATTENDANCE', nameAr: 'إدارة الحصص التعويضية للغياب' },
 
   [PERMISSIONS.FINANCE_VIEW]: { module: 'FINANCE', nameAr: 'الاطلاع على الحسابات وكشوف المستحقات' },
   [PERMISSIONS.FINANCE_COLLECT_PAYMENT]: { module: 'FINANCE', nameAr: 'تحصيل مدفوعات الطلاب وإصدار الإيصالات' },
   [PERMISSIONS.FINANCE_PAYOUTS]: { module: 'FINANCE', nameAr: 'صرف مستحقات المدرسين والمساعدين' },
   [PERMISSIONS.FINANCE_EXPENSES]: { module: 'FINANCE', nameAr: 'تسجيل وإدارة مصروفات السنتر' },
   [PERMISSIONS.FINANCE_CLOSE_MONTH]: { module: 'FINANCE', nameAr: 'إقفال الحسابات الشهرية واعتمادها' },
-
-  [PERMISSIONS.BOOKINGS_VIEW]: { module: 'BOOKINGS', nameAr: 'عرض طلبات حجز المواعيد والقاعات' },
-  [PERMISSIONS.BOOKINGS_CREATE]: { module: 'BOOKINGS', nameAr: 'إنشاء طلبات حجز مواعيد جديدة' },
-  [PERMISSIONS.BOOKINGS_APPROVE_ADMIN]: { module: 'BOOKINGS', nameAr: 'اعتماد وتخصيص القاعات إدارياً' },
-  [PERMISSIONS.BOOKINGS_APPROVE_TEACHER]: { module: 'BOOKINGS', nameAr: 'موافقة المدرس على مواعيد الطلاب' },
 
   [PERMISSIONS.CLASSROOMS_VIEW]: { module: 'CLASSROOMS', nameAr: 'عرض القاعات وتجهيزاتها وإشغالها' },
   [PERMISSIONS.CLASSROOMS_MANAGE]: { module: 'CLASSROOMS', nameAr: 'إضافة وتعديل القاعات وجدولة الصيانة' },
@@ -101,11 +95,11 @@ export const SEED_ROLES_DATA: Array<{
   {
     code: SystemRole.ATTENDANCE_EMPLOYEE,
     nameAr: 'موظف الحضور',
-    description: 'تسجيل الحضور والغياب وإدارة الحصص التعويضية ومتابعة الجداول اليومية',
+    description: 'تسجيل الحضور والغياب ومتابعة الجداول اليومية',
   },
   {
     code: SystemRole.TEACHER,
     nameAr: 'مدرس',
-    description: 'متابعة المجموعات والحصص الخاصة به واعتماد مواعيد الطلاب المسندة إليه',
+    description: 'متابعة المجموعات والحصص الخاصة به',
   },
 ];

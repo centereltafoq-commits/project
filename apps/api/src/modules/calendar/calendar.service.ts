@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus, ClassroomStatus, PERMISSIONS, SystemRole } from '@edu-center/shared';
+import { ClassroomStatus, PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CalendarRepository } from './calendar.repository';
 import { CalendarEventsQueryDto } from './dto/calendar-query.dto';
@@ -10,8 +10,6 @@ import {
 
 export type CalendarEventCategory =
   | 'GROUP_SESSION'
-  | 'PENDING_BOOKING'
-  | 'CONFIRMED_BOOKING'
   | 'CLASSROOM_MAINTENANCE';
 
 export interface UnifiedCalendarEvent {
@@ -26,7 +24,6 @@ export interface UnifiedCalendarEvent {
   status: string;
   teacherId?: string | null;
   teacherName?: string | null;
-  studentName?: string | null;
   classroomId?: string | null;
   classroomName?: string | null;
   roomNumber?: string | null;
@@ -39,7 +36,6 @@ export class CalendarService {
   async getEvents(query: CalendarEventsQueryDto, actor?: AuthenticatedUser) {
     const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
     const perms = actor?.permissions ?? [];
-    const canViewBookings = isOwner || perms.includes(PERMISSIONS.BOOKINGS_VIEW);
     const canViewClassrooms = isOwner || perms.includes(PERMISSIONS.CLASSROOMS_VIEW);
     const canViewTeachers = isOwner || perms.includes(PERMISSIONS.TEACHERS_VIEW);
 
@@ -89,59 +85,7 @@ export class CalendarService {
       });
     }
 
-    if (canViewBookings) {
-      for (const b of data.bookings) {
-        const isPending = b.status === BookingStatus.PENDING;
-        const roomId = b.assignedClassroomId ?? b.requestedClassroomId;
-        const roomName = b.assignedClassroomName ?? b.requestedClassroomName;
-        const roomNum = b.assignedRoomNumber ?? b.requestedRoomNumber;
-
-        if (!isPending && b.assignedClassroomId) {
-          occupiedRoomIds.add(b.assignedClassroomId);
-          incrementRoomEvents(b.assignedClassroomId);
-        }
-
-        events.push({
-          id: `booking-${b.id}`,
-          sourceId: b.id,
-          category: isPending ? 'PENDING_BOOKING' : 'CONFIRMED_BOOKING',
-          date: b.requestedDate,
-          startTime: b.startTime,
-          endTime: b.endTime,
-          title: b.purpose,
-          subtitle: b.studentName ? `${b.teacherName} مع ${b.studentName}` : b.teacherName,
-          status: b.status,
-          teacherId: b.teacherId,
-          teacherName: b.teacherName,
-          studentName: b.studentName,
-          classroomId: roomId,
-          classroomName: roomName,
-          roomNumber: roomNum,
-        });
-      }
-    }
-
     if (canViewClassrooms) {
-      for (const rb of data.standaloneRoomBookings) {
-        occupiedRoomIds.add(rb.classroomId);
-        incrementRoomEvents(rb.classroomId);
-
-        events.push({
-          id: `room-booking-${rb.id}`,
-          sourceId: rb.id,
-          category: 'CONFIRMED_BOOKING',
-          date: rb.bookingDate,
-          startTime: rb.startTime,
-          endTime: rb.endTime,
-          title: rb.title,
-          subtitle: `حجز قاعة (${rb.classroomName})`,
-          status: rb.status,
-          classroomId: rb.classroomId,
-          classroomName: rb.classroomName,
-          roomNumber: rb.roomNumber,
-        });
-      }
-
       for (const m of data.maintenances) {
         maintenanceRoomIds.add(m.classroomId);
         const segments = expandMaintenanceDays({

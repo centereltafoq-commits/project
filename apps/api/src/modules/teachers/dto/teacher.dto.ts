@@ -71,10 +71,6 @@ export class CreateTeacherDto {
   employmentStatus?: TeacherEmploymentStatus;
 
   @IsOptional()
-  @IsBoolean()
-  canApproveBookings?: boolean;
-
-  @IsOptional()
   @IsString()
   @MaxLength(2000)
   notes?: string;
@@ -110,10 +106,6 @@ export class UpdateTeacherDto {
   @IsOptional()
   @IsEnum(TeacherEmploymentStatus)
   employmentStatus?: TeacherEmploymentStatus;
-
-  @IsOptional()
-  @IsBoolean()
-  canApproveBookings?: boolean;
 
   @IsOptional()
   @IsString()

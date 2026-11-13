@@ -6,15 +6,6 @@ import { normalizePagination } from '../../common/utils/pagination.util';
 import { TeacherAvailabilitySlotDto, TeacherQueryDto } from './dto/teacher.dto';
 import { TeacherExportQueryDto } from './dto/teacher-excel.dto';
 
-function mapTeacherRow<T extends { canApproveBookings: string | boolean }>(
-  row: T,
-): Omit<T, 'canApproveBookings'> & { canApproveBookings: boolean } {
-  return {
-    ...row,
-    canApproveBookings: row.canApproveBookings === true || row.canApproveBookings === 'true',
-  };
-}
-
 @Injectable()
 export class TeachersRepository {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
@@ -60,7 +51,7 @@ export class TeachersRepository {
     const whereClause = this.buildWhereClause(query);
     const assignedGroupsCountSq = this.getAssignedGroupsCountSubquery();
 
-    const [rawRows, [{ total }]] = await Promise.all([
+    const [rows, [{ total }]] = await Promise.all([
       this.db
         .select({
           id: teachers.id,
@@ -71,7 +62,6 @@ export class TeachersRepository {
           specialization: teachers.specialization,
           contractDate: teachers.contractDate,
           employmentStatus: teachers.employmentStatus,
-          canApproveBookings: teachers.canApproveBookings,
           notes: teachers.notes,
           assignedGroupsCount: assignedGroupsCountSq,
           createdAt: teachers.createdAt,
@@ -86,7 +76,7 @@ export class TeachersRepository {
     ]);
 
     return {
-      rows: rawRows.map(mapTeacherRow),
+      rows,
       total: Number(total),
       page,
       limit,
@@ -97,7 +87,7 @@ export class TeachersRepository {
     const whereClause = this.buildWhereClause(query);
     const assignedGroupsCountSq = this.getAssignedGroupsCountSubquery();
 
-    const rawRows = await this.db
+    return this.db
       .select({
         id: teachers.id,
         teacherCode: teachers.teacherCode,
@@ -106,7 +96,6 @@ export class TeachersRepository {
         specialization: teachers.specialization,
         contractDate: teachers.contractDate,
         employmentStatus: teachers.employmentStatus,
-        canApproveBookings: teachers.canApproveBookings,
         notes: teachers.notes,
         assignedGroupsCount: assignedGroupsCountSq,
       })
@@ -114,8 +103,6 @@ export class TeachersRepository {
       .where(whereClause)
       .orderBy(desc(teachers.createdAt))
       .limit(10_000);
-
-    return rawRows.map(mapTeacherRow);
   }
 
   async findExistingCodesAndNamePhones(
@@ -156,7 +143,6 @@ export class TeachersRepository {
       specialization: string;
       contractDate: string;
       employmentStatus: string;
-      canApproveBookings: boolean;
       notes: string | null;
     }>,
   ) {
@@ -165,11 +151,7 @@ export class TeachersRepository {
     }
 
     return this.db.transaction(async (tx) => {
-      const inserted: Array<
-        Omit<typeof teachers.$inferSelect, 'canApproveBookings'> & {
-          canApproveBookings: boolean;
-        }
-      > = [];
+      const inserted: Array<typeof teachers.$inferSelect> = [];
       const chunkSize = 500;
       for (let idx = 0; idx < rows.length; idx += chunkSize) {
         const chunk = rows.slice(idx, idx + chunkSize);
@@ -184,12 +166,11 @@ export class TeachersRepository {
               specialization: item.specialization,
               contractDate: item.contractDate,
               employmentStatus: item.employmentStatus,
-              canApproveBookings: item.canApproveBookings ? 'true' : 'false',
               notes: item.notes,
             })),
           )
           .returning();
-        inserted.push(...result.map(mapTeacherRow));
+        inserted.push(...result);
       }
       return inserted;
     });
@@ -197,12 +178,12 @@ export class TeachersRepository {
 
   async findById(id: string) {
     const [row] = await this.db.select().from(teachers).where(eq(teachers.id, id)).limit(1);
-    return row ? mapTeacherRow(row) : null;
+    return row ?? null;
   }
 
   async findByUserId(userId: string) {
     const [row] = await this.db.select().from(teachers).where(eq(teachers.userId, userId)).limit(1);
-    return row ? mapTeacherRow(row) : null;
+    return row ?? null;
   }
 
   async findByCode(teacherCode: string) {
@@ -222,7 +203,6 @@ export class TeachersRepository {
     specialization: string;
     contractDate: string;
     employmentStatus: string;
-    canApproveBookings: boolean;
     notes?: string | null;
   }) {
     const [created] = await this.db
@@ -235,11 +215,10 @@ export class TeachersRepository {
         specialization: data.specialization,
         contractDate: data.contractDate,
         employmentStatus: data.employmentStatus,
-        canApproveBookings: data.canApproveBookings ? 'true' : 'false',
         notes: data.notes ?? null,
       })
       .returning();
-    return mapTeacherRow(created);
+    return created;
   }
 
   async update(
@@ -251,7 +230,6 @@ export class TeachersRepository {
       specialization: string;
       contractDate: string;
       employmentStatus: string;
-      canApproveBookings: string;
       notes: string | null;
     }>,
   ) {
@@ -260,7 +238,7 @@ export class TeachersRepository {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(teachers.id, id))
       .returning();
-    return updated ? mapTeacherRow(updated) : null;
+    return updated ?? null;
   }
 
   async replaceAvailability(teacherId: string, slots: TeacherAvailabilitySlotDto[]) {

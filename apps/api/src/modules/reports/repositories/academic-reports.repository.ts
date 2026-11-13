@@ -151,7 +151,6 @@ export class AcademicReportsRepository {
           presentCount: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'PRESENT')::int`,
           absentCount: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'ABSENT')::int`,
           excusedCount: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'EXCUSED')::int`,
-          makeupCount: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'MAKEUP_ATTENDED')::int`,
           totalRecorded: sql<number>`COUNT(*)::int`,
         })
         .from(attendance)
@@ -169,7 +168,6 @@ export class AcademicReportsRepository {
           present: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'PRESENT')::int`,
           absent: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'ABSENT')::int`,
           excused: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'EXCUSED')::int`,
-          makeup: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'MAKEUP_ATTENDED')::int`,
           total: sql<number>`COUNT(*)::int`,
         })
         .from(attendance)
@@ -180,19 +178,19 @@ export class AcademicReportsRepository {
     ]);
 
     const mapped = rows.map((r) => {
-      const attended = r.presentCount + r.makeupCount;
+      const attended = r.presentCount;
       const rate = r.totalRecorded > 0 ? Number(((attended / r.totalRecorded) * 100).toFixed(1)) : 0;
       return { id: `${r.studentId}-${r.groupId}`, ...r, attendanceRate: rate };
     });
 
     const overallTotal = Number(statsRow?.total ?? 0);
-    const overallAttended = Number(statsRow?.present ?? 0) + Number(statsRow?.makeup ?? 0);
+    const overallAttended = Number(statsRow?.present ?? 0);
     const overallRate = overallTotal > 0 ? Number(((overallAttended / overallTotal) * 100).toFixed(1)) : 0;
 
     const summary: ReportSummaryKpi[] = [
       { key: 'present', label: 'إجمالي الحضور', value: Number(statsRow?.present ?? 0), tone: 'success' },
       { key: 'absent', label: 'إجمالي الغياب', value: Number(statsRow?.absent ?? 0), tone: 'danger' },
-      { key: 'excusedMakeup', label: 'بعذر / تعويضي', value: `${statsRow?.excused ?? 0} / ${statsRow?.makeup ?? 0}`, format: 'text', tone: 'warning' },
+      { key: 'excused', label: 'غياب بعذر', value: Number(statsRow?.excused ?? 0), tone: 'warning' },
       { key: 'rate', label: 'متوسط نسبة الحضور', value: overallRate, format: 'percent', tone: 'primary' },
     ];
 

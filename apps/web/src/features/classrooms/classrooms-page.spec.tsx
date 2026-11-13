@@ -85,7 +85,6 @@ describe('ClassroomsPage Schedule Modal Reproduction', () => {
             from: '2026-11-13',
             to: '2026-11-19',
             sessions: [],
-            bookings: [],
             maintenances: [],
             allocatedGroups: [
               {
@@ -120,7 +119,6 @@ describe('ClassroomsPage Schedule Modal Reproduction', () => {
             from: '2026-11-13',
             to: '2026-11-19',
             sessions: [],
-            bookings: [],
             maintenances: [],
             allocatedGroups: [
               {
@@ -167,7 +165,7 @@ describe('ClassroomsPage Schedule Modal Reproduction', () => {
       expect(screen.getByText(/جدول القاعة وإشغال المجموعات: قاعة الخوارزمي الكبرى/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /الحصص والحجوزات المؤرخة/i }));
+    fireEvent.click(screen.getByRole('button', { name: /الحصص المؤرخة/i }));
     expect(screen.getByText(/لا توجد حصص مجدولة في هذه الفترة/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /المجموعات المسكنة/i }));

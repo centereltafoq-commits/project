@@ -30,7 +30,6 @@ export function CalendarPage() {
   const { hasPermission } = useAuth();
   const canViewClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_VIEW);
   const canViewTeachers = hasPermission(PERMISSIONS.TEACHERS_VIEW);
-  const canViewBookings = hasPermission(PERMISSIONS.BOOKINGS_VIEW);
 
   const [viewMode, setViewMode] = React.useState<CalendarViewMode>('week');
   const [anchorDate, setAnchorDate] = React.useState<Date>(() => new Date());
@@ -209,9 +208,6 @@ export function CalendarPage() {
         <div className="flex flex-wrap items-center gap-4 border-t border-border pt-3 text-xs">
           {(Object.keys(EVENT_CATEGORY_STYLES) as CalendarEventCategory[])
             .filter((cat) => {
-              if (!canViewBookings && (cat === 'PENDING_BOOKING' || cat === 'CONFIRMED_BOOKING')) {
-                return false;
-              }
               if (!canViewClassrooms && cat === 'CLASSROOM_MAINTENANCE') {
                 return false;
               }

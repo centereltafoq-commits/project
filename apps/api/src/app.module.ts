@@ -21,7 +21,6 @@ import { AssistantsModule } from './modules/assistants/assistants.module';
 import { ClassroomsModule } from './modules/classrooms/classrooms.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
-import { BookingsModule } from './modules/bookings/bookings.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -68,7 +67,6 @@ class HealthController {
     ClassroomsModule,
     GroupsModule,
     AttendanceModule,
-    BookingsModule,
     CalendarModule,
     FinanceModule,
     DashboardModule,

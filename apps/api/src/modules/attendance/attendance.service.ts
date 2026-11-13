@@ -55,13 +55,11 @@ export class AttendanceService {
       isOwner ||
       perms.includes(PERMISSIONS.CLASSROOMS_VIEW) ||
       perms.includes(PERMISSIONS.CLASSROOMS_MANAGE) ||
-      perms.includes(PERMISSIONS.SESSIONS_MANAGE) ||
-      perms.includes(PERMISSIONS.MAKEUP_MANAGE);
+      perms.includes(PERMISSIONS.SESSIONS_MANAGE);
 
     const canSeeStudents =
       isOwner ||
       perms.includes(PERMISSIONS.STUDENTS_VIEW) ||
-      perms.includes(PERMISSIONS.MAKEUP_MANAGE) ||
       perms.includes(PERMISSIONS.ATTENDANCE_RECORD);
 
     return {
@@ -215,7 +213,6 @@ export class AttendanceService {
       presentCount: students.filter((s) => s.status === AttendanceStatus.PRESENT).length,
       absentCount: students.filter((s) => s.status === AttendanceStatus.ABSENT).length,
       excusedCount: students.filter((s) => s.status === AttendanceStatus.EXCUSED).length,
-      makeupCount: students.filter((s) => s.status === AttendanceStatus.MAKEUP_ATTENDED).length,
       unrecordedCount: students.filter((s) => !s.status).length,
     };
 

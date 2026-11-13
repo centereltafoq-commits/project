@@ -109,7 +109,7 @@ describe('PermissionsGuard', () => {
     const reflector = {
       getAllAndOverride: vi.fn((key) => {
         if (key === REQUIRE_ANY_PERMISSIONS_KEY) {
-          return [PERMISSIONS.BOOKINGS_APPROVE_ADMIN, PERMISSIONS.BOOKINGS_APPROVE_TEACHER];
+          return [PERMISSIONS.TEACHERS_VIEW, PERMISSIONS.TEACHERS_VIEW_OWN];
         }
         return undefined;
       }),
@@ -131,7 +131,7 @@ describe('PermissionsGuard', () => {
       email: 'teacher@test.com',
       fullName: 'Teacher User',
       roleCode: SystemRole.TEACHER,
-      permissions: [PERMISSIONS.BOOKINGS_APPROVE_TEACHER],
+      permissions: [PERMISSIONS.TEACHERS_VIEW_OWN],
     };
     expect(guard.canActivate(createMockContext(teacherUser))).toBe(true);
   });
@@ -141,7 +141,7 @@ describe('PermissionsGuard', () => {
       getAllAndOverride: vi.fn((key) => {
         if (key === REQUIRED_PERMISSIONS_KEY) return [PERMISSIONS.GROUPS_VIEW];
         if (key === REQUIRE_ANY_PERMISSIONS_KEY) {
-          return [PERMISSIONS.BOOKINGS_APPROVE_ADMIN, PERMISSIONS.BOOKINGS_APPROVE_TEACHER];
+          return [PERMISSIONS.TEACHERS_VIEW, PERMISSIONS.TEACHERS_VIEW_OWN];
         }
         return undefined;
       }),
@@ -165,7 +165,7 @@ describe('PermissionsGuard', () => {
       email: 'user2@test.com',
       fullName: 'User 2',
       roleCode: SystemRole.TEACHER,
-      permissions: [PERMISSIONS.BOOKINGS_APPROVE_TEACHER],
+      permissions: [PERMISSIONS.TEACHERS_VIEW_OWN],
     };
     expect(() => guard.canActivate(createMockContext(user2))).toThrow(ForbiddenException);
 
@@ -175,7 +175,7 @@ describe('PermissionsGuard', () => {
       email: 'user3@test.com',
       fullName: 'User 3',
       roleCode: SystemRole.MANAGER,
-      permissions: [PERMISSIONS.GROUPS_VIEW, PERMISSIONS.BOOKINGS_APPROVE_ADMIN],
+      permissions: [PERMISSIONS.GROUPS_VIEW, PERMISSIONS.TEACHERS_VIEW],
     };
     expect(guard.canActivate(createMockContext(user3))).toBe(true);
   });

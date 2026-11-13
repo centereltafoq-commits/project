@@ -16,6 +16,7 @@ import {
   Coins,
   Database,
   ExternalLink,
+  FileSpreadsheet,
   GraduationCap,
   HelpCircle,
   Home,
@@ -25,6 +26,7 @@ import {
   Moon,
   Printer,
   RotateCcw,
+  ScrollText,
   Search,
   Settings,
   ShieldCheck,
@@ -58,6 +60,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Settings,
   Database,
   ShieldCheck,
+  ScrollText,
+  FileSpreadsheet,
+  Printer,
   HelpCircle,
 };
 

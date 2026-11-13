@@ -1,7 +1,6 @@
 import {
   AttendanceStatus,
   FullMonthAbsencePolicy,
-  MakeupStatus,
   SessionStatus,
 } from '@edu-center/shared';
 import { roundMoney } from '../utils/money.util';
@@ -31,12 +30,6 @@ export interface StudentAttendanceBillingInput {
   status: AttendanceStatus | string;
 }
 
-export interface StudentMakeupBillingInput {
-  isFree: boolean;
-  extraFee: number;
-  status?: MakeupStatus | string;
-}
-
 export interface ExistingStudentMonthlySnapshot {
   isClosed: boolean;
   totalGroupSessions: number;
@@ -44,9 +37,7 @@ export interface ExistingStudentMonthlySnapshot {
   presentCount: number;
   absentCount: number;
   excusedCount: number;
-  makeupAttendedCount: number;
   sessionPriceSnapshot: number;
-  extraMakeupFees: number;
   totalDue: number;
   totalPaid: number;
 }
@@ -56,8 +47,6 @@ export interface CalculateStudentBillingParams {
   policy: StudentBillingPolicyInput;
   sessions: GroupSessionBillingInput[];
   attendances: StudentAttendanceBillingInput[];
-  makeups?: StudentMakeupBillingInput[];
-  extraMakeupFees?: number;
   currentTotalPaid?: number;
   existingRecord?: ExistingStudentMonthlySnapshot | null;
 }
@@ -68,11 +57,9 @@ export interface StudentMonthlyBillingResult {
   presentCount: number;
   absentCount: number;
   excusedCount: number;
-  makeupAttendedCount: number;
   attendedCount: number;
   billableSessionsCount: number;
   sessionPriceSnapshot: number;
-  extraMakeupFees: number;
   totalDue: number;
   totalPaid: number;
   remainingBalance: number;
@@ -88,8 +75,6 @@ export function calculateStudentMonthlyBilling(
     policy,
     sessions,
     attendances,
-    makeups = [],
-    extraMakeupFees = 0,
     currentTotalPaid,
     existingRecord,
   } = params;
@@ -97,10 +82,9 @@ export function calculateStudentMonthlyBilling(
   // Historical Immutability Rule: NEVER overwrite closed month snapshots or totalDue
   if (existingRecord?.isClosed) {
     const lockedSessionPrice = roundMoney(existingRecord.sessionPriceSnapshot);
-    const lockedExtraFees = roundMoney(existingRecord.extraMakeupFees);
     const lockedTotalDue = roundMoney(existingRecord.totalDue);
     const totalPaid = roundMoney(currentTotalPaid ?? existingRecord.totalPaid);
-    const attendedCount = existingRecord.presentCount + existingRecord.makeupAttendedCount;
+    const attendedCount = existingRecord.presentCount;
     const isFullMonthAbsence = attendedCount === 0 && lockedTotalDue > 0;
 
     return {
@@ -109,12 +93,10 @@ export function calculateStudentMonthlyBilling(
       presentCount: existingRecord.presentCount,
       absentCount: existingRecord.absentCount,
       excusedCount: existingRecord.excusedCount,
-      makeupAttendedCount: existingRecord.makeupAttendedCount,
       attendedCount,
       billableSessionsCount:
         attendedCount + (policy.chargeExcusedAbsence ? existingRecord.excusedCount : 0),
       sessionPriceSnapshot: lockedSessionPrice,
-      extraMakeupFees: lockedExtraFees,
       totalDue: lockedTotalDue,
       totalPaid,
       remainingBalance: roundMoney(Math.max(0, lockedTotalDue - totalPaid)),
@@ -142,12 +124,10 @@ export function calculateStudentMonthlyBilling(
   let presentCount = 0;
   let absentCount = 0;
   let excusedCount = 0;
-  let makeupAttendedCount = 0;
 
   for (const session of eligibleSessionList) {
     const status = attendanceMap.get(session.id);
     if (status === AttendanceStatus.PRESENT) presentCount += 1;
-    else if (status === AttendanceStatus.MAKEUP_ATTENDED) makeupAttendedCount += 1;
     else if (status === AttendanceStatus.EXCUSED) excusedCount += 1;
     else if (status === AttendanceStatus.ABSENT) absentCount += 1;
   }
@@ -159,18 +139,9 @@ export function calculateStudentMonthlyBilling(
         ? roundMoney(enrollment.agreedMonthlyPrice / enrollment.agreedSessionsCount)
         : 0;
 
-  const completedMakeupsCount = makeups.filter(
-    (m) => m.status === MakeupStatus.COMPLETED,
-  ).length;
-  const effectiveMakeupAttendedCount = Math.max(makeupAttendedCount, completedMakeupsCount);
-  const attendedCount = presentCount + effectiveMakeupAttendedCount;
+  const attendedCount = presentCount;
   const billableSessionsCount =
     attendedCount + (policy.chargeExcusedAbsence ? excusedCount : 0);
-
-  const computedMakeupFees = makeups
-    .filter((m) => !m.isFree && m.status !== MakeupStatus.CANCELLED)
-    .reduce((sum, m) => sum + roundMoney(m.extraFee), 0);
-  const totalExtraMakeupFees = roundMoney(extraMakeupFees + computedMakeupFees);
 
   let baseDue = 0;
   let isFullMonthAbsenceApplied = false;
@@ -206,7 +177,7 @@ export function calculateStudentMonthlyBilling(
     baseDue = roundMoney(billableSessionsCount * sessionPriceSnapshot);
   }
 
-  const totalDue = roundMoney(baseDue + totalExtraMakeupFees);
+  const totalDue = roundMoney(baseDue);
   const totalPaid = roundMoney(currentTotalPaid ?? existingRecord?.totalPaid ?? 0);
   const remainingBalance = roundMoney(Math.max(0, totalDue - totalPaid));
 
@@ -216,11 +187,9 @@ export function calculateStudentMonthlyBilling(
     presentCount,
     absentCount,
     excusedCount,
-    makeupAttendedCount: effectiveMakeupAttendedCount,
     attendedCount,
     billableSessionsCount,
     sessionPriceSnapshot,
-    extraMakeupFees: totalExtraMakeupFees,
     totalDue,
     totalPaid,
     remainingBalance,

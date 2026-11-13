@@ -9,7 +9,6 @@ export const REPORT_TITLES_AR: Record<ReportType, string> = {
   'assistant-statement': 'كشف المساعد ومستحقاته الشهرية',
   collections: 'تقرير التحصيل وجميع المدفوعات',
   expenses: 'تقرير المصروفات التشغيلية حسب الشهر',
-  bookings: 'تقرير حجوزات المواعيد والقاعات',
   classrooms: 'تقرير القاعات ومعدلات استخدامها',
   'financial-summary': 'التقرير المالي الشامل للسنتر',
 };
@@ -46,19 +45,6 @@ export const EXPENSE_CATEGORY_AR: Record<string, string> = {
   SUPPLIES: 'مستلزمات مطبوعات وأدوات',
   ADMINISTRATIVE: 'مصروفات إدارية وتشغيلية',
   OTHER: 'مصروفات أخرى',
-};
-
-export const BOOKING_TYPE_AR: Record<string, string> = {
-  STUDENT_WITH_TEACHER: 'طالب مع مدرس',
-  TEACHER_WITH_CENTER: 'حجز قاعة لمدرس',
-};
-
-export const BOOKING_STATUS_AR: Record<string, string> = {
-  PENDING: 'معلق',
-  CONFIRMED: 'معتمد',
-  REJECTED: 'مرفوض',
-  CANCELLED: 'ملغى',
-  COMPLETED: 'منفذ',
 };
 
 export const CLASSROOM_STATUS_AR: Record<string, string> = {

@@ -112,9 +112,7 @@ export interface StudentMonthlyRecordRow {
   presentCount: number;
   absentCount: number;
   excusedCount: number;
-  makeupAttendedCount: number;
   sessionPriceSnapshot: number;
-  extraMakeupFees: number;
   totalDue: number;
   totalPaid: number;
   remainingBalance: number;

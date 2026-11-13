@@ -104,7 +104,7 @@ export class AssistantsProfileRepository {
             this.db
               .select({
                 groupId: sessions.groupId,
-                presentEntries: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} IN ('PRESENT', 'MAKEUP_ATTENDED'))::int`,
+                presentEntries: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'PRESENT')::int`,
               })
               .from(attendance)
               .innerJoin(sessions, eq(attendance.sessionId, sessions.id))

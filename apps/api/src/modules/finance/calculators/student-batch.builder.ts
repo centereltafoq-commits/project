@@ -51,10 +51,7 @@ export function buildStudentSettlementBatch(
     list.push(att);
     attendancesByStudent.set(att.studentId, list);
 
-    if (
-      att.status === AttendanceStatus.PRESENT ||
-      att.status === AttendanceStatus.MAKEUP_ATTENDED
-    ) {
+    if (att.status === AttendanceStatus.PRESENT) {
       const sess = sessionById.get(att.sessionId);
       if (sess && sess.status !== SessionStatus.CANCELLED) {
         groupAttendancesCount.set(
@@ -63,19 +60,6 @@ export function buildStudentSettlementBatch(
         );
       }
     }
-  }
-
-  const makeupsByStudentGroup = new Map<
-    string,
-    MonthlySettlementSnapshot['sessionMakeups']
-  >();
-  for (const mk of snap.sessionMakeups) {
-    const origSess = sessionById.get(mk.originalSessionId);
-    if (!origSess) continue;
-    const key = `${mk.studentId}:${origSess.groupId}`;
-    const list = makeupsByStudentGroup.get(key) ?? [];
-    list.push(mk);
-    makeupsByStudentGroup.set(key, list);
   }
 
   const paidByStudentGroup = new Map(
@@ -127,11 +111,6 @@ export function buildStudentSettlementBatch(
       },
       sessions: executedSessionsByGroup.get(enr.groupId) ?? [],
       attendances: attendancesByStudent.get(enr.studentId) ?? [],
-      makeups: (makeupsByStudentGroup.get(key) ?? []).map((m) => ({
-        isFree: m.isFree,
-        extraFee: parseMoney(m.extraFee),
-        status: m.status,
-      })),
       currentTotalPaid: currentPaid,
       existingRecord: existing
         ? {
@@ -141,9 +120,7 @@ export function buildStudentSettlementBatch(
             presentCount: existing.presentCount,
             absentCount: existing.absentCount,
             excusedCount: existing.excusedCount,
-            makeupAttendedCount: existing.makeupAttendedCount,
             sessionPriceSnapshot: parseMoney(existing.sessionPriceSnapshot),
-            extraMakeupFees: parseMoney(existing.extraMakeupFees),
             totalDue: parseMoney(existing.totalDue),
             totalPaid: parseMoney(existing.totalPaid),
           }
@@ -156,21 +133,7 @@ export function buildStudentSettlementBatch(
 
       if (!hasBillableAttendance) {
         // Cancelled enrollment with zero attended/billable sessions: exempt from full-month absence fees
-        const cancelledDue = roundMoney(calc.extraMakeupFees);
-        const cancelledRemaining = roundMoney(Math.max(0, cancelledDue - calc.totalPaid));
-
-        if (cancelledDue > 0) {
-          groupRevenueMap.set(
-            enr.groupId,
-            roundMoney((groupRevenueMap.get(enr.groupId) ?? 0) + cancelledDue),
-          );
-          groupBilledStudentsMap.set(
-            enr.groupId,
-            (groupBilledStudentsMap.get(enr.groupId) ?? 0) + 1,
-          );
-        }
-
-        if (existing || currentPaid > 0 || cancelledDue > 0) {
+        if (existing || currentPaid > 0) {
           studentRows.push({
             studentId: enr.studentId,
             groupId: enr.groupId,
@@ -182,10 +145,10 @@ export function buildStudentSettlementBatch(
             excusedCount: 0,
             makeupAttendedCount: 0,
             sessionPriceSnapshot: toMoneyString(calc.sessionPriceSnapshot),
-            extraMakeupFees: toMoneyString(cancelledDue),
-            totalDue: toMoneyString(cancelledDue),
+            extraMakeupFees: '0.00',
+            totalDue: '0.00',
             totalPaid: toMoneyString(calc.totalPaid),
-            remainingBalance: toMoneyString(cancelledRemaining),
+            remainingBalance: '0.00',
             isClosed: false,
           });
         }
@@ -225,9 +188,9 @@ export function buildStudentSettlementBatch(
         presentCount: calc.presentCount,
         absentCount: calc.absentCount,
         excusedCount: calc.excusedCount,
-        makeupAttendedCount: calc.makeupAttendedCount,
+        makeupAttendedCount: 0,
         sessionPriceSnapshot: toMoneyString(calc.sessionPriceSnapshot),
-        extraMakeupFees: toMoneyString(calc.extraMakeupFees),
+        extraMakeupFees: '0.00',
         totalDue: toMoneyString(calc.totalDue),
         totalPaid: toMoneyString(calc.totalPaid),
         remainingBalance: toMoneyString(calc.remainingBalance),

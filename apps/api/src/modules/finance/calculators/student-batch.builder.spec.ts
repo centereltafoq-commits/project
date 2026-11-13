@@ -3,7 +3,6 @@ import {
   AttendanceStatus,
   EnrollmentStatus,
   FullMonthAbsencePolicy,
-  MakeupStatus,
   SessionStatus,
 } from '@edu-center/shared';
 import { buildStudentSettlementBatch } from './student-batch.builder';
@@ -19,7 +18,6 @@ function createBaseSnapshot(
     monthEnrollments: [],
     monthSessions: [],
     sessionAttendances: [],
-    sessionMakeups: [],
     activeAssistants: [],
     existingStudentRecords: [],
     existingTeacherDues: [],
@@ -200,7 +198,7 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
     expect(batch.groupEnrolledStudentsMap.get('grp-1') ?? 0).toBe(0);
   });
 
-  it('preserves paid balance and extra non-cancelled makeup fee for zero-attendance cancelled enrollment when prior open record or payment exists', () => {
+  it('preserves paid balance for zero-attendance cancelled enrollment when prior open record or payment exists', () => {
     const snap = createBaseSnapshot({
       monthEnrollments: [
         {
@@ -235,23 +233,6 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
           updatedAt: new Date(),
         },
       ],
-      sessionMakeups: [
-        {
-          id: 'mk-1',
-          studentId: 'stu-3',
-          originalSessionId: 'ses-1',
-          absenceDate: '2026-11-02',
-          scheduledAt: new Date(),
-          classroomId: null,
-          status: MakeupStatus.SCHEDULED,
-          isFree: false,
-          extraFee: '25.00',
-          approvedByUserId: 'usr-1',
-          notes: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
       allocationsAgg: [
         {
           studentId: 'stu-3',
@@ -264,9 +245,9 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
     const batch = buildStudentSettlementBatch('2026-11', snap);
     expect(batch.studentRows).toHaveLength(1);
     expect(batch.studentRows[0]).toMatchObject({
-      totalDue: '25.00',
+      totalDue: '0.00',
       totalPaid: '10.00',
-      remainingBalance: '15.00',
+      remainingBalance: '0.00',
       presentCount: 0,
     });
   });

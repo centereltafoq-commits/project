@@ -12,7 +12,6 @@ export interface StudentGroupMonthlyBreakdown {
   presentCount: number;
   absentCount: number;
   excusedCount: number;
-  makeupCount: number;
   sessionPrice: number;
   totalDue: number;
   totalPaid: number;
@@ -71,7 +70,6 @@ export function computeStudentMonthlyBreakdown(
         presentCount: stored.presentCount,
         absentCount: stored.absentCount,
         excusedCount: stored.excusedCount,
-        makeupCount: stored.makeupAttendedCount,
         sessionPrice: Number(stored.sessionPriceSnapshot),
         totalDue: Number(stored.totalDue),
         totalPaid: Number(stored.totalPaid),
@@ -88,9 +86,6 @@ export function computeStudentMonthlyBreakdown(
         ((s.status as string) === SessionStatus.COMPLETED || sessionIdsWithAttendance.has(s.id)),
     );
     const groupAtt = bundle.monthAttendance.filter((a) => a.groupId === groupId);
-    const groupMakeups = bundle.studentMakeups.filter(
-      (m) => m.groupId === groupId && m.sessionYearMonth === yearMonth,
-    );
     const currentPaid = Math.max(
       allocatedByGroup.get(groupId) ?? 0,
       stored ? Number(stored.totalPaid || 0) : 0,
@@ -112,11 +107,6 @@ export function computeStudentMonthlyBreakdown(
       },
       sessions: executedGroupSessions,
       attendances: groupAtt.map((a) => ({ sessionId: a.sessionId, status: a.status })),
-      makeups: groupMakeups.map((m) => ({
-        isFree: m.isFree,
-        extraFee: Number(m.extraFee || 0),
-        status: m.status,
-      })),
       currentTotalPaid: currentPaid,
     });
 
@@ -127,7 +117,6 @@ export function computeStudentMonthlyBreakdown(
       presentCount: calc.presentCount,
       absentCount: calc.absentCount,
       excusedCount: calc.excusedCount,
-      makeupCount: calc.makeupAttendedCount,
       sessionPrice: calc.sessionPriceSnapshot,
       totalDue: calc.totalDue,
       totalPaid: calc.totalPaid,
@@ -149,7 +138,6 @@ export function computeStudentMonthlyBreakdown(
   const presentCount = breakdown.reduce((s, g) => s + g.presentCount, 0);
   const absentCount = breakdown.reduce((s, g) => s + g.absentCount, 0);
   const excusedCount = breakdown.reduce((s, g) => s + g.excusedCount, 0);
-  const makeupCount = breakdown.reduce((s, g) => s + g.makeupCount, 0);
   const totalDue = round2(breakdown.reduce((s, g) => s + g.totalDue, 0));
   const totalPaid = round2(breakdown.reduce((s, g) => s + g.totalPaid, 0) + unallocatedMonthPaid);
   const remaining = round2(Math.max(0, totalDue - totalPaid));
@@ -161,7 +149,6 @@ export function computeStudentMonthlyBreakdown(
       presentCount,
       absentCount,
       excusedCount,
-      makeupCount,
       totalDue,
       totalPaid,
       remaining,

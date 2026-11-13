@@ -22,7 +22,6 @@ const REPORT_CSV_COLUMNS: Record<ReportType, CsvColumnDef[]> = {
     { key: 'presentCount', header: 'حضور' },
     { key: 'absentCount', header: 'غياب' },
     { key: 'excusedCount', header: 'بعذر' },
-    { key: 'makeupCount', header: 'تعويضي' },
     { key: 'attendanceRate', header: 'نسبة الحضور %' },
   ],
   'student-statement': [
@@ -79,22 +78,12 @@ const REPORT_CSV_COLUMNS: Record<ReportType, CsvColumnDef[]> = {
     { key: 'paymentMethodAr', header: 'طريقة الدفع' },
     { key: 'recordedByName', header: 'المسجّل' },
   ],
-  bookings: [
-    { key: 'requestTypeAr', header: 'نوع الحجز' },
-    { key: 'partyLabel', header: 'الطالب / المدرس' },
-    { key: 'purpose', header: 'الغرض' },
-    { key: 'requestedDate', header: 'التاريخ' },
-    { key: 'timeSlot', header: 'الوقت' },
-    { key: 'classroomLabel', header: 'القاعة' },
-    { key: 'statusAr', header: 'الحالة' },
-  ],
   classrooms: [
     { key: 'roomNumber', header: 'رقم القاعة' },
     { key: 'name', header: 'اسم القاعة' },
     { key: 'maxCapacity', header: 'السعة القصوى' },
     { key: 'statusAr', header: 'الحالة' },
     { key: 'sessionsCount', header: 'عدد الحصص' },
-    { key: 'confirmedBookingsCount', header: 'عدد الحجوزات المعتمدة' },
   ],
   'financial-summary': [
     { key: 'sectionAr', header: 'القسم المالي' },

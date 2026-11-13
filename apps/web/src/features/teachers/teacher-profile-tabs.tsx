@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@/design-system';
 import { ARABIC_DAYS, formatCurrency, formatTimeRangeAr } from '@/lib/formatters';
 import { SPLIT_METHOD_LABELS, TeacherProfileData } from './teachers.types';
-export { TeacherBookingsTab, TeacherPayoutsTab } from './teacher-payouts-bookings-tabs';
+export { TeacherPayoutsTab } from './teacher-payouts-tab';
 
 export function TeacherMonthlySummaryTab({ data }: { data: TeacherProfileData }) {
   const { groups, totals } = data.monthlyBreakdown;

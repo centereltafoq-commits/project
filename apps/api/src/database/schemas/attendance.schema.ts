@@ -3,8 +3,6 @@ import {
   uuid,
   varchar,
   date,
-  boolean,
-  numeric,
   text,
   timestamp,
   index,
@@ -54,7 +52,7 @@ export const attendance = pgTable(
     studentId: uuid('student_id')
       .notNull()
       .references(() => students.id, { onDelete: 'restrict' }),
-    status: varchar('status', { length: 24 }).notNull(), // PRESENT | ABSENT | EXCUSED | MAKEUP_ATTENDED
+    status: varchar('status', { length: 24 }).notNull(), // PRESENT | ABSENT | EXCUSED
     recordedByUserId: uuid('recorded_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),
@@ -69,36 +67,6 @@ export const attendance = pgTable(
     uniqueIndex('uq_attendance_session_student').on(t.sessionId, t.studentId),
     index('idx_attendance_student').on(t.studentId),
     index('idx_attendance_status').on(t.status),
-  ],
-);
-
-export const makeupSessions = pgTable(
-  'makeup_sessions',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    studentId: uuid('student_id')
-      .notNull()
-      .references(() => students.id, { onDelete: 'restrict' }),
-    originalSessionId: uuid('original_session_id')
-      .notNull()
-      .references(() => sessions.id, { onDelete: 'cascade' }),
-    absenceDate: date('absence_date').notNull(),
-    scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
-    classroomId: uuid('classroom_id').references(() => classrooms.id, { onDelete: 'set null' }),
-    status: varchar('status', { length: 24 }).default('PENDING').notNull(),
-    isFree: boolean('is_free').default(true).notNull(),
-    extraFee: numeric('extra_fee', { precision: 12, scale: 2 }).default('0.00').notNull(),
-    approvedByUserId: uuid('approved_by_user_id').references(() => users.id, {
-      onDelete: 'set null',
-    }),
-    notes: text('notes'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [
-    index('idx_makeups_student').on(t.studentId),
-    index('idx_makeups_original_session').on(t.originalSessionId),
-    index('idx_makeups_status').on(t.status),
   ],
 );
 

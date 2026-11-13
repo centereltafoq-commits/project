@@ -1,8 +1,7 @@
-import { AttendanceStatus, MakeupStatus, SessionStatus } from '@edu-center/shared';
+import { AttendanceStatus, SessionStatus } from '@edu-center/shared';
 import { DrizzleDatabase } from '../database.module';
 import {
   attendance,
-  makeupSessions,
   paymentAllocations,
   payments,
   studentMonthlyRecords,
@@ -48,7 +47,6 @@ export async function seedAttendanceAndStudentPayments(
   }
 
   let paySeq = 1;
-  let makeupSeeded = false;
 
   for (const spec of enrollmentSpecs) {
     const studentId = ctx.studentIds[spec.studentIdx];
@@ -60,15 +58,12 @@ export async function seedAttendanceAndStudentPayments(
     let present = 0;
     let absent = 0;
     let excused = 0;
-    let makeup = 0;
 
     for (let sIdx = 0; sIdx < eligible.length; sIdx++) {
       const sess = eligible[sIdx];
       let stStatus = AttendanceStatus.PRESENT;
       if (spec.isFullAbsent) {
         stStatus = AttendanceStatus.ABSENT;
-      } else if (spec.studentIdx === 2 && sIdx === 1 && spec.group.groupCode === 'GRP-MATH-3S') {
-        stStatus = AttendanceStatus.MAKEUP_ATTENDED;
       } else if (spec.studentIdx === 4 && sIdx === eligible.length - 1) {
         stStatus = AttendanceStatus.EXCUSED;
       } else if (spec.studentIdx % 5 === 3 && sIdx === 0) {
@@ -78,7 +73,6 @@ export async function seedAttendanceAndStudentPayments(
       if (stStatus === AttendanceStatus.PRESENT) present++;
       else if (stStatus === AttendanceStatus.ABSENT) absent++;
       else if (stStatus === AttendanceStatus.EXCUSED) excused++;
-      else if (stStatus === AttendanceStatus.MAKEUP_ATTENDED) makeup++;
 
       await db
         .insert(attendance)
@@ -92,28 +86,9 @@ export async function seedAttendanceAndStudentPayments(
           target: [attendance.sessionId, attendance.studentId],
           set: { status: stStatus },
         });
-
-      if (stStatus === AttendanceStatus.MAKEUP_ATTENDED && !makeupSeeded) {
-        makeupSeeded = true;
-        await db
-          .insert(makeupSessions)
-          .values({
-            id: seedUuid('25', 1),
-            studentId,
-            originalSessionId: sess.id,
-            absenceDate: sess.date,
-            classroomId: ctx.classroomsByCode.get('R-104') || null,
-            status: MakeupStatus.COMPLETED,
-            isFree: true,
-            extraFee: '0.00',
-            approvedByUserId: ctx.actorUserId,
-            notes: 'حصة تعويضية مجانية معتمدة',
-          })
-          .onConflictDoNothing({ target: makeupSessions.id });
-      }
     }
 
-    const chargeableSessions = spec.isFullAbsent ? 0 : present + makeup;
+    const chargeableSessions = spec.isFullAbsent ? 0 : present;
     const totalDue = Number((chargeableSessions * spec.group.sessionPrice).toFixed(2));
     const paidRatio = spec.idx % 4 === 0 ? 0.5 : spec.idx % 7 === 0 ? 0 : 1;
     const totalPaid = Number((totalDue * paidRatio).toFixed(2));
@@ -130,7 +105,7 @@ export async function seedAttendanceAndStudentPayments(
         presentCount: present,
         absentCount: absent,
         excusedCount: excused,
-        makeupAttendedCount: makeup,
+        makeupAttendedCount: 0,
         sessionPriceSnapshot: spec.group.sessionPrice.toFixed(2),
         extraMakeupFees: '0.00',
         totalDue: totalDue.toFixed(2),
@@ -147,7 +122,7 @@ export async function seedAttendanceAndStudentPayments(
           presentCount: present,
           absentCount: absent,
           excusedCount: excused,
-          makeupAttendedCount: makeup,
+          makeupAttendedCount: 0,
           totalDue: totalDue.toFixed(2),
           totalPaid: totalPaid.toFixed(2),
           remainingBalance: remaining.toFixed(2),

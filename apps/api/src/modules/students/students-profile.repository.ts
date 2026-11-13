@@ -3,12 +3,9 @@ import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   attendance,
-  bookingRequests,
-  classrooms,
   enrollments,
   financialPolicies,
   groups,
-  makeupSessions,
   paymentAllocations,
   payments,
   sessions,
@@ -27,8 +24,6 @@ export class StudentsProfileRepository {
       monthAttendance,
       studentPayments,
       monthAllocations,
-      studentBookings,
-      studentMakeups,
     ] = await Promise.all([
       this.db
         .select({
@@ -71,9 +66,7 @@ export class StudentsProfileRepository {
           presentCount: studentMonthlyRecords.presentCount,
           absentCount: studentMonthlyRecords.absentCount,
           excusedCount: studentMonthlyRecords.excusedCount,
-          makeupAttendedCount: studentMonthlyRecords.makeupAttendedCount,
           sessionPriceSnapshot: studentMonthlyRecords.sessionPriceSnapshot,
-          extraMakeupFees: studentMonthlyRecords.extraMakeupFees,
           totalDue: studentMonthlyRecords.totalDue,
           totalPaid: studentMonthlyRecords.totalPaid,
           remainingBalance: studentMonthlyRecords.remainingBalance,
@@ -127,49 +120,6 @@ export class StudentsProfileRepository {
         .where(
           and(eq(payments.studentId, studentId), eq(paymentAllocations.yearMonth, yearMonth)),
         ),
-
-      this.db
-        .select({
-          id: bookingRequests.id,
-          requestType: bookingRequests.requestType,
-          purpose: bookingRequests.purpose,
-          requestedDate: bookingRequests.requestedDate,
-          startTime: bookingRequests.startTime,
-          endTime: bookingRequests.endTime,
-          durationMinutes: bookingRequests.durationMinutes,
-          status: bookingRequests.status,
-          notes: bookingRequests.notes,
-          teacherName: teachers.fullName,
-          classroomName: classrooms.name,
-          createdAt: bookingRequests.createdAt,
-        })
-        .from(bookingRequests)
-        .innerJoin(teachers, eq(bookingRequests.teacherId, teachers.id))
-        .leftJoin(classrooms, eq(bookingRequests.assignedClassroomId, classrooms.id))
-        .where(eq(bookingRequests.studentId, studentId))
-        .orderBy(desc(bookingRequests.requestedDate)),
-
-      this.db
-        .select({
-          id: makeupSessions.id,
-          originalSessionId: makeupSessions.originalSessionId,
-          absenceDate: makeupSessions.absenceDate,
-          scheduledAt: makeupSessions.scheduledAt,
-          status: makeupSessions.status,
-          isFree: makeupSessions.isFree,
-          extraFee: makeupSessions.extraFee,
-          notes: makeupSessions.notes,
-          groupId: groups.id,
-          groupName: groups.name,
-          sessionYearMonth: sessions.yearMonth,
-          classroomName: classrooms.name,
-        })
-        .from(makeupSessions)
-        .innerJoin(sessions, eq(makeupSessions.originalSessionId, sessions.id))
-        .innerJoin(groups, eq(sessions.groupId, groups.id))
-        .leftJoin(classrooms, eq(makeupSessions.classroomId, classrooms.id))
-        .where(eq(makeupSessions.studentId, studentId))
-        .orderBy(desc(makeupSessions.absenceDate)),
     ]);
 
     const enrolledGroupIds = Array.from(new Set(studentEnrollments.map((e) => e.groupId)));
@@ -198,8 +148,6 @@ export class StudentsProfileRepository {
       monthAttendance,
       studentPayments,
       monthAllocations,
-      studentBookings,
-      studentMakeups,
       groupSessionsInMonth,
     };
   }

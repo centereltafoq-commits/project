@@ -24,7 +24,6 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: TeacherFormMod
     specialization: '',
     contractDate: getTodayIsoDate(),
     employmentStatus: TeacherEmploymentStatus.ACTIVE,
-    canApproveBookings: true,
     notes: '',
   });
 
@@ -37,7 +36,6 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: TeacherFormMod
         specialization: teacher.specialization,
         contractDate: teacher.contractDate?.slice(0, 10) || getTodayIsoDate(),
         employmentStatus: teacher.employmentStatus,
-        canApproveBookings: teacher.canApproveBookings,
         notes: teacher.notes ?? '',
       });
     } else {
@@ -48,7 +46,6 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: TeacherFormMod
         specialization: '',
         contractDate: getTodayIsoDate(),
         employmentStatus: TeacherEmploymentStatus.ACTIVE,
-        canApproveBookings: true,
         notes: '',
       });
     }
@@ -82,7 +79,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: TeacherFormMod
       onOpenChange={onOpenChange}
       size="lg"
       title={isEdit ? 'تعديل بيانات المدرس' : 'إضافة مدرس جديد'}
-      description="أدخل بيانات المدرس وتخصصه وصلاحيات اعتماد المواعيد"
+      description="أدخل بيانات المدرس وتخصصه وحالة التعاقد"
     >
       <form
         onSubmit={(e) => {
@@ -137,16 +134,6 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: TeacherFormMod
             options={TEACHER_STATUS_OPTIONS}
           />
         </div>
-
-        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm font-semibold">
-          <input
-            type="checkbox"
-            checked={form.canApproveBookings}
-            onChange={(e) => setForm({ ...form, canApproveBookings: e.target.checked })}
-            className="h-4 w-4 rounded border-input"
-          />
-          السماح للمدرس باعتماد طلبات حجوزات المواعيد مع الطلاب
-        </label>
 
         <Textarea
           label="ملاحظات التعاقد"

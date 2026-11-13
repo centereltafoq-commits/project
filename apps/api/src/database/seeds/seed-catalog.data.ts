@@ -40,7 +40,7 @@ export const SEED_CLASSROOMS = [
     seatsCount: 30,
     equipment: ['سبورة ذكية', 'تكييف', 'إضاءة استوديو'],
     status: ClassroomStatus.AVAILABLE,
-    notes: 'مخصصة للحصص الخاصة والمراجعات والتعويضات',
+    notes: 'مخصصة للحصص الخاصة والمراجعات',
   },
   {
     roomNumber: 'R-105',
@@ -61,7 +61,6 @@ export const SEED_TEACHERS = [
     specialization: 'الرياضيات البحتة والتطبيقية',
     contractDate: '2025-08-01',
     employmentStatus: TeacherEmploymentStatus.ACTIVE,
-    canApproveBookings: 'true',
   },
   {
     teacherCode: 'TCH-002',
@@ -70,7 +69,6 @@ export const SEED_TEACHERS = [
     specialization: 'الفيزياء الحديثة والكهربية',
     contractDate: '2025-08-15',
     employmentStatus: TeacherEmploymentStatus.ACTIVE,
-    canApproveBookings: 'true',
   },
   {
     teacherCode: 'TCH-003',
@@ -79,7 +77,6 @@ export const SEED_TEACHERS = [
     specialization: 'الكيمياء العضوية والتحليلية',
     contractDate: '2025-09-01',
     employmentStatus: TeacherEmploymentStatus.ACTIVE,
-    canApproveBookings: 'true',
   },
   {
     teacherCode: 'TCH-004',
@@ -88,7 +85,6 @@ export const SEED_TEACHERS = [
     specialization: 'اللغة الإنجليزية',
     contractDate: '2025-09-10',
     employmentStatus: TeacherEmploymentStatus.ACTIVE,
-    canApproveBookings: 'false',
   },
 ];
 

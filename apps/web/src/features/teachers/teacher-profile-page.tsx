@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   BookOpen,
-  CalendarClock,
   Clock,
   CreditCard,
   Edit3,
@@ -36,7 +35,6 @@ import { useAuth } from '@/features/auth/auth-context';
 import { TeacherFormModal } from './teacher-form-modal';
 import { TeacherAvailabilityTab } from './teacher-availability-tab';
 import {
-  TeacherBookingsTab,
   TeacherGroupsAndScheduleTab,
   TeacherMonthlySummaryTab,
   TeacherPayoutsTab,
@@ -126,12 +124,6 @@ export function TeacherProfilePage() {
               <span className="text-muted-foreground">الهاتف:</span>
               <strong dir="ltr">{teacher.phone}</strong>
             </div>
-            <div>
-              <span className="text-muted-foreground">اعتماد المواعيد: </span>
-              <Badge variant={teacher.canApproveBookings ? 'success' : 'neutral'}>
-                {teacher.canApproveBookings ? 'مفعل للمدرس' : 'إدارة السنتر فقط'}
-              </Badge>
-            </div>
           </div>
           {canSeeTeacherFinance && (
             <Badge variant="purple">مستحقات شهر {formatYearMonthAr(yearMonth)}</Badge>
@@ -176,16 +168,9 @@ export function TeacherProfilePage() {
             <StatCard
               title="أوقات الإتاحة الأسبوعية"
               value={`${data.availability.length} فترات`}
-              subtitle="فترات أسبوعية متاحة للحجز"
+              subtitle="فترات أسبوعية مسجلة للمدرس"
               icon={Clock}
               tone="purple"
-            />
-            <StatCard
-              title="الحجوزات والمواعيد"
-              value={`${data.bookings.length} حجز`}
-              subtitle="مواعيد وقاعات مخصصة"
-              icon={CalendarClock}
-              tone="warning"
             />
           </>
         )}
@@ -213,10 +198,6 @@ export function TeacherProfilePage() {
               عمليات الصرف ({data.payouts.length})
             </TabsTrigger>
           )}
-          <TabsTrigger value="bookings">
-            <CalendarClock className="h-4 w-4" />
-            الحجوزات ({data.bookings.length})
-          </TabsTrigger>
         </TabsList>
 
         {canSeeTeacherFinance && (
@@ -239,9 +220,6 @@ export function TeacherProfilePage() {
             <TeacherPayoutsTab data={data} />
           </TabsContent>
         )}
-        <TabsContent value="bookings">
-          <TeacherBookingsTab data={data} />
-        </TabsContent>
       </Tabs>
 
       <TeacherFormModal open={editOpen} onOpenChange={setEditOpen} teacher={teacher} />

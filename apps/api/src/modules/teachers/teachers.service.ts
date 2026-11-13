@@ -56,7 +56,6 @@ export class TeachersService {
       specialization: dto.specialization.trim(),
       contractDate,
       employmentStatus: dto.employmentStatus ?? TeacherEmploymentStatus.ACTIVE,
-      canApproveBookings: dto.canApproveBookings ?? true,
       notes: dto.notes ?? null,
     });
 
@@ -81,9 +80,6 @@ export class TeachersService {
       ...(dto.specialization !== undefined ? { specialization: dto.specialization.trim() } : {}),
       ...(dto.contractDate !== undefined ? { contractDate: dto.contractDate } : {}),
       ...(dto.employmentStatus !== undefined ? { employmentStatus: dto.employmentStatus } : {}),
-      ...(dto.canApproveBookings !== undefined
-        ? { canApproveBookings: dto.canApproveBookings ? 'true' : 'false' }
-        : {}),
       ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
     });
 
@@ -192,7 +188,6 @@ export class TeachersService {
       availability: bundle.availability,
       monthlyBreakdown,
       payouts: canViewFinance ? bundle.payouts : [],
-      bookings: bundle.bookings,
     };
   }
 

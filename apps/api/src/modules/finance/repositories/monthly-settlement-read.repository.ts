@@ -20,7 +20,6 @@ import {
   financialPolicies,
   groupAssistants,
   groups,
-  makeupSessions,
   paymentAllocations,
   payments,
   sessions,
@@ -115,19 +114,13 @@ export class MonthlySettlementReadRepository {
     ]);
 
     const sessionIds = monthSessions.map((s) => s.id);
-    const [sessionAttendances, sessionMakeups] =
+    const sessionAttendances =
       sessionIds.length > 0
-        ? await Promise.all([
-            this.db
-              .select()
-              .from(attendance)
-              .where(inArray(attendance.sessionId, sessionIds)),
-            this.db
-              .select()
-              .from(makeupSessions)
-              .where(inArray(makeupSessions.originalSessionId, sessionIds)),
-          ])
-        : [[], []];
+        ? await this.db
+            .select()
+            .from(attendance)
+            .where(inArray(attendance.sessionId, sessionIds))
+        : [];
 
     return {
       allGroups,
@@ -136,7 +129,6 @@ export class MonthlySettlementReadRepository {
       monthEnrollments,
       monthSessions,
       sessionAttendances,
-      sessionMakeups,
       activeAssistants,
       existingStudentRecords,
       existingTeacherDues,

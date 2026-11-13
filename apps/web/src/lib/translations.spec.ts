@@ -13,9 +13,7 @@ describe('translations utility', () => {
       expect(translateAuditAction('BACKUP_RESTORE').label).toBe('استعادة قاعدة البيانات');
       expect(translateAuditAction('system.settings_update').label).toBe('تعديل الإعدادات العامة للسنتر');
       expect(translateAuditAction('LOGOUT').label).toBe('تسجيل خروج');
-      expect(translateAuditAction('REVIEW_BOOKING_CONFIRMED').label).toBe('تأكيد طلب الحجز وتخصيص قاعة');
-      expect(translateAuditAction('CANCEL_SINGLE_BOOKING').label).toBe('إلغاء موعد حجز');
-      expect(translateAuditAction('COMPLETE_BOOKING').label).toBe('إتمام وتنفيذ الحجز');
+      expect(translateAuditAction('CLASSROOM_CREATE').label).toBe('إضافة قاعة دراسية جديدة');
       expect(translateAuditAction('FINANCE_COLLECT_PAYMENT').label).toBe('تحصيل مدفوعات طالب');
       expect(translateAuditAction('FINANCE_TEACHER_PAYOUT').label).toBe('صرف مستحقات مدرس');
       expect(translateAuditAction('FINANCE_ASSISTANT_PAYOUT').label).toBe('صرف مستحقات مساعد');
@@ -71,7 +69,7 @@ describe('translations utility', () => {
       expect(translatePayloadValue('ARCHIVED')).toBe('مؤرشف');
       expect(translatePayloadValue('CONFIRMED')).toBe('مؤكد');
       expect(translatePayloadValue('FIXED_PER_STUDENT')).toBe('مبلغ ثابت لكل طالب');
-      expect(translatePayloadValue('ONE_TIME')).toBe('حجز لمرة واحدة');
+      expect(translatePayloadValue('FIXED_MONTHLY')).toBe('راتب شهري ثابت');
       expect(translatePayloadValue('FULL_TIME')).toBe('دوام كامل');
       expect(translatePayloadValue('PER_SESSION')).toBe('حسب الحصة');
       expect(translatePayloadValue('UPLOADED')).toBe('مرفوع يدوياً');

@@ -18,7 +18,6 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
   const { hasPermission } = useAuth();
   const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
   const canViewClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_VIEW);
-  const canViewBookings = hasPermission(PERMISSIONS.BOOKINGS_VIEW);
 
   // حساب نسبة التحصيل
   const collectionRate =
@@ -29,8 +28,7 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
   const totalMarkedToday =
     data.todayAttendance.present +
     data.todayAttendance.absent +
-    data.todayAttendance.excused +
-    data.todayAttendance.makeup;
+    data.todayAttendance.excused;
 
   const visibleCount = 2 + (canViewFinance ? 1 : 0) + (canViewClassrooms ? 1 : 0);
   const lgColsClass =
@@ -72,13 +70,9 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
         <StatCard
           title="القاعات الشاغرة الآن"
           value={`${data.classroomsSummary.availableNow} من ${data.classroomsSummary.total}`}
-          subtitle={
-            canViewBookings && data.pendingBookingsCount > 0
-              ? `يوجد ${data.pendingBookingsCount} طلب حجز بحاجة للاعتماد`
-              : `${data.classroomsSummary.occupiedNow} قاعة مشغولة حالياً`
-          }
+          subtitle={`${data.classroomsSummary.occupiedNow} قاعة مشغولة حالياً`}
           icon={Building2}
-          tone={canViewBookings && data.pendingBookingsCount > 0 ? 'warning' : 'purple'}
+          tone="purple"
         />
       )}
     </div>

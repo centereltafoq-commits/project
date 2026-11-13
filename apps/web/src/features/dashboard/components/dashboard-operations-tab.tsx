@@ -1,11 +1,8 @@
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle,
   ArrowLeft,
   Building2,
-  CalendarCheck2,
   ClipboardCheck,
-  Clock,
   GraduationCap,
   Sparkles,
   Wallet,
@@ -45,11 +42,10 @@ const QUICK_ACTIONS = [
     label: 'رصد الحضور والغياب',
     to: '/attendance',
     icon: ClipboardCheck,
-    desc: 'تسجيل الحصص والتعويضات',
+    desc: 'تسجيل الحصص والحضور',
     anyPermissions: [
       PERMISSIONS.ATTENDANCE_VIEW,
       PERMISSIONS.SESSIONS_VIEW,
-      PERMISSIONS.MAKEUP_MANAGE,
     ],
   },
   {
@@ -58,13 +54,6 @@ const QUICK_ACTIONS = [
     icon: Wallet,
     desc: 'قبول دفعات الطلاب المالية',
     anyPermissions: [PERMISSIONS.FINANCE_VIEW],
-  },
-  {
-    label: 'اعتماد طلبات الحجز',
-    to: '/bookings',
-    icon: CalendarCheck2,
-    desc: 'حجز المواعيد بدون تعارض',
-    anyPermissions: [PERMISSIONS.BOOKINGS_VIEW],
   },
   {
     label: 'تسجيل وإدارة الطلاب',
@@ -84,11 +73,9 @@ const QUICK_ACTIONS = [
 
 export function DashboardOperationsTab({ data }: DashboardOperationsTabProps) {
   const { hasPermission } = useAuth();
-  const canViewBookings = hasPermission(PERMISSIONS.BOOKINGS_VIEW);
   const canAccessAttendance =
     hasPermission(PERMISSIONS.ATTENDANCE_VIEW) ||
-    hasPermission(PERMISSIONS.SESSIONS_VIEW) ||
-    hasPermission(PERMISSIONS.MAKEUP_MANAGE);
+    hasPermission(PERMISSIONS.SESSIONS_VIEW);
   const canViewClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_VIEW);
   const permittedQuickActions = QUICK_ACTIONS.filter((a) =>
     a.anyPermissions.some((p) => hasPermission(p)),
@@ -96,30 +83,7 @@ export function DashboardOperationsTab({ data }: DashboardOperationsTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* 1. تنبيه الحجوزات المعلقة إن وجدت */}
-      {canViewBookings && data.pendingBookingsCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 dark:text-amber-200">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-            <div>
-              <p className="text-sm font-bold">
-                تنبيه تشغيلي: يوجد {data.pendingBookingsCount} طلب حجز مواعيد جديد بحاجة إلى مراجعة واعتماد
-              </p>
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                يرجى مراجعة الحجوزات لتأكيد المواعيد وتسكين القاعات الدراسية المناسبة قبل موعد الحصة.
-              </p>
-            </div>
-          </div>
-          <Link to="/bookings">
-            <Button size="sm" variant="primary">
-              مراجعة الحجوزات الآن
-              <ArrowLeft className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
-      )}
-
-      {/* 2. شريط الوصول السريع لأهم الإجراءات التشغيلية */}
+      {/* 1. شريط الوصول السريع لأهم الإجراءات التشغيلية */}
       {permittedQuickActions.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -151,12 +115,11 @@ export function DashboardOperationsTab({ data }: DashboardOperationsTabProps) {
         </section>
       )}
 
-      {/* 3. شبكة متكاملة: حصص اليوم والمواعيد القادمة */}
-      {(canAccessAttendance || canViewBookings) && (
+      {/* 2. جدول حصص اليوم */}
+      {canAccessAttendance && (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
           {/* جدول حصص اليوم */}
-          {canAccessAttendance && (
-            <Card className={canViewBookings ? 'xl:col-span-7' : 'xl:col-span-12'}>
+          <Card className="xl:col-span-12">
               <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-3">
                 <div>
                   <CardTitle className="text-base">جدول حصص اليوم ({formatDateAr(data.todayDate)})</CardTitle>
@@ -226,55 +189,6 @@ export function DashboardOperationsTab({ data }: DashboardOperationsTabProps) {
                 )}
               </CardContent>
             </Card>
-          )}
-
-          {/* المواعيد القادمة المؤكدة */}
-          {canViewBookings && (
-            <Card className={canAccessAttendance ? 'xl:col-span-5' : 'xl:col-span-12'}>
-              <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-3">
-                <div>
-                  <CardTitle className="text-base">المواعيد القادمة المعتمدة</CardTitle>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    أحدث 5 مواعيد فردية وحصص خاصة مؤكدة
-                  </p>
-                </div>
-                <Link to="/bookings">
-                  <Button variant="outline" size="sm">
-                    كل الحجوزات
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="divide-y divide-border p-0">
-                {data.upcomingAppointments.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-muted-foreground">
-                    لا توجد مواعيد خاصة قادمة مؤكدة حالياً.
-                  </div>
-                ) : (
-                  data.upcomingAppointments.map((appt) => (
-                    <div key={appt.id} className="flex items-start justify-between gap-3 p-3.5">
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-foreground">{appt.purpose}</p>
-                        <p className="text-xs text-muted-foreground">
-                          المدرس: <strong className="text-foreground">{appt.teacherName}</strong>
-                          {appt.studentName && ` • الطالب: ${appt.studentName}`}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span className="inline-flex items-center gap-1 font-mono font-medium text-primary">
-                            <Clock className="h-3 w-3" />
-                            {formatDateAr(appt.requestedDate)} • {formatTimeRangeAr(appt.startTime, appt.endTime)}
-                          </span>
-                        </div>
-                      </div>
-                      <Badge variant="info">
-                        {appt.roomNumber ? `قاعة ${appt.roomNumber}` : 'مؤكد'}
-                      </Badge>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 

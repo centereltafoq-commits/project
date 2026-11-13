@@ -141,8 +141,6 @@ export class StudentsService {
       monthlyBreakdown: breakdown,
       monthTotals,
       payments: canViewFinance ? bundle.studentPayments : [],
-      bookings: bundle.studentBookings,
-      makeupSessions: bundle.studentMakeups,
     };
   }
 

@@ -50,27 +50,6 @@ export enum AttendanceStatus {
   PRESENT = 'PRESENT',
   ABSENT = 'ABSENT',
   EXCUSED = 'EXCUSED',
-  MAKEUP_ATTENDED = 'MAKEUP_ATTENDED',
-}
-
-export enum MakeupStatus {
-  PENDING = 'PENDING',
-  SCHEDULED = 'SCHEDULED',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-}
-
-export enum BookingRequestType {
-  STUDENT_WITH_TEACHER = 'STUDENT_WITH_TEACHER',
-  TEACHER_WITH_CENTER = 'TEACHER_WITH_CENTER',
-}
-
-export enum BookingStatus {
-  PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
-  REJECTED = 'REJECTED',
-  CANCELLED = 'CANCELLED',
-  COMPLETED = 'COMPLETED',
 }
 
 export enum ClassroomStatus {

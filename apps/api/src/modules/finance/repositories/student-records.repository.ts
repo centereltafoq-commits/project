@@ -72,9 +72,7 @@ export class StudentRecordsRepository {
           presentCount: studentMonthlyRecords.presentCount,
           absentCount: studentMonthlyRecords.absentCount,
           excusedCount: studentMonthlyRecords.excusedCount,
-          makeupAttendedCount: studentMonthlyRecords.makeupAttendedCount,
           sessionPriceSnapshot: studentMonthlyRecords.sessionPriceSnapshot,
-          extraMakeupFees: studentMonthlyRecords.extraMakeupFees,
           totalDue: studentMonthlyRecords.totalDue,
           totalPaid: studentMonthlyRecords.totalPaid,
           remainingBalance: studentMonthlyRecords.remainingBalance,
@@ -100,7 +98,6 @@ export class StudentRecordsRepository {
     const mapped = rows.map((r) => ({
       ...r,
       sessionPriceSnapshot: parseMoney(r.sessionPriceSnapshot),
-      extraMakeupFees: parseMoney(r.extraMakeupFees),
       totalDue: parseMoney(r.totalDue),
       totalPaid: parseMoney(r.totalPaid),
       remainingBalance: parseMoney(r.remainingBalance),

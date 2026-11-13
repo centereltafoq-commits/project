@@ -1,4 +1,4 @@
-import { BookingStatus, TeacherEmploymentStatus } from '@edu-center/shared';
+import { TeacherEmploymentStatus } from '@edu-center/shared';
 
 export interface TeacherRow {
   id: string;
@@ -9,7 +9,6 @@ export interface TeacherRow {
   specialization: string;
   contractDate: string;
   employmentStatus: TeacherEmploymentStatus;
-  canApproveBookings: boolean;
   notes: string | null;
   assignedGroupsCount?: number;
   createdAt: string;
@@ -82,19 +81,6 @@ export interface TeacherProfileData {
     payoutDate: string;
     paymentMethod: string;
     notes: string | null;
-  }>;
-  bookings: Array<{
-    id: string;
-    requestType: string;
-    purpose: string;
-    requestedDate: string;
-    startTime: string;
-    endTime: string;
-    durationMinutes: number;
-    expectedAttendees: number;
-    status: BookingStatus;
-    studentName: string | null;
-    classroomName: string | null;
   }>;
 }
 

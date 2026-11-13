@@ -8,7 +8,6 @@ import { renderTeacherStatementReport } from './teacher-statement-report';
 import { renderAssistantStatementReport } from './assistant-statement-report';
 import { renderCollectionsReport } from './collections-report';
 import { renderExpensesReport } from './expenses-report';
-import { renderBookingsReport } from './bookings-report';
 import { renderClassroomsReport } from './classrooms-report';
 import { renderFinancialSummaryReport } from './financial-summary-report';
 
@@ -32,8 +31,6 @@ export function resolveReportTemplate(ctx: ReportPrintContext): ReportTemplateRe
       return renderCollectionsReport(ctx);
     case 'expenses':
       return renderExpensesReport(ctx);
-    case 'bookings':
-      return renderBookingsReport(ctx);
     case 'classrooms':
       return renderClassroomsReport(ctx);
     case 'financial-summary':

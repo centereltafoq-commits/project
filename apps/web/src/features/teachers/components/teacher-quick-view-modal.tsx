@@ -8,7 +8,6 @@ import {
   ExternalLink,
   MessageCircle,
   Phone,
-  ShieldCheck,
 } from 'lucide-react';
 import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Modal } from '@/design-system';
@@ -65,42 +64,26 @@ export function TeacherQuickViewModal({
           </div>
         </div>
 
-        {/* بيانات التواصل واعتماد الحجوزات */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* الهاتف */}
-          <div className="rounded-xl border border-border bg-card p-3.5">
-            <span className="text-xs font-bold text-muted-foreground block flex items-center gap-1.5">
-              <Phone className="h-3.5 w-3.5 text-primary" />
-              رقم هاتف المدرس
-            </span>
-            <p dir="ltr" className="mt-1 text-sm font-mono font-bold text-foreground text-right">
-              {teacher.phone || 'غير مسجل'}
-            </p>
-            {teacher.phone && (
-              <a
-                href={`https://wa.me/2${teacher.phone.replace(/\D/g, '')}`}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:underline"
-              >
-                <MessageCircle className="h-3 w-3" />
-                مراسلة المدرس عبر واتساب
-              </a>
-            )}
-          </div>
-
-          {/* صلاحية اعتماد الحجوزات */}
-          <div className="rounded-xl border border-border bg-card p-3.5">
-            <span className="text-xs font-bold text-muted-foreground block flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-purple-600" />
-              اعتماد طلبات الحجز
-            </span>
-            <div className="mt-2">
-              <Badge variant={teacher.canApproveBookings ? 'success' : 'neutral'}>
-                {teacher.canApproveBookings ? 'مسموح للمدرس الاعتماد' : 'إدارة السنتر فقط'}
-              </Badge>
-            </div>
-          </div>
+        {/* بيانات التواصل */}
+        <div className="rounded-xl border border-border bg-card p-3.5">
+          <span className="text-xs font-bold text-muted-foreground block flex items-center gap-1.5">
+            <Phone className="h-3.5 w-3.5 text-primary" />
+            رقم هاتف المدرس
+          </span>
+          <p dir="ltr" className="mt-1 text-sm font-mono font-bold text-foreground text-right">
+            {teacher.phone || 'غير مسجل'}
+          </p>
+          {teacher.phone && (
+            <a
+              href={`https://wa.me/2${teacher.phone.replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:underline"
+            >
+              <MessageCircle className="h-3 w-3" />
+              مراسلة المدرس عبر واتساب
+            </a>
+          )}
         </div>
 
         {/* المجموعات وتاريخ التعاقد */}

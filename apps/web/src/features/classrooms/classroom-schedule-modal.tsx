@@ -146,7 +146,7 @@ export function ClassroomScheduleModal({
               className="gap-1 text-xs"
             >
               <Clock className="h-3.5 w-3.5" />
-              الحصص والحجوزات المؤرخة ({data ? (data.sessions?.length ?? 0) + (data.bookings?.length ?? 0) : 0})
+              الحصص المؤرخة ({data ? (data.sessions?.length ?? 0) : 0})
             </Button>
             <Button
               type="button"
@@ -266,7 +266,7 @@ export function ClassroomScheduleModal({
           </div>
         )}
 
-        {/* Tab 2: Dated Sessions & Bookings */}
+        {/* Tab 2: Dated Sessions */}
         {tab === 'dated' && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted/20 p-3">
@@ -307,29 +307,6 @@ export function ClassroomScheduleModal({
                           <p className="mt-1 text-xs text-muted-foreground">
                             المدرس: {s.teacherName} • الوقت:{' '}
                             <span>{formatTimeRangeAr(s.startTime, s.endTime)}</span>
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <h4 className="mb-2 text-sm font-extrabold">
-                    الحجوزات الإضافية المؤكدة ({data.bookings?.length ?? 0})
-                  </h4>
-                  {(data.bookings?.length ?? 0) === 0 ? (
-                    <p className="text-xs text-muted-foreground">لا توجد حجوزات إضافية في هذه الفترة</p>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {(data.bookings ?? []).map((b) => (
-                        <div key={b.id} className="rounded-lg border border-border p-3 text-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold">{b.title}</span>
-                            <Badge variant="purple">{formatDateAr(b.bookingDate)}</Badge>
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {formatTimeRangeAr(b.startTime, b.endTime)}
                           </p>
                         </div>
                       ))}

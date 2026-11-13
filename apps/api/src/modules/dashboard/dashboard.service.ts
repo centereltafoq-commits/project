@@ -35,26 +35,19 @@ export class DashboardService {
     const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
     const perms = actor?.permissions ?? [];
     const canViewFinance = isOwner || perms.includes(PERMISSIONS.FINANCE_VIEW);
-    const canViewBookings = isOwner || perms.includes(PERMISSIONS.BOOKINGS_VIEW);
     const canViewClassrooms = isOwner || perms.includes(PERMISSIONS.CLASSROOMS_VIEW);
     const canViewAttendance =
       isOwner ||
       perms.includes(PERMISSIONS.ATTENDANCE_VIEW) ||
       perms.includes(PERMISSIONS.SESSIONS_VIEW);
 
-    if (canViewFinance && canViewBookings && canViewClassrooms && canViewAttendance) {
+    if (canViewFinance && canViewClassrooms && canViewAttendance) {
       return summary;
     }
 
     return {
       ...summary,
       ...(canViewAttendance ? {} : { todaySessions: [] }),
-      ...(canViewBookings
-        ? {}
-        : {
-            pendingBookingsCount: 0,
-            upcomingAppointments: [],
-          }),
       ...(canViewClassrooms
         ? {}
         : {

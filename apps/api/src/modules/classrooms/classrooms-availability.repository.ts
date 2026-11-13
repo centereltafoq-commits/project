@@ -3,7 +3,6 @@ import { and, asc, desc, eq, gt, gte, lt, lte, ne, notExists, or, sql } from 'dr
 import { ClassroomStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
-  classroomBookings,
   classroomMaintenances,
   classrooms,
   groups,
@@ -57,20 +56,6 @@ export class ClassroomsAvailabilityRepository {
           ),
           notExists(
             this.db
-              .select({ id: classroomBookings.id })
-              .from(classroomBookings)
-              .where(
-                and(
-                  eq(classroomBookings.classroomId, classrooms.id),
-                  eq(classroomBookings.bookingDate, query.date),
-                  eq(classroomBookings.status, 'CONFIRMED'),
-                  lt(classroomBookings.startTime, query.endTime),
-                  gt(classroomBookings.endTime, query.startTime),
-                ),
-              ),
-          ),
-          notExists(
-            this.db
               .select({ id: groups.id })
               .from(groups)
               .where(
@@ -98,7 +83,7 @@ export class ClassroomsAvailabilityRepository {
     const rangeStart = new Date(`${from}T00:00:00`);
     const rangeEnd = new Date(`${to}T23:59:59`);
 
-    const [roomSessions, roomBookings, maintenances, rawGroups] = await Promise.all([
+    const [roomSessions, maintenances, rawGroups] = await Promise.all([
       this.db
         .select({
           id: sessions.id,
@@ -121,18 +106,6 @@ export class ClassroomsAvailabilityRepository {
           ),
         )
         .orderBy(asc(sessions.sessionDate), asc(sessions.startTime)),
-
-      this.db
-        .select()
-        .from(classroomBookings)
-        .where(
-          and(
-            eq(classroomBookings.classroomId, classroomId),
-            gte(classroomBookings.bookingDate, from),
-            lte(classroomBookings.bookingDate, to),
-          ),
-        )
-        .orderBy(asc(classroomBookings.bookingDate), asc(classroomBookings.startTime)),
 
       this.db
         .select()
@@ -184,6 +157,6 @@ export class ClassroomsAvailabilityRepository {
       ),
     }));
 
-    return { sessions: roomSessions, bookings: roomBookings, maintenances, allocatedGroups };
+    return { sessions: roomSessions, maintenances, allocatedGroups };
   }
 }

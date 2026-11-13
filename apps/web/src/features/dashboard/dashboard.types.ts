@@ -12,19 +12,6 @@ export interface DashboardTodaySession {
   status: string;
 }
 
-export interface DashboardUpcomingAppointment {
-  id: string;
-  requestType: string;
-  purpose: string;
-  requestedDate: string;
-  startTime: string;
-  endTime: string;
-  teacherName: string;
-  studentName: string | null;
-  classroomName: string | null;
-  roomNumber: string | null;
-}
-
 export interface DashboardClassroomLive {
   id: string;
   roomNumber: string;
@@ -58,7 +45,6 @@ export interface DashboardSummaryData {
     present: number;
     absent: number;
     excused: number;
-    makeup: number;
   };
   monthlySessionsStats: DashboardMonthlySessionsStats;
   totalRevenue: number;
@@ -71,8 +57,6 @@ export interface DashboardSummaryData {
   netCashFlow?: number;
   totalTeacherPaidOut?: number;
   totalAssistantPaidOut?: number;
-  pendingBookingsCount: number;
-  upcomingAppointments: DashboardUpcomingAppointment[];
   classroomsSummary: {
     total: number;
     availableNow: number;

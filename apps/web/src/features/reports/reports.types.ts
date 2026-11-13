@@ -3,7 +3,6 @@ import {
   BarChart3,
   BookOpen,
   Building2,
-  CalendarCheck2,
   ClipboardCheck,
   FileSpreadsheet,
   GraduationCap,
@@ -23,7 +22,6 @@ export type ReportTypeSlug =
   | 'assistant-statement'
   | 'collections'
   | 'expenses'
-  | 'bookings'
   | 'classrooms'
   | 'financial-summary';
 
@@ -157,19 +155,8 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     requiredPermission: PERMISSIONS.FINANCE_VIEW,
   },
   {
-    slug: 'bookings',
-    shortTitle: '9. تقرير الحجوزات',
-    fullTitle: 'تقرير حجوزات المواعيد والقاعات وحالاتها',
-    icon: CalendarCheck2,
-    usesMonth: true,
-    usesGroup: false,
-    usesTeacher: true,
-    usesStudent: true,
-    requiredPermission: PERMISSIONS.BOOKINGS_VIEW,
-  },
-  {
     slug: 'classrooms',
-    shortTitle: '10. استخدام القاعات',
+    shortTitle: '9. استخدام القاعات',
     fullTitle: 'تقرير القاعات والسعة ومعدلات الاستخدام',
     icon: Building2,
     usesMonth: true,
@@ -180,7 +167,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
   },
   {
     slug: 'financial-summary',
-    shortTitle: '11. التقرير المالي الشامل',
+    shortTitle: '10. التقرير المالي الشامل',
     fullTitle: 'التقرير المالي الشامل للسنتر وصافي النتيجة',
     icon: BarChart3,
     usesMonth: true,

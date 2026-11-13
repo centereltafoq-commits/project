@@ -11,7 +11,6 @@ describe('ReportsService - Access Control and Permissions Enforcement', () => {
     getAttendanceReport: vi.fn(),
   };
   const mockOperationsRepo = {
-    getBookingsReport: vi.fn(),
     getClassroomsReport: vi.fn(),
   };
   const mockFinanceStatementsRepo = {
@@ -113,20 +112,6 @@ describe('ReportsService - Access Control and Permissions Enforcement', () => {
 
     await expect(
       service.generateReport('classrooms', {}, actorWithoutClassrooms),
-    ).rejects.toThrow(ForbiddenException);
-  });
-
-  it('blocks users lacking BOOKINGS_VIEW from bookings report', async () => {
-    const actorWithoutBookings: AuthenticatedUser = {
-      id: 'acc-1',
-      email: 'acc@test.com',
-      fullName: 'Accountant',
-      roleCode: SystemRole.ACCOUNTANT,
-      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.FINANCE_VIEW],
-    };
-
-    await expect(
-      service.generateReport('bookings', {}, actorWithoutBookings),
     ).rejects.toThrow(ForbiddenException);
   });
 

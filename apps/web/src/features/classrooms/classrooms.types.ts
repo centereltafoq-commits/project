@@ -62,14 +62,6 @@ export interface ClassroomScheduleData {
     groupName: string;
     teacherName: string;
   }>;
-  bookings: Array<{
-    id: string;
-    bookingDate: string;
-    startTime: string;
-    endTime: string;
-    title: string;
-    status: string;
-  }>;
   maintenances: ClassroomMaintenanceItem[];
   allocatedGroups?: AllocatedGroupItem[];
 }

@@ -4,7 +4,6 @@ import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   systemSettings,
   attendance,
-  makeupSessions,
   sessions,
   studentMonthlyRecords,
   teacherMonthlyRecords,
@@ -16,10 +15,6 @@ import {
   teacherPayouts,
   assistantPayouts,
   expenses,
-  bookingSeries,
-  bookingRequests,
-  bookingApprovals,
-  classroomBookings,
   enrollments,
   groupTeachers,
   groupAssistants,
@@ -99,8 +94,7 @@ export class SettingsRepository {
     purgedStudents: boolean;
   }> {
     await this.db.transaction(async (tx) => {
-      // 1. Attendance & makeup records
-      await tx.delete(makeupSessions);
+      // 1. Attendance records
       await tx.delete(attendance);
 
       // 2. Financial transactions and allocations
@@ -115,13 +109,7 @@ export class SettingsRepository {
       await tx.delete(assistantMonthlyRecords);
       await tx.delete(expenses);
 
-      // 3. Room bookings and requests
-      await tx.delete(classroomBookings);
-      await tx.delete(bookingApprovals);
-      await tx.delete(bookingRequests);
-      await tx.delete(bookingSeries);
-
-      // 4. Enrollments and class sessions
+      // 3. Enrollments and class sessions
       await tx.delete(enrollments);
       await tx.delete(sessions);
 

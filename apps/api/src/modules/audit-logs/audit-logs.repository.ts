@@ -19,16 +19,12 @@ export interface CreateAuditLogInput {
 }
 
 const ENTITY_TYPE_ALIASES: Record<string, string[]> = {
-  ATTENDANCE: ['SESSION', 'MAKEUP_SESSION', 'ATTENDANCE', 'attendance', 'session', 'group_session'],
-  SESSION: ['SESSION', 'MAKEUP_SESSION', 'ATTENDANCE', 'attendance', 'session', 'group_session'],
-  MAKEUP_SESSION: ['MAKEUP_SESSION', 'makeup_session', 'makeup_sessions', 'MAKEUP_SESSIONS'],
+  ATTENDANCE: ['SESSION', 'ATTENDANCE', 'attendance', 'session', 'group_session'],
+  SESSION: ['SESSION', 'ATTENDANCE', 'attendance', 'session', 'group_session'],
   PAYMENT: ['payment', 'PAYMENT', 'payments', 'PAYMENTS', 'student_payment', 'student_payments'],
   PAYOUT: ['payout', 'PAYOUT', 'payouts', 'PAYOUTS', 'teacher_payout', 'assistant_payout', 'staff_payout', 'staff_payouts'],
   STAFF_PAYOUT: ['payout', 'PAYOUT', 'payouts', 'PAYOUTS', 'teacher_payout', 'assistant_payout', 'staff_payout', 'staff_payouts'],
   EXPENSE: ['expense', 'EXPENSE', 'expenses'],
-  BOOKING: ['booking', 'BOOKING', 'BOOKING_REQUEST', 'booking_request', 'BOOKING_SERIES', 'booking_series'],
-  BOOKING_REQUEST: ['BOOKING_REQUEST', 'booking_request'],
-  BOOKING_SERIES: ['BOOKING_SERIES', 'booking_series'],
   CLASSROOM: ['classroom', 'CLASSROOM', 'classrooms', 'CLASSROOMS'],
   CLASSROOM_MAINTENANCE: ['classroom_maintenance', 'CLASSROOM_MAINTENANCE'],
   GRADE_LEVEL: ['grade_level', 'GRADE_LEVEL', 'grade_levels', 'GRADE_LEVELS'],

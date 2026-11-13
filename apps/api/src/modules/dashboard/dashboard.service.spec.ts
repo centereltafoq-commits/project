@@ -15,7 +15,7 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     groupsCount: 20,
     todaySessionsCount: 5,
     todaySessions: [],
-    todayAttendance: { present: 45, absent: 5, excused: 2, makeup: 3 },
+    todayAttendance: { present: 45, absent: 5, excused: 2 },
     monthlySessionsStats: {
       totalSessions: 100,
       executedSessions: 50,
@@ -35,8 +35,6 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     netCashFlow: 10000,
     totalTeacherPaidOut: 20000,
     totalAssistantPaidOut: 5000,
-    pendingBookingsCount: 3,
-    upcomingAppointments: [],
     classroomsSummary: { total: 10, availableNow: 7, occupiedNow: 2, maintenance: 1 },
     classroomsLive: [],
   };
@@ -112,8 +110,6 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.monthlySessionsStats.totalPaidSessions).toBe(0);
     expect(res.monthlySessionsStats.totalUnpaidSessions).toBe(0);
     expect(res.monthlySessionsStats.collectionRateSessions).toBe(0);
-    expect(res.pendingBookingsCount).toBe(0);
-    expect(res.upcomingAppointments).toEqual([]);
     expect(res.classroomsSummary).toEqual({
       total: 0,
       availableNow: 0,
@@ -124,7 +120,7 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.todaySessions).toEqual([]);
   });
 
-  it('masks bookings and classrooms payloads while allowing authorized finance/bookings/classrooms views separately', async () => {
+  it('masks classrooms payload while allowing authorized finance view separately', async () => {
     const accountant: AuthenticatedUser = {
       id: 'acc-2',
       email: 'acc2@test.com',
@@ -139,8 +135,6 @@ describe('DashboardService - Financial Metrics Guarding', () => {
 
     const res = await service.getSummary('2026-11', accountant);
     expect(res.totalRevenue).toBe(50000);
-    expect(res.pendingBookingsCount).toBe(0);
-    expect(res.upcomingAppointments).toEqual([]);
     expect(res.classroomsLive).toEqual([]);
     expect(res.classroomsSummary.total).toBe(0);
   });

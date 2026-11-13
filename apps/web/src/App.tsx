@@ -49,9 +49,6 @@ const AttendancePage = React.lazy(() =>
 const FinancePage = React.lazy(() =>
   import('@/features/finance/finance-page').then((m) => ({ default: m.FinancePage })),
 );
-const BookingsPage = React.lazy(() =>
-  import('@/features/bookings/bookings-page').then((m) => ({ default: m.BookingsPage })),
-);
 const ClassroomsPage = React.lazy(() =>
   import('@/features/classrooms/classrooms-page').then((m) => ({ default: m.ClassroomsPage })),
 );
@@ -193,7 +190,6 @@ export function App() {
                       anyPermissions={[
                         PERMISSIONS.ATTENDANCE_VIEW,
                         PERMISSIONS.SESSIONS_VIEW,
-                        PERMISSIONS.MAKEUP_MANAGE,
                       ]}
                     >
                       <AttendancePage />
@@ -205,14 +201,6 @@ export function App() {
                   element={
                     <PermissionGuardRoute permission={PERMISSIONS.FINANCE_VIEW}>
                       <FinancePage />
-                    </PermissionGuardRoute>
-                  }
-                />
-                <Route
-                  path="bookings"
-                  element={
-                    <PermissionGuardRoute permission={PERMISSIONS.BOOKINGS_VIEW}>
-                      <BookingsPage />
                     </PermissionGuardRoute>
                   }
                 />

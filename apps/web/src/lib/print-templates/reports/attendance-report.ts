@@ -20,7 +20,6 @@ export function renderAttendanceReport(ctx: ReportPrintContext): ReportTemplateR
           <td style="text-align: center; font-weight: bold; color: #166534; background: #f0fdf4;">${r.presentCount ?? 0}</td>
           <td style="text-align: center; font-weight: bold; color: #991b1b; background: #fef2f2;">${r.absentCount ?? 0}</td>
           <td style="text-align: center; font-weight: bold; color: #854d0e; background: #fefce8;">${r.excusedCount ?? 0}</td>
-          <td style="text-align: center; font-weight: bold; color: #1e40af; background: #eff6ff;">${r.makeupCount ?? 0}</td>
           <td style="text-align: center; font-weight: 800;">
             <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; ${
               Number(r.attendanceRate ?? 0) >= 80
@@ -38,7 +37,7 @@ export function renderAttendanceReport(ctx: ReportPrintContext): ReportTemplateR
           .join('')
       : `
         <tr>
-          <td colspan="9" style="text-align: center; color: #64748b; padding: 18px;">
+          <td colspan="8" style="text-align: center; color: #64748b; padding: 18px;">
             لا توجد بيانات حضور مسجلة مطابقة لمعايير البحث
           </td>
         </tr>
@@ -65,7 +64,6 @@ export function renderAttendanceReport(ctx: ReportPrintContext): ReportTemplateR
               <th style="width: 65px; text-align: center; color: #166534;">حضور</th>
               <th style="width: 65px; text-align: center; color: #991b1b;">غياب</th>
               <th style="width: 65px; text-align: center; color: #854d0e;">بعذر</th>
-              <th style="width: 65px; text-align: center; color: #1e40af;">تعويضي</th>
               <th style="width: 85px; text-align: center;">نسبة الانضباط</th>
             </tr>
           </thead>
