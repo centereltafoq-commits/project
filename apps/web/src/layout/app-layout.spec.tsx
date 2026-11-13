@@ -216,7 +216,7 @@ describe('AppLayout Navigation Sidebar RBAC', () => {
         id: 'user-1',
         fullName: 'الموظف المسؤول',
         email: 'staff@center.com',
-        roleCode: SystemRole.SECRETARY,
+        roleCode: SystemRole.ACCOUNTANT,
         roleNameAr: 'سكرتارية واستقبال',
         permissions: [PERMISSIONS.DASHBOARD_VIEW],
       },

@@ -125,6 +125,7 @@ describe('Print Service (Modular Enterprise A4 & POS Print Engine)', () => {
       keyFeatures: [{ title: 'مؤشرات فورية', description: 'تحديث حي' }],
       workflowSteps: [{ stepNumber: 1, title: 'تسجيل الدخول', description: 'عرض الإحصائيات' }],
       businessRules: ['تحديث البيانات كل 60 ثانية'],
+      pageRoute: '/',
       permissions: ['DASHBOARD_VIEW'],
     });
 

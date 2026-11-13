@@ -238,8 +238,8 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
                     students: data.students.map((st) => ({
                       studentCode: st.studentCode,
                       studentName: st.studentName,
-                      phone: st.phone,
-                      parentPhone: st.parentPhone,
+                      phone: st.studentPhone,
+                      parentPhone: st.guardianPhone,
                       status: draft[st.studentId]?.status || st.status,
                       notes: draft[st.studentId]?.notes || st.notes,
                     })),

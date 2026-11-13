@@ -1,5 +1,6 @@
 import { CenterSettings } from '@/features/settings/settings.types';
 import { ReportSummaryKpiItem, ReportTypeSlug } from '@/features/reports/reports.types';
+export { type ReportTypeSlug };
 
 export interface ReportPrintContext {
   slug: ReportTypeSlug;
