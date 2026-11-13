@@ -9,6 +9,7 @@ import { ForbiddenPage } from '@/components/forbidden-page';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getCurrentYearMonth } from '@/lib/formatters';
+import { printReportA4 } from '@/lib/print-service';
 import { formatReportKpiValue, resolveReportColumns } from './columns/resolve-report-columns';
 import { ReportsToolbar } from './components/reports-toolbar';
 import {
@@ -128,23 +129,42 @@ export function ReportsPage() {
   };
 
   const handlePrint = async () => {
+    let rowsToPrint = (data?.data ?? []) as Array<Record<string, any>>;
     const totalPages = data?.meta?.totalPages ?? 1;
     if (canExport && totalPages > 1) {
       try {
         const res = await apiClient.get<ReportApiResponse>(`/reports/${activeReport}`, {
           params: { ...queryParams, exportAll: 'true' },
         });
-        setPrintAllRows(res.data.data);
-        setTimeout(() => {
-          window.print();
-          setPrintAllRows(null);
-        }, 120);
-        return;
+        if (res.data?.data) {
+          rowsToPrint = res.data.data as Array<Record<string, any>>;
+        }
       } catch {
-        // Fallback to printing visible page
+        // Fallback to visible page
       }
     }
-    window.print();
+
+    const summaryCards = data?.summary
+      ? data.summary.map((kpi) => ({
+          label: kpi.label,
+          value: String(formatReportKpiValue(kpi)),
+        }))
+      : [];
+
+    const printCols = columns.map((c) => ({
+      header: typeof c.header === 'string' ? c.header : (c.id || c.accessorKey || ''),
+      accessorKey: c.accessorKey,
+      id: c.id,
+    }));
+
+    await printReportA4({
+      reportTitle: activeDefinition.fullTitle,
+      categoryLabel: activeDefinition.category,
+      summaryCards,
+      columns: printCols,
+      rows: rowsToPrint,
+      settings,
+    });
   };
 
   const columns = React.useMemo(() => resolveReportColumns(activeReport), [activeReport]);

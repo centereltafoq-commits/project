@@ -8,6 +8,7 @@ import {
   formatDateAr,
   formatYearMonthAr,
 } from '@/lib/formatters';
+import { printDocument, printReceiptA4 } from '@/lib/print-service';
 import { PAYMENT_METHOD_LABELS, PaymentRow } from '../finance.types';
 
 interface ReceiptPrintModalProps {
@@ -89,15 +90,37 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
           htmlContent: html,
         });
         if (!res.success) {
-          window.print();
+          await printReceiptA4({ receipt, settings });
         }
       } catch (e) {
-        window.print();
+        await printReceiptA4({ receipt, settings });
       } finally {
         setIsPrinting(false);
       }
     } else {
-      window.print();
+      await printReceiptA4({ receipt, settings });
+    }
+  };
+
+  const handlePrintThermal = async () => {
+    setIsPrinting(true);
+    try {
+      if (isDesktop && config?.directPrintEnabled) {
+        const html = buildThermalReceiptHtml(receipt, settings, currencySymbol);
+        const res = await printReceipt({
+          printerName: config.defaultThermalPrinter || '',
+          htmlContent: html,
+        });
+        if (res.success) return;
+      }
+      const thermalHtml = buildThermalReceiptHtml(receipt, settings, currencySymbol);
+      await printDocument({
+        title: `إيصال_حراري_${receipt.receiptNumber}`,
+        bodyHtml: thermalHtml,
+        orientation: 'portrait',
+      });
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -213,13 +236,17 @@ export function ReceiptPrintModal({ receipt, onClose }: ReceiptPrintModalProps) 
           )}
         </div>
 
-        <div className="flex justify-end gap-2 no-print">
+        <div className="flex flex-wrap items-center justify-end gap-2 no-print">
           <Button variant="outline" onClick={onClose}>
             إغلاق
           </Button>
-          <Button onClick={handlePrint} disabled={isPrinting}>
+          <Button variant="outline" onClick={handlePrintThermal} disabled={isPrinting} className="gap-1.5">
+            <Printer className="h-4 w-4 text-muted-foreground" />
+            طباعة حرارية (POS 80mm)
+          </Button>
+          <Button variant="primary" onClick={handlePrint} disabled={isPrinting} className="gap-1.5">
             {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-            طباعة الإيصال
+            طباعة الإيصال (A4 رسمي)
           </Button>
         </div>
       </div>

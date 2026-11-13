@@ -1,11 +1,13 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCheck, Save, Search } from 'lucide-react';
+import { CheckCheck, Printer, Save, Search } from 'lucide-react';
 import { AttendanceStatus, PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Input, Modal, useToast } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
+import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { formatDateAr, formatTimeRangeAr } from '@/lib/formatters';
+import { printAttendanceSheetA4 } from '@/lib/print-service';
 import { SessionSheetResponse } from './attendance.types';
 import { SessionSheetRow } from './session-sheet-row';
 
@@ -18,6 +20,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const { hasPermission } = useAuth();
+  const { settings } = useCenterSettings();
 
   const canRecord = hasPermission(PERMISSIONS.ATTENDANCE_RECORD);
   const canOverride = hasPermission(PERMISSIONS.ATTENDANCE_OVERRIDE);
@@ -215,7 +218,38 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
             <span className="text-xs text-muted-foreground">
               تم تحديد حالة {Object.keys(draft).length} من أصل {data.students.length} طالب
             </span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  if (!data) return;
+                  printAttendanceSheetA4({
+                    session: {
+                      groupName: data.session.groupName,
+                      teacherName: data.session.teacherName,
+                      classroomName: data.session.classroomName,
+                      sessionDate: data.session.sessionDate,
+                      startTime: data.session.startTime,
+                      endTime: data.session.endTime,
+                      topic: topic || data.session.topic,
+                    },
+                    students: data.students.map((st) => ({
+                      studentCode: st.studentCode,
+                      studentName: st.studentName,
+                      phone: st.phone,
+                      parentPhone: st.parentPhone,
+                      status: draft[st.studentId]?.status || st.status,
+                      notes: draft[st.studentId]?.notes || st.notes,
+                    })),
+                    settings,
+                  });
+                }}
+              >
+                <Printer className="h-4 w-4 text-muted-foreground" />
+                <span>طباعة الكشف (A4)</span>
+              </Button>
               <Button type="button" variant="outline" onClick={onClose}>
                 إغلاق
               </Button>

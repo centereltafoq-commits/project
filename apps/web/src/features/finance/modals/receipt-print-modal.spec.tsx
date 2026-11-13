@@ -31,14 +31,16 @@ describe('ReceiptPrintModal Component', () => {
     window.print = vi.fn();
   });
 
-  it('prints using window.print() in standard web browser mode', () => {
+  it('prints using window.print() in standard web browser mode', async () => {
     const handleClose = vi.fn();
     render(<ReceiptPrintModal receipt={mockReceipt as any} onClose={handleClose} />);
 
     const printBtn = screen.getByRole('button', { name: /طباعة الإيصال/i });
     fireEvent.click(printBtn);
 
-    expect(window.print).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(window.print).toHaveBeenCalled();
+    });
   });
 
   it('prints silently via desktopApi when direct print is enabled', async () => {
@@ -117,6 +119,8 @@ describe('ReceiptPrintModal Component', () => {
     fireEvent.click(printBtn);
 
     expect(mockPrintReceipt).not.toHaveBeenCalled();
-    expect(window.print).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(window.print).toHaveBeenCalled();
+    });
   });
 });
