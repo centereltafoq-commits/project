@@ -9,7 +9,7 @@ import { ForbiddenPage } from '@/components/forbidden-page';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { downloadBlobFile } from '@/lib/file-download';
-import { getCurrentYearMonth } from '@/lib/formatters';
+import { formatDateAr, getCurrentYearMonth } from '@/lib/formatters';
 import { printReportBySlug } from '@/lib/print-service';
 import { formatReportKpiValue, resolveReportColumns } from './columns/resolve-report-columns';
 import { ReportsToolbar } from './components/reports-toolbar';
@@ -52,6 +52,7 @@ export function ReportsPage() {
   }, [permittedReports, activeReport]);
 
   const [yearMonth, setYearMonth] = React.useState<string>(() => getCurrentYearMonth());
+  const [date, setDate] = React.useState('');
   const [groupId, setGroupId] = React.useState('');
   const [teacherId, setTeacherId] = React.useState('');
   const [studentId, setStudentId] = React.useState('');
@@ -80,6 +81,7 @@ export function ReportsPage() {
   const queryParams = React.useMemo(
     () => ({
       yearMonth: activeDefinition?.usesMonth ? yearMonth : undefined,
+      date: activeDefinition?.usesDate && date ? date : undefined,
       groupId: activeDefinition?.usesGroup && groupId ? groupId : undefined,
       teacherId: activeDefinition?.usesTeacher && teacherId ? teacherId : undefined,
       studentId: activeDefinition?.usesStudent && studentId ? studentId : undefined,
@@ -87,7 +89,7 @@ export function ReportsPage() {
       page,
       limit,
     }),
-    [activeDefinition, yearMonth, groupId, teacherId, studentId, debouncedSearch, page, limit],
+    [activeDefinition, yearMonth, date, groupId, teacherId, studentId, debouncedSearch, page, limit],
   );
 
   const { data, isLoading } = useQuery<ReportApiResponse>({
@@ -110,7 +112,7 @@ export function ReportsPage() {
     try {
       await downloadBlobFile(
         `/reports/${activeReport}/export-csv`,
-        `${activeReport}-${yearMonth}.csv`,
+        `${activeReport}-${activeDefinition?.usesDate && date ? date : yearMonth}.csv`,
         { ...queryParams, page: undefined, limit: undefined },
         'text/csv;charset=utf-8;',
       );
@@ -139,6 +141,9 @@ export function ReportsPage() {
     }
 
     const activeFiltersList: string[] = [];
+    if (activeDefinition?.usesDate && date) {
+      activeFiltersList.push(`اليوم: ${formatDateAr(date)}`);
+    }
     if (groupId) activeFiltersList.push('مجموعة محددة');
     if (teacherId) activeFiltersList.push('مدرس محدد');
     if (studentId) activeFiltersList.push('طالب محدد');
@@ -227,6 +232,17 @@ export function ReportsPage() {
         yearMonth={yearMonth}
         onYearMonthChange={(v) => {
           setYearMonth(v);
+          if (date && !date.startsWith(v)) {
+            setDate('');
+          }
+          setPage(1);
+        }}
+        date={date}
+        onDateChange={(nextDate) => {
+          setDate(nextDate);
+          if (nextDate && nextDate.slice(0, 7) !== yearMonth) {
+            setYearMonth(nextDate.slice(0, 7));
+          }
           setPage(1);
         }}
         groupId={groupId}
@@ -247,6 +263,7 @@ export function ReportsPage() {
         search={search}
         onResetFilters={() => {
           setYearMonth(getCurrentYearMonth());
+          setDate('');
           setGroupId('');
           setTeacherId('');
           setStudentId('');

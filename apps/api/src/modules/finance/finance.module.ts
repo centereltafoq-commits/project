@@ -6,6 +6,7 @@ import { MonthlySettlementService } from './monthly-settlement.service';
 import { PaymentsService } from './payments.service';
 import { PayoutsService } from './payouts.service';
 import { AssistantPayoutsRepository } from './repositories/assistant-payouts.repository';
+import { DailyLedgerRepository } from './repositories/daily-ledger.repository';
 import { ExpensesRepository } from './repositories/expenses.repository';
 import { FinanceOverviewRepository } from './repositories/finance-overview.repository';
 import { MonthlySettlementReadRepository } from './repositories/monthly-settlement-read.repository';
@@ -29,6 +30,7 @@ import { TeacherPayoutsRepository } from './repositories/teacher-payouts.reposit
     TeacherPayoutsRepository,
     AssistantPayoutsRepository,
     ExpensesRepository,
+    DailyLedgerRepository,
     MonthlySettlementService,
     PaymentsService,
     PayoutsService,

@@ -23,9 +23,19 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+export type StudentMonthlySliceBundle = Pick<
+  Awaited<ReturnType<StudentsProfileRepository['fetchProfileBundle']>>,
+  | 'studentEnrollments'
+  | 'monthlyRecords'
+  | 'monthAttendance'
+  | 'studentPayments'
+  | 'monthAllocations'
+  | 'groupSessionsInMonth'
+>;
+
 export function computeStudentMonthlyBreakdown(
   yearMonth: string,
-  bundle: Awaited<ReturnType<StudentsProfileRepository['fetchProfileBundle']>>,
+  bundle: StudentMonthlySliceBundle,
 ) {
   const [yearNum, monthNum] = yearMonth.split('-').map(Number);
   const monthStart = `${yearMonth}-01`;

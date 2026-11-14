@@ -22,11 +22,17 @@ import { PayoutsSubtable } from './payouts-subtable';
 
 interface AssistantDuesTabProps {
   yearMonth: string;
+  selectedDate?: string;
   isMonthClosed?: boolean;
   lookups?: FinanceLookups;
 }
 
-export function AssistantDuesTab({ yearMonth, isMonthClosed = false, lookups }: AssistantDuesTabProps) {
+export function AssistantDuesTab({
+  yearMonth,
+  selectedDate,
+  isMonthClosed = false,
+  lookups,
+}: AssistantDuesTabProps) {
   const { hasPermission } = useAuth();
   const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS) && !isMonthClosed;
 
@@ -248,6 +254,7 @@ export function AssistantDuesTab({ yearMonth, isMonthClosed = false, lookups }: 
         <PayoutsSubtable
           mode="assistant"
           yearMonth={yearMonth}
+          selectedDate={selectedDate}
           filters={toolbarFilters}
         />
       )}

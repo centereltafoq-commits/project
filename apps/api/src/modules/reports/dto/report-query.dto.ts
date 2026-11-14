@@ -24,6 +24,12 @@ export class ReportQueryDto extends PaginationQueryDto {
   yearMonth?: string;
 
   @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'صيغة التاريخ يجب أن تكون YYYY-MM-DD',
+  })
+  date?: string;
+
+  @IsOptional()
   @IsUUID('4', { message: 'معرّف المجموعة غير صالح' })
   groupId?: string;
 

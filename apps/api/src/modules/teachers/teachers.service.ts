@@ -18,6 +18,10 @@ import {
 import { TeachersRepository } from './teachers.repository';
 import { TeachersProfileRepository } from './teachers-profile.repository';
 import { computeTeacherMonthlySummary } from './teachers-finance.calculator';
+import {
+  buildTeacherMonthSessions,
+  buildTeacherMonthsOverview,
+} from './teachers-months-overview.builder';
 
 @Injectable()
 export class TeachersService {
@@ -201,6 +205,26 @@ export class TeachersService {
       )
       .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime));
 
+    const rawMonthsOverview = buildTeacherMonthsOverview({
+      requestedYearMonth: yearMonth,
+      currentYearMonth: this.getCurrentYearMonth(),
+      contractDate: teacher.contractDate,
+      bundle,
+    });
+
+    const monthsOverview = canViewFinance
+      ? rawMonthsOverview
+      : rawMonthsOverview.map((m) => ({
+          ...m,
+          payoutStatus: 'NO_DUES' as const,
+          totalDues: 0,
+          totalPayouts: 0,
+          remainingBalance: 0,
+          payoutsCount: 0,
+        }));
+
+    const monthSessions = buildTeacherMonthSessions(yearMonth, bundle);
+
     return {
       teacher,
       yearMonth,
@@ -208,6 +232,8 @@ export class TeachersService {
       scheduleSlots,
       availability: bundle.availability,
       monthlyBreakdown,
+      monthsOverview,
+      monthSessions,
       payouts: canViewFinance ? bundle.payouts : [],
     };
   }

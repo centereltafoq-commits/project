@@ -11,7 +11,7 @@ import {
 } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
-import { formatCurrency, formatDateTimeAr } from '@/lib/formatters';
+import { formatCurrency, formatDateAr, formatDateTimeAr } from '@/lib/formatters';
 import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHOD_OPTIONS,
@@ -20,11 +20,15 @@ import {
 
 interface PaymentsHistoryTabProps {
   yearMonth: string;
+  selectedDate?: string;
+  onClearDate?: () => void;
   onShowReceipt: (receipt: PaymentRow) => void;
 }
 
 export function PaymentsHistoryTab({
   yearMonth,
+  selectedDate,
+  onClearDate,
   onShowReceipt,
 }: PaymentsHistoryTabProps) {
   const [page, setPage] = React.useState(1);
@@ -35,13 +39,14 @@ export function PaymentsHistoryTab({
 
   React.useEffect(() => {
     setPage(1);
-  }, [yearMonth]);
+  }, [yearMonth, selectedDate]);
 
   const { data, isLoading } = useQuery<PaginatedResult<PaymentRow>>({
     queryKey: [
       'finance',
       'payments',
       yearMonth,
+      selectedDate,
       page,
       limit,
       debouncedSearch,
@@ -51,6 +56,7 @@ export function PaymentsHistoryTab({
       const res = await apiClient.get('/finance/payments', {
         params: {
           yearMonth,
+          date: selectedDate || undefined,
           page,
           limit,
           search: debouncedSearch || undefined,
@@ -172,9 +178,27 @@ export function PaymentsHistoryTab({
         setLimit(l);
         setPage(1);
       }}
-      emptyTitle="لا توجد إيصالات مدفوعات مسجلة في هذا الشهر"
+      emptyTitle={
+        selectedDate
+          ? `لا توجد إيصالات مدفوعات مسجلة في يوم ${formatDateAr(selectedDate)}`
+          : 'لا توجد إيصالات مدفوعات مسجلة في هذا الشهر'
+      }
       filters={
         <div className="flex flex-wrap items-center gap-2">
+          {selectedDate && (
+            <Badge variant="info" className="text-xs gap-1.5 py-1">
+              <span>تصفية باليوم: {formatDateAr(selectedDate)}</span>
+              {onClearDate && (
+                <button
+                  type="button"
+                  onClick={onClearDate}
+                  className="mr-1 underline hover:opacity-80"
+                >
+                  إلغاء
+                </button>
+              )}
+            </Badge>
+          )}
           <Select
             searchable
             placeholder="كل وسائل الدفع"

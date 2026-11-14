@@ -4,7 +4,7 @@ import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import { Badge, ServerDataTable, TableColumn } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
-import { formatCurrency, formatDateTimeAr } from '@/lib/formatters';
+import { formatCurrency, formatDateAr, formatDateTimeAr } from '@/lib/formatters';
 import { PAYMENT_METHOD_LABELS } from '../finance.types';
 
 interface GenericPayoutRow {
@@ -23,10 +23,16 @@ interface GenericPayoutRow {
 interface PayoutsSubtableProps {
   mode: 'teacher' | 'assistant';
   yearMonth: string;
+  selectedDate?: string;
   filters?: React.ReactNode;
 }
 
-export function PayoutsSubtable({ mode, yearMonth, filters }: PayoutsSubtableProps) {
+export function PayoutsSubtable({
+  mode,
+  yearMonth,
+  selectedDate,
+  filters,
+}: PayoutsSubtableProps) {
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = React.useState('');
@@ -38,15 +44,16 @@ export function PayoutsSubtable({ mode, yearMonth, filters }: PayoutsSubtablePro
 
   React.useEffect(() => {
     setPage(1);
-  }, [yearMonth]);
+  }, [yearMonth, selectedDate]);
 
   const { data, isLoading } = useQuery<PaginatedResult<GenericPayoutRow>>({
-    queryKey: ['finance', queryKeyName, yearMonth, page, limit, debouncedSearch],
+    queryKey: ['finance', queryKeyName, yearMonth, selectedDate, page, limit, debouncedSearch],
     queryFn: async () =>
       (
         await apiClient.get(endpoint, {
           params: {
             yearMonth,
+            date: selectedDate || undefined,
             page,
             limit,
             search: debouncedSearch || undefined,
@@ -135,6 +142,11 @@ export function PayoutsSubtable({ mode, yearMonth, filters }: PayoutsSubtablePro
         setLimit(l);
         setPage(1);
       }}
+      emptyTitle={
+        selectedDate
+          ? `لا توجد حركات صرف مسجلة في يوم ${formatDateAr(selectedDate)}`
+          : 'لا توجد حركات صرف مسجلة في هذا الشهر'
+      }
       filters={filters}
     />
   );

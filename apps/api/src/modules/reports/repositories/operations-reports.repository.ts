@@ -29,12 +29,19 @@ export class OperationsReportsRepository {
           seatsCount: classrooms.seatsCount,
           equipment: classrooms.equipment,
           status: classrooms.status,
-          sessionsCount: sql<number>`(
-            SELECT COUNT(*)::int FROM sessions s
-            WHERE s.classroom_id = classrooms.id
-              AND s.status != 'CANCELLED'
-              AND s.year_month = ${yearMonth}
-          )`,
+          sessionsCount: query.date
+            ? sql<number>`(
+                SELECT COUNT(*)::int FROM sessions s
+                WHERE s.classroom_id = classrooms.id
+                  AND s.status != 'CANCELLED'
+                  AND s.session_date = ${query.date}
+              )`
+            : sql<number>`(
+                SELECT COUNT(*)::int FROM sessions s
+                WHERE s.classroom_id = classrooms.id
+                  AND s.status != 'CANCELLED'
+                  AND s.year_month = ${yearMonth}
+              )`,
         })
         .from(classrooms)
         .where(whereClause)
@@ -46,10 +53,15 @@ export class OperationsReportsRepository {
           totalRooms: sql<number>`COUNT(*)::int`,
           availableRooms: sql<number>`COUNT(*) FILTER (WHERE ${classrooms.status} = 'AVAILABLE')::int`,
           totalCapacity: sql<number>`COALESCE(SUM(${classrooms.maxCapacity}), 0)::int`,
-          totalSessions: sql<number>`(
-            SELECT COUNT(*)::int FROM sessions s
-            WHERE s.status != 'CANCELLED' AND s.year_month = ${yearMonth}
-          )`,
+          totalSessions: query.date
+            ? sql<number>`(
+                SELECT COUNT(*)::int FROM sessions s
+                WHERE s.status != 'CANCELLED' AND s.session_date = ${query.date}
+              )`
+            : sql<number>`(
+                SELECT COUNT(*)::int FROM sessions s
+                WHERE s.status != 'CANCELLED' AND s.year_month = ${yearMonth}
+              )`,
         })
         .from(classrooms)
         .where(whereClause),

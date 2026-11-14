@@ -25,6 +25,22 @@ export class FinanceStatementsRepository {
     if (query.groupId) conds.push(eq(studentMonthlyRecords.groupId, query.groupId));
     if (query.studentId) conds.push(eq(studentMonthlyRecords.studentId, query.studentId));
     if (query.teacherId) conds.push(eq(groups.primaryTeacherId, query.teacherId));
+    if (query.date) {
+      conds.push(sql`(
+        EXISTS (
+          SELECT 1 FROM attendance a
+          INNER JOIN sessions s ON s.id = a.session_id
+          WHERE a.student_id = ${studentMonthlyRecords.studentId}
+            AND s.group_id = ${studentMonthlyRecords.groupId}
+            AND s.session_date = ${query.date}
+        )
+        OR EXISTS (
+          SELECT 1 FROM payments p
+          WHERE p.student_id = ${studentMonthlyRecords.studentId}
+            AND p.payment_date = ${query.date}
+        )
+      )`);
+    }
     if (query.search) {
       const p = `%${query.search}%`;
       conds.push(
@@ -92,6 +108,16 @@ export class FinanceStatementsRepository {
     const conds: SQL[] = [];
     if (query.groupId) conds.push(eq(groups.id, query.groupId));
     if (query.teacherId) conds.push(eq(groups.primaryTeacherId, query.teacherId));
+    if (query.date) {
+      conds.push(sql`(
+        EXISTS (SELECT 1 FROM sessions s WHERE s.group_id = ${groups.id} AND s.session_date = ${query.date})
+        OR EXISTS (
+          SELECT 1 FROM payment_allocations pa
+          INNER JOIN payments p ON p.id = pa.payment_id
+          WHERE pa.group_id = ${groups.id} AND p.payment_date = ${query.date}
+        )
+      )`);
+    }
     if (query.search) {
       const p = `%${query.search}%`;
       conds.push(

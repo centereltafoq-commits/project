@@ -49,6 +49,7 @@ export class AssistantPayoutsRepository {
     const conditions: SQL[] = [];
 
     if (query.yearMonth) conditions.push(eq(assistantPayouts.yearMonth, query.yearMonth));
+    if (query.date) conditions.push(eq(assistantPayouts.payoutDate, query.date));
     if (query.assistantId) {
       conditions.push(eq(assistantPayouts.assistantId, query.assistantId));
     }

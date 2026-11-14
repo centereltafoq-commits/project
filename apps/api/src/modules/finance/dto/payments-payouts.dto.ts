@@ -74,6 +74,10 @@ export class PaymentsQueryDto extends PaginationQueryDto {
   yearMonth?: string;
 
   @IsOptional()
+  @Matches(ISO_DATE_REGEX, { message: 'صيغة التاريخ يجب أن تكون YYYY-MM-DD' })
+  date?: string;
+
+  @IsOptional()
   @IsEnum(PaymentMethod, { message: 'وسيلة الدفع غير مدعومة' })
   paymentMethod?: PaymentMethod;
 
@@ -119,6 +123,10 @@ export class TeacherPayoutsQueryDto extends PaginationQueryDto {
   yearMonth?: string;
 
   @IsOptional()
+  @Matches(ISO_DATE_REGEX, { message: 'صيغة التاريخ يجب أن تكون YYYY-MM-DD' })
+  date?: string;
+
+  @IsOptional()
   @IsUUID('4', { message: 'معرف المدرس غير صالح' })
   teacherId?: string;
 
@@ -162,6 +170,10 @@ export class AssistantPayoutsQueryDto extends PaginationQueryDto {
   @IsOptional()
   @Matches(YEAR_MONTH_REGEX, { message: 'صيغة الشهر يجب أن تكون YYYY-MM' })
   yearMonth?: string;
+
+  @IsOptional()
+  @Matches(ISO_DATE_REGEX, { message: 'صيغة التاريخ يجب أن تكون YYYY-MM-DD' })
+  date?: string;
 
   @IsOptional()
   @IsUUID('4', { message: 'معرف المساعد غير صالح' })

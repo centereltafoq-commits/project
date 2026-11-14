@@ -59,6 +59,7 @@ export interface ReportDefinition {
   fullTitle: string;
   icon: LucideIcon;
   usesMonth: boolean;
+  usesDate?: boolean;
   usesGroup: boolean;
   usesTeacher: boolean;
   usesStudent: boolean;
@@ -72,6 +73,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     fullTitle: 'تقرير الطلاب والاشتراكات النشطة',
     icon: GraduationCap,
     usesMonth: false,
+    usesDate: false,
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
@@ -80,9 +82,10 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
   {
     slug: 'attendance',
     shortTitle: '2. الحضور والغياب',
-    fullTitle: 'تقرير الحضور والغياب حسب الشهر',
+    fullTitle: 'تقرير الحضور والغياب حسب الشهر أو اليوم',
     icon: ClipboardCheck,
     usesMonth: true,
+    usesDate: true,
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
@@ -94,6 +97,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     fullTitle: 'كشف حساب الطالب والمستحقات الشهرية',
     icon: FileSpreadsheet,
     usesMonth: true,
+    usesDate: true,
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
@@ -105,6 +109,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     fullTitle: 'تقرير المجموعات وإيرادات كل مجموعة وتوزيع الأنصبة',
     icon: BookOpen,
     usesMonth: true,
+    usesDate: true,
     usesGroup: true,
     usesTeacher: true,
     usesStudent: false,
@@ -116,6 +121,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     fullTitle: 'كشف المدرس ومستحقاته والمنصرف الشهري',
     icon: UserCheck,
     usesMonth: true,
+    usesDate: true,
     usesGroup: true,
     usesTeacher: true,
     usesStudent: false,
@@ -127,6 +133,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     fullTitle: 'كشف المساعد وطريقة الحساب والمستحقات',
     icon: Users,
     usesMonth: true,
+    usesDate: true,
     usesGroup: false,
     usesTeacher: false,
     usesStudent: false,
@@ -135,9 +142,10 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
   {
     slug: 'collections',
     shortTitle: '7. التحصيل والمدفوعات',
-    fullTitle: 'تقرير التحصيل وجميع إيصالات المدفوعات',
+    fullTitle: 'تقرير التحصيل وجميع إيصالات المدفوعات (شهري / يومي)',
     icon: Banknote,
     usesMonth: true,
+    usesDate: true,
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
@@ -145,10 +153,11 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
   },
   {
     slug: 'expenses',
-    shortTitle: '8. المصروفات الشهرية',
-    fullTitle: 'تقرير المصروفات التشغيلية حسب الشهر',
+    shortTitle: '8. المصروفات التشغيلية',
+    fullTitle: 'تقرير المصروفات التشغيلية حسب الشهر أو اليوم',
     icon: Receipt,
     usesMonth: true,
+    usesDate: true,
     usesGroup: false,
     usesTeacher: false,
     usesStudent: false,
@@ -160,6 +169,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     fullTitle: 'تقرير القاعات والسعة ومعدلات الاستخدام',
     icon: Building2,
     usesMonth: true,
+    usesDate: true,
     usesGroup: false,
     usesTeacher: false,
     usesStudent: false,
@@ -168,9 +178,10 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
   {
     slug: 'financial-summary',
     shortTitle: '10. التقرير المالي الشامل',
-    fullTitle: 'التقرير المالي الشامل للسنتر وصافي النتيجة',
+    fullTitle: 'التقرير المالي الشامل للسنتر وصافي النتيجة (شهري / يومي)',
     icon: BarChart3,
     usesMonth: true,
+    usesDate: true,
     usesGroup: false,
     usesTeacher: false,
     usesStudent: false,

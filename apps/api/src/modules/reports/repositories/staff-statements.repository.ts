@@ -28,6 +28,14 @@ export class StaffStatementsRepository {
         sql`EXISTS (SELECT 1 FROM groups g WHERE g.primary_teacher_id = ${teachers.id} AND g.id = ${query.groupId})`,
       );
     }
+    if (query.date) {
+      conds.push(
+        sql`(
+          EXISTS (SELECT 1 FROM sessions s WHERE s.teacher_id = ${teachers.id} AND s.session_date = ${query.date})
+          OR EXISTS (SELECT 1 FROM teacher_payouts tp WHERE tp.teacher_id = ${teachers.id} AND tp.payout_date = ${query.date})
+        )`,
+      );
+    }
     if (query.search) {
       const p = `%${query.search}%`;
       conds.push(
@@ -44,10 +52,23 @@ export class StaffStatementsRepository {
       SELECT COALESCE(SUM(td.teacher_amount), 0) FROM teacher_dues td
       WHERE td.teacher_id = ${teachers.id} AND td.year_month = ${yearMonth}
     ))`;
-    const paidExpr = sql`COALESCE(${teacherMonthlyRecords.totalPaidOut}, (
-      SELECT COALESCE(SUM(tp.amount), 0) FROM teacher_payouts tp
-      WHERE tp.teacher_id = ${teachers.id} AND tp.year_month = ${yearMonth}
-    ))`;
+    const paidExpr = query.date
+      ? sql`(
+          SELECT COALESCE(SUM(tp.amount), 0) FROM teacher_payouts tp
+          WHERE tp.teacher_id = ${teachers.id} AND tp.payout_date = ${query.date}
+        )`
+      : sql`COALESCE(${teacherMonthlyRecords.totalPaidOut}, (
+          SELECT COALESCE(SUM(tp.amount), 0) FROM teacher_payouts tp
+          WHERE tp.teacher_id = ${teachers.id} AND tp.year_month = ${yearMonth}
+        ))`;
+    const sessionsCountExpr = query.date
+      ? sql<number>`(
+          SELECT COUNT(*)::int FROM sessions s
+          WHERE s.teacher_id = ${teachers.id} AND s.session_date = ${query.date} AND s.status = 'COMPLETED'
+        )`
+      : sql<number>`COALESCE(${teacherMonthlyRecords.executedSessionsCount}, (
+          SELECT COUNT(*)::int FROM sessions s WHERE s.teacher_id = ${teachers.id} AND s.year_month = ${yearMonth} AND s.status = 'COMPLETED'
+        ))`;
 
     const [rows, [kpi]] = await Promise.all([
       this.db
@@ -59,9 +80,7 @@ export class StaffStatementsRepository {
           groupsCount: sql<number>`COALESCE(${teacherMonthlyRecords.groupsCount}, (
             SELECT COUNT(*)::int FROM groups g WHERE g.primary_teacher_id = ${teachers.id} AND g.is_active = true
           ))`,
-          executedSessionsCount: sql<number>`COALESCE(${teacherMonthlyRecords.executedSessionsCount}, (
-            SELECT COUNT(*)::int FROM sessions s WHERE s.teacher_id = ${teachers.id} AND s.year_month = ${yearMonth} AND s.status = 'COMPLETED'
-          ))`,
+          executedSessionsCount: sessionsCountExpr,
           totalDues: sql<string>`(${dueExpr})::text`,
           totalPaidOut: sql<string>`(${paidExpr})::text`,
         })
@@ -123,6 +142,11 @@ export class StaffStatementsRepository {
     pg: NormalizedReportPagination,
   ) {
     const conds: SQL[] = [];
+    if (query.date) {
+      conds.push(
+        sql`EXISTS (SELECT 1 FROM assistant_payouts ap WHERE ap.assistant_id = ${assistants.id} AND ap.payout_date = ${query.date})`,
+      );
+    }
     if (query.search) {
       const p = `%${query.search}%`;
       conds.push(or(ilike(assistants.fullName, p), ilike(assistants.assistantCode, p))!);
@@ -133,10 +157,15 @@ export class StaffStatementsRepository {
       SELECT COALESCE(SUM(ad.amount), 0) FROM assistant_dues ad
       WHERE ad.assistant_id = ${assistants.id} AND ad.year_month = ${yearMonth}
     ))`;
-    const paidExpr = sql`COALESCE(${assistantMonthlyRecords.totalPaidOut}, (
-      SELECT COALESCE(SUM(ap.amount), 0) FROM assistant_payouts ap
-      WHERE ap.assistant_id = ${assistants.id} AND ap.year_month = ${yearMonth}
-    ))`;
+    const paidExpr = query.date
+      ? sql`(
+          SELECT COALESCE(SUM(ap.amount), 0) FROM assistant_payouts ap
+          WHERE ap.assistant_id = ${assistants.id} AND ap.payout_date = ${query.date}
+        )`
+      : sql`COALESCE(${assistantMonthlyRecords.totalPaidOut}, (
+          SELECT COALESCE(SUM(ap.amount), 0) FROM assistant_payouts ap
+          WHERE ap.assistant_id = ${assistants.id} AND ap.year_month = ${yearMonth}
+        ))`;
 
     const [rows, [kpi]] = await Promise.all([
       this.db

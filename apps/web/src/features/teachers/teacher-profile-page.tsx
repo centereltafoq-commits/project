@@ -34,9 +34,9 @@ import { PERMISSIONS } from '@edu-center/shared';
 import { useAuth } from '@/features/auth/auth-context';
 import { TeacherFormModal } from './teacher-form-modal';
 import { TeacherAvailabilityTab } from './teacher-availability-tab';
+import { TeacherMonthsExplorer } from './components/teacher-months-explorer';
 import {
   TeacherGroupsAndScheduleTab,
-  TeacherMonthlySummaryTab,
   TeacherPayoutsTab,
 } from './teacher-profile-tabs';
 import { TEACHER_STATUS_META, TeacherProfileData } from './teachers.types';
@@ -176,14 +176,12 @@ export function TeacherProfilePage() {
         )}
       </div>
 
-      <Tabs defaultValue={canSeeTeacherFinance ? 'summary' : 'groups'}>
+      <Tabs defaultValue="summary">
         <TabsList>
-          {canSeeTeacherFinance && (
-            <TabsTrigger value="summary">
-              <Wallet className="h-4 w-4" />
-              الملخص الشهري والمستحقات
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="summary">
+            <Wallet className="h-4 w-4" />
+            سجل الشهور والحصص والمستحقات ({data.monthsOverview?.length ?? 1})
+          </TabsTrigger>
           <TabsTrigger value="groups">
             <BookOpen className="h-4 w-4" />
             المجموعات والجدول ({data.assignedGroups.length})
@@ -195,16 +193,19 @@ export function TeacherProfilePage() {
           {canSeeTeacherFinance && (
             <TabsTrigger value="payouts">
               <CreditCard className="h-4 w-4" />
-              عمليات الصرف ({data.payouts.length})
+              سجل الصرف العام ({data.payouts.length})
             </TabsTrigger>
           )}
         </TabsList>
 
-        {canSeeTeacherFinance && (
-          <TabsContent value="summary">
-            <TeacherMonthlySummaryTab data={data} />
-          </TabsContent>
-        )}
+        <TabsContent value="summary">
+          <TeacherMonthsExplorer
+            data={data}
+            selectedYearMonth={yearMonth}
+            onSelectMonth={setYearMonth}
+            canViewFinance={canSeeTeacherFinance}
+          />
+        </TabsContent>
         <TabsContent value="groups">
           <TeacherGroupsAndScheduleTab data={data} />
         </TabsContent>

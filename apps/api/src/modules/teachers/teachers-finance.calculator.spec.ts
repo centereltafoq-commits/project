@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { GroupRevenueSplitMethod, SessionStatus } from '@edu-center/shared';
-import { computeTeacherMonthlySummary } from './teachers-finance.calculator';
+import {
+  buildTeacherMonthSessions,
+  buildTeacherMonthsOverview,
+  classifyTeacherPayoutStatus,
+  computeTeacherMonthlySummary,
+} from './teachers-finance.calculator';
 
 describe('computeTeacherMonthlySummary', () => {
   it('returns 0 dues when a group has 0 completed sessions in the month', () => {
@@ -211,4 +216,128 @@ describe('computeTeacherMonthlySummary', () => {
     expect(result.totals.remainingBalance).toBe(1200);
   });
 });
+
+describe('classifyTeacherPayoutStatus & buildTeacherMonthsOverview', () => {
+  it('classifies PAID, PARTIAL, UNPAID, and NO_DUES accurately', () => {
+    expect(classifyTeacherPayoutStatus(0, 0, 0)).toBe('NO_DUES');
+    expect(classifyTeacherPayoutStatus(2000, 2000, 0)).toBe('PAID');
+    expect(classifyTeacherPayoutStatus(2000, 800, 1200)).toBe('PARTIAL');
+    expect(classifyTeacherPayoutStatus(2000, 0, 2000)).toBe('UNPAID');
+  });
+
+  it('builds descending monthsOverview with accurate payoutStatus and session counts across months', () => {
+    const bundle: any = {
+      assignedGroups: [
+        {
+          id: 'grp-1',
+          name: 'Algebra 1',
+          isActive: true,
+          activeStudentsCount: 10,
+          monthlySessionsCount: 4,
+          monthlyPrice: 400,
+          calculatedSessionPrice: 100,
+          revenueSplitMethod: GroupRevenueSplitMethod.CUSTOM_PERCENTAGE,
+          teacherPercentage: 70,
+        },
+      ],
+      availability: [],
+      storedDues: [],
+      storedMonthlyRecord: null,
+      payouts: [
+        { id: 'p-1', yearMonth: '2026-09', amount: '1400.00' },
+        { id: 'p-2', yearMonth: '2026-10', amount: '500.00' },
+      ],
+      monthSessions: [],
+      monthAttendanceCounts: [],
+      allStoredDues: [],
+      allStoredMonthlyRecords: [],
+      allGroupSessions: [
+        {
+          id: 's-sep-1',
+          groupId: 'grp-1',
+          groupName: 'Algebra 1',
+          yearMonth: '2026-09',
+          sessionDate: '2026-09-10',
+          startTime: '16:00',
+          endTime: '18:00',
+          topic: 'Intro',
+          status: SessionStatus.COMPLETED,
+          teacherId: 't-1',
+        },
+        {
+          id: 's-oct-1',
+          groupId: 'grp-1',
+          groupName: 'Algebra 1',
+          yearMonth: '2026-10',
+          sessionDate: '2026-10-12',
+          startTime: '16:00',
+          endTime: '18:00',
+          topic: 'Linear Equations',
+          status: SessionStatus.COMPLETED,
+          teacherId: 't-1',
+        },
+        {
+          id: 's-nov-1',
+          groupId: 'grp-1',
+          groupName: 'Algebra 1',
+          yearMonth: '2026-11',
+          sessionDate: '2026-11-05',
+          startTime: '16:00',
+          endTime: '18:00',
+          topic: 'Quadratics',
+          status: SessionStatus.COMPLETED,
+          teacherId: 't-1',
+        },
+      ],
+      allAttendanceCountsBySession: [
+        { sessionId: 's-sep-1', groupId: 'grp-1', yearMonth: '2026-09', presentEntries: 20 },
+        { sessionId: 's-oct-1', groupId: 'grp-1', yearMonth: '2026-10', presentEntries: 20 },
+        { sessionId: 's-nov-1', groupId: 'grp-1', yearMonth: '2026-11', presentEntries: 20 },
+      ],
+    };
+
+    const overview = buildTeacherMonthsOverview({
+      requestedYearMonth: '2026-11',
+      currentYearMonth: '2026-11',
+      contractDate: '2026-08-01',
+      bundle,
+    });
+
+    expect(overview.map((m) => m.yearMonth)).toEqual([
+      '2026-11',
+      '2026-10',
+      '2026-09',
+      '2026-08',
+    ]);
+
+    const nov = overview.find((m) => m.yearMonth === '2026-11')!;
+    expect(nov.payoutStatus).toBe('UNPAID');
+    expect(nov.executedSessionsCount).toBe(1);
+    expect(nov.totalDues).toBe(1400);
+    expect(nov.remainingBalance).toBe(1400);
+
+    const oct = overview.find((m) => m.yearMonth === '2026-10')!;
+    expect(oct.payoutStatus).toBe('PARTIAL');
+    expect(oct.totalDues).toBe(1400);
+    expect(oct.totalPayouts).toBe(500);
+    expect(oct.remainingBalance).toBe(900);
+
+    const sep = overview.find((m) => m.yearMonth === '2026-09')!;
+    expect(sep.payoutStatus).toBe('PAID');
+    expect(sep.totalDues).toBe(1400);
+    expect(sep.totalPayouts).toBe(1400);
+    expect(sep.remainingBalance).toBe(0);
+
+    const aug = overview.find((m) => m.yearMonth === '2026-08')!;
+    expect(aug.payoutStatus).toBe('NO_DUES');
+    expect(aug.executedSessionsCount).toBe(0);
+    expect(aug.totalDues).toBe(0);
+
+    const novSessions = buildTeacherMonthSessions('2026-11', bundle);
+    expect(novSessions).toHaveLength(1);
+    expect(novSessions[0]?.topic).toBe('Quadratics');
+    expect(novSessions[0]?.presentCount).toBe(20);
+  });
+});
+
 

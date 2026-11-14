@@ -49,6 +49,7 @@ export class TeacherPayoutsRepository {
     const conditions: SQL[] = [];
 
     if (query.yearMonth) conditions.push(eq(teacherPayouts.yearMonth, query.yearMonth));
+    if (query.date) conditions.push(eq(teacherPayouts.payoutDate, query.date));
     if (query.teacherId) conditions.push(eq(teacherPayouts.teacherId, query.teacherId));
     if (query.paymentMethod) {
       conditions.push(eq(teacherPayouts.paymentMethod, query.paymentMethod));

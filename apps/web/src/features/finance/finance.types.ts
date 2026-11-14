@@ -226,3 +226,66 @@ export interface ExpenseRow {
   recordedByName: string | null;
   notes: string | null;
 }
+
+export type DailyLedgerEntryType =
+  | 'ALL'
+  | 'PAYMENT'
+  | 'TEACHER_PAYOUT'
+  | 'ASSISTANT_PAYOUT'
+  | 'EXPENSE';
+
+export interface DailyLedgerEntry {
+  id: string;
+  type: 'PAYMENT' | 'TEACHER_PAYOUT' | 'ASSISTANT_PAYOUT' | 'EXPENSE';
+  direction: 'INFLOW' | 'OUTFLOW';
+  date: string;
+  yearMonth: string;
+  referenceNumber: string;
+  partyName: string;
+  partyCode: string | null;
+  categoryLabel: string;
+  amount: number;
+  paymentMethod: string;
+  recordedByName: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface DailyLedgerDaySummary {
+  date: string;
+  paymentsCount: number;
+  paymentsTotal: number;
+  teacherPayoutsCount: number;
+  teacherPayoutsTotal: number;
+  assistantPayoutsCount: number;
+  assistantPayoutsTotal: number;
+  expensesCount: number;
+  expensesTotal: number;
+  totalInflow: number;
+  totalOutflow: number;
+  netCashFlow: number;
+  totalTransactionsCount: number;
+}
+
+export interface DailyLedgerSummary {
+  paymentsCount: number;
+  paymentsTotal: number;
+  teacherPayoutsCount: number;
+  teacherPayoutsTotal: number;
+  assistantPayoutsCount: number;
+  assistantPayoutsTotal: number;
+  expensesCount: number;
+  expensesTotal: number;
+  totalInflow: number;
+  totalOutflow: number;
+  netCashFlow: number;
+}
+
+export interface DailyLedgerResponse {
+  yearMonth: string;
+  selectedDate: string | null;
+  daysSummary: DailyLedgerDaySummary[];
+  summary: DailyLedgerSummary;
+  entries: DailyLedgerEntry[];
+}
+

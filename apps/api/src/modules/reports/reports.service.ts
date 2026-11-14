@@ -83,7 +83,9 @@ export class ReportsService {
     }
 
     const pg = this.resolvePagination(query, isExport);
-    const yearMonth = query.yearMonth || this.getCurrentYearMonth();
+    const yearMonth =
+      query.yearMonth ||
+      (query.date ? query.date.slice(0, 7) : this.getCurrentYearMonth());
     const baseResult = await this.dispatchReportQuery(reportType, query, yearMonth, pg);
 
     return {
@@ -109,7 +111,7 @@ export class ReportsService {
       payload.reportType,
       payload.data as Array<Record<string, unknown>>,
     );
-    const filename = `${payload.reportType}-${payload.yearMonth}.csv`;
+    const filename = `${payload.reportType}-${query.date || payload.yearMonth}.csv`;
     return { filename, content: csvContent };
   }
 
@@ -186,7 +188,10 @@ export class ReportsService {
       case 'classrooms':
         return this.operationsRepo.getClassroomsReport(query, yearMonth, pg);
       case 'financial-summary':
-        return this.financialSummaryRepo.getFinancialSummaryReport(yearMonth);
+        return this.financialSummaryRepo.getFinancialSummaryReport(
+          yearMonth,
+          query.date,
+        );
     }
   }
 }

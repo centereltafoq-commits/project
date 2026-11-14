@@ -146,15 +146,25 @@ export function StudentsPage() {
         >
           <Button
             size="sm"
-            variant="outline"
+            variant="primary"
             className="h-8 gap-1.5 px-3 text-xs font-bold"
+            onClick={() => navigate(`/students/${row.id}`)}
+          >
+            <GraduationCap className="h-3.5 w-3.5" />
+            ملف الطالب
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 px-2.5 text-xs font-bold"
+            title="بطاقة سريعة"
             onClick={() => {
               setQuickViewStudent(row);
               setQuickViewOpen(true);
             }}
           >
             <Eye className="h-3.5 w-3.5 text-primary" />
-            تفاصيل
+            سريع
           </Button>
           {canUpdate && (
             <Button
@@ -261,10 +271,7 @@ export function StudentsPage() {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
-        onRowClick={(r) => {
-          setQuickViewStudent(r);
-          setQuickViewOpen(true);
-        }}
+        onRowClick={(r) => navigate(`/students/${r.id}`)}
         searchPlaceholder="ابحث بالاسم أو كود الطالب أو رقم الهاتف أو هاتف ولي الأمر..."
         searchValue={search}
         onSearchChange={(val) => {

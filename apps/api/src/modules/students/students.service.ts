@@ -7,6 +7,7 @@ import { CreateStudentDto, StudentQueryDto, UpdateStudentDto } from './dto/stude
 import { StudentsRepository } from './students.repository';
 import { StudentsProfileRepository } from './students-profile.repository';
 import { computeStudentMonthlyBreakdown } from './students-finance.calculator';
+import { buildStudentMonthsOverview } from './students-months-overview.builder';
 
 @Injectable()
 export class StudentsService {
@@ -135,6 +136,22 @@ export class StudentsService {
           remaining: 0,
         };
 
+    const rawMonthsOverview = buildStudentMonthsOverview(
+      yearMonth,
+      this.getCurrentYearMonth(),
+      bundle,
+    );
+    const monthsOverview = canViewFinance
+      ? rawMonthsOverview
+      : rawMonthsOverview.map((m) => ({
+          ...m,
+          paymentStatus: 'NO_DUES' as const,
+          totalDue: 0,
+          totalPaid: 0,
+          remaining: 0,
+          paymentsCount: 0,
+        }));
+
     return {
       student,
       yearMonth,
@@ -143,6 +160,7 @@ export class StudentsService {
       monthlyBreakdown: breakdown,
       monthTotals,
       payments: canViewFinance ? bundle.studentPayments : [],
+      monthsOverview,
     };
   }
 

@@ -18,11 +18,17 @@ import { PayoutsSubtable } from './payouts-subtable';
 
 interface TeacherDuesTabProps {
   yearMonth: string;
+  selectedDate?: string;
   isMonthClosed?: boolean;
   lookups?: FinanceLookups;
 }
 
-export function TeacherDuesTab({ yearMonth, isMonthClosed = false, lookups }: TeacherDuesTabProps) {
+export function TeacherDuesTab({
+  yearMonth,
+  selectedDate,
+  isMonthClosed = false,
+  lookups,
+}: TeacherDuesTabProps) {
   const { hasPermission } = useAuth();
   const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS) && !isMonthClosed;
 
@@ -244,7 +250,12 @@ export function TeacherDuesTab({ yearMonth, isMonthClosed = false, lookups }: Te
           actions={toolbarActions}
         />
       ) : (
-        <PayoutsSubtable mode="teacher" yearMonth={yearMonth} filters={toolbarFilters} />
+        <PayoutsSubtable
+          mode="teacher"
+          yearMonth={yearMonth}
+          selectedDate={selectedDate}
+          filters={toolbarFilters}
+        />
       )}
 
       <PayoutModal

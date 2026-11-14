@@ -32,6 +32,21 @@ export interface StudentMonthlyBreakdownItem {
   isClosed: boolean;
 }
 
+export interface StudentMonthOverviewItem {
+  yearMonth: string;
+  paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID' | 'NO_DUES';
+  totalSessions: number;
+  presentCount: number;
+  absentCount: number;
+  excusedCount: number;
+  totalDue: number;
+  totalPaid: number;
+  remaining: number;
+  groupsCount: number;
+  paymentsCount: number;
+  isClosed: boolean;
+}
+
 export interface StudentProfileData {
   student: StudentRow;
   yearMonth: string;
@@ -81,6 +96,7 @@ export interface StudentProfileData {
     paymentMethod: string;
     notes: string | null;
   }>;
+  monthsOverview?: StudentMonthOverviewItem[];
 }
 
 export const GRADE_LEVEL_OPTIONS = [

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   BookOpen,
+  Calendar,
   CheckCircle2,
   CreditCard,
   Edit3,
@@ -15,7 +16,6 @@ import {
   Badge,
   Button,
   Card,
-  Input,
   MonthPicker,
   PageHeader,
   StatCard,
@@ -34,10 +34,10 @@ import {
 import { PERMISSIONS } from '@edu-center/shared';
 import { useAuth } from '@/features/auth/auth-context';
 import { StudentFormModal } from './student-form-modal';
+import { StudentMonthsExplorer } from './components/student-months-explorer';
 import {
   StudentAttendanceTab,
   StudentEnrollmentsTab,
-  StudentMonthlyFinancialTab,
 } from './student-academic-tabs';
 import {
   StudentPaymentsTab,
@@ -57,6 +57,7 @@ export function StudentProfilePage() {
   const { data, isLoading } = useQuery<StudentProfileData>({
     queryKey: ['student-profile', id, yearMonth],
     enabled: Boolean(id),
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const res = await apiClient.get(`/students/${id}/profile`, {
         params: { yearMonth },
@@ -65,7 +66,7 @@ export function StudentProfilePage() {
     },
   });
 
-  if (isLoading || !data) {
+  if (isLoading && !data) {
     return (
       <div className="space-y-4">
         <div className="h-24 animate-pulse rounded-xl bg-muted" />
@@ -77,6 +78,8 @@ export function StudentProfilePage() {
       </div>
     );
   }
+
+  if (!data) return null;
 
   const { student, monthTotals } = data;
   const statusMeta = STUDENT_STATUS_META[student.status] ?? {
@@ -182,14 +185,12 @@ export function StudentProfilePage() {
         )}
       </div>
 
-      <Tabs defaultValue={canViewFinance ? 'monthly' : 'enrollments'}>
+      <Tabs defaultValue="monthly">
         <TabsList>
-          {canViewFinance && (
-            <TabsTrigger value="monthly">
-              <Wallet className="h-4 w-4" />
-              السجل الشهري والحسابات
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="monthly">
+            <Calendar className="h-4 w-4" />
+            سجل الشهور والدفع والحضور
+          </TabsTrigger>
           <TabsTrigger value="enrollments">
             <BookOpen className="h-4 w-4" />
             المجموعات والاشتراكات ({data.enrollments.length})
@@ -206,11 +207,14 @@ export function StudentProfilePage() {
           )}
         </TabsList>
 
-        {canViewFinance && (
-          <TabsContent value="monthly">
-            <StudentMonthlyFinancialTab data={data} />
-          </TabsContent>
-        )}
+        <TabsContent value="monthly">
+          <StudentMonthsExplorer
+            data={data}
+            selectedYearMonth={yearMonth}
+            onSelectMonth={setYearMonth}
+            canViewFinance={canViewFinance}
+          />
+        </TabsContent>
         <TabsContent value="enrollments">
           <StudentEnrollmentsTab data={data} />
         </TabsContent>

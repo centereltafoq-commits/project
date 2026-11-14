@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   attendance,
@@ -29,8 +29,8 @@ export class TeachersProfileRepository {
     const [
       assignedGroupsRaw,
       availability,
-      storedDues,
-      storedMonthlyRecordRows,
+      allStoredDues,
+      allStoredMonthlyRecords,
       payouts,
     ] = await Promise.all([
       this.db
@@ -68,6 +68,7 @@ export class TeachersProfileRepository {
 
       this.db
         .select({
+          yearMonth: teacherDues.yearMonth,
           groupId: teacherDues.groupId,
           groupName: groups.name,
           executedSessionsCount: teacherDues.executedSessionsCount,
@@ -80,18 +81,12 @@ export class TeachersProfileRepository {
         })
         .from(teacherDues)
         .innerJoin(groups, eq(teacherDues.groupId, groups.id))
-        .where(and(eq(teacherDues.teacherId, teacherId), eq(teacherDues.yearMonth, yearMonth))),
+        .where(eq(teacherDues.teacherId, teacherId)),
 
       this.db
         .select()
         .from(teacherMonthlyRecords)
-        .where(
-          and(
-            eq(teacherMonthlyRecords.teacherId, teacherId),
-            eq(teacherMonthlyRecords.yearMonth, yearMonth),
-          ),
-        )
-        .limit(1),
+        .where(eq(teacherMonthlyRecords.teacherId, teacherId)),
 
       this.db
         .select()
@@ -107,38 +102,69 @@ export class TeachersProfileRepository {
     const assignedGroups = Array.from(dedupGroupsMap.values());
     const groupIds = assignedGroups.map((g) => g.id);
 
-    const [monthSessions, monthAttendanceCounts] =
+    const [allGroupSessions, allAttendanceCountsBySession] =
       groupIds.length > 0
         ? await Promise.all([
             this.db
               .select({
                 id: sessions.id,
                 groupId: sessions.groupId,
+                groupName: groups.name,
+                yearMonth: sessions.yearMonth,
+                sessionDate: sessions.sessionDate,
+                startTime: sessions.startTime,
+                endTime: sessions.endTime,
+                topic: sessions.topic,
                 status: sessions.status,
                 teacherId: sessions.teacherId,
               })
               .from(sessions)
-              .where(and(inArray(sessions.groupId, groupIds), eq(sessions.yearMonth, yearMonth))),
+              .innerJoin(groups, eq(sessions.groupId, groups.id))
+              .where(and(inArray(sessions.groupId, groupIds), ne(sessions.status, 'CANCELLED')))
+              .orderBy(desc(sessions.sessionDate), desc(sessions.startTime)),
             this.db
               .select({
+                sessionId: attendance.sessionId,
                 groupId: sessions.groupId,
+                yearMonth: sessions.yearMonth,
                 presentEntries: sql<number>`COUNT(*) FILTER (WHERE ${attendance.status} = 'PRESENT')::int`,
               })
               .from(attendance)
               .innerJoin(sessions, eq(attendance.sessionId, sessions.id))
-              .where(and(inArray(sessions.groupId, groupIds), eq(sessions.yearMonth, yearMonth)))
-              .groupBy(sessions.groupId),
+              .where(and(inArray(sessions.groupId, groupIds), ne(sessions.status, 'CANCELLED')))
+              .groupBy(attendance.sessionId, sessions.groupId, sessions.yearMonth),
           ])
         : [[], []];
+
+    const storedDues = allStoredDues.filter((d) => d.yearMonth === yearMonth);
+    const storedMonthlyRecord =
+      allStoredMonthlyRecords.find((r) => r.yearMonth === yearMonth) ?? null;
+    const monthSessions = allGroupSessions.filter((s) => s.yearMonth === yearMonth);
+
+    const monthAttendanceByGroupMap = new Map<string, number>();
+    for (const row of allAttendanceCountsBySession) {
+      if (row.yearMonth !== yearMonth) continue;
+      monthAttendanceByGroupMap.set(
+        row.groupId,
+        (monthAttendanceByGroupMap.get(row.groupId) ?? 0) + Number(row.presentEntries || 0),
+      );
+    }
+    const monthAttendanceCounts = Array.from(monthAttendanceByGroupMap.entries()).map(
+      ([groupId, presentEntries]) => ({ groupId, presentEntries }),
+    );
 
     return {
       assignedGroups,
       availability,
       storedDues,
-      storedMonthlyRecord: storedMonthlyRecordRows[0] ?? null,
+      storedMonthlyRecord,
       payouts,
       monthSessions,
       monthAttendanceCounts,
+      allStoredDues,
+      allStoredMonthlyRecords,
+      allGroupSessions,
+      allAttendanceCountsBySession,
     };
   }
 }

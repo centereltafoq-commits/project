@@ -130,7 +130,11 @@ export class AcademicReportsRepository {
     yearMonth: string,
     pg: NormalizedReportPagination,
   ) {
-    const conds: SQL[] = [eq(sessions.yearMonth, yearMonth)];
+    const conds: SQL[] = [
+      query.date
+        ? eq(sessions.sessionDate, query.date)
+        : eq(sessions.yearMonth, yearMonth),
+    ];
     if (query.groupId) conds.push(eq(sessions.groupId, query.groupId));
     if (query.teacherId) conds.push(eq(groups.primaryTeacherId, query.teacherId));
     if (query.studentId) conds.push(eq(attendance.studentId, query.studentId));

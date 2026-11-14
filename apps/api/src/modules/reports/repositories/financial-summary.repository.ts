@@ -21,7 +21,11 @@ import { EXPENSE_CATEGORY_AR } from '../utils/report-labels.util';
 export class FinancialSummaryRepository {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
 
-  async getFinancialSummaryReport(yearMonth: string) {
+  async getFinancialSummaryReport(yearMonth: string, date?: string) {
+    if (date) {
+      return this.getDailyFinancialSummaryReport(date);
+    }
+
     const [
       [stuRow],
       [payRow],
@@ -118,6 +122,130 @@ export class FinancialSummaryRepository {
       { key: 'ctrShare', label: 'نصيب السنتر من المجموعات', value: centerShare, format: 'currency', tone: 'purple' },
       { key: 'net', label: 'صافي نتيجة السنتر', value: netCenterResult, format: 'currency', tone: netCenterResult >= 0 ? 'success' : 'danger' },
       { key: 'cashFlow', label: 'صافي التدفق النقدي', value: netCashFlow, format: 'currency', tone: netCashFlow >= 0 ? 'success' : 'danger' },
+    ];
+
+    return {
+      ...createPaginatedResult(statementRows, statementRows.length, 1, statementRows.length),
+      summary,
+    };
+  }
+
+  private async getDailyFinancialSummaryReport(date: string) {
+    const [
+      [payRow],
+      [teacherPaidRow],
+      [assistantPaidRow],
+      expCategoriesRows,
+    ] = await Promise.all([
+      this.db
+        .select({
+          collected: sql<string>`COALESCE(SUM(${payments.amount}), 0)::text`,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(payments)
+        .where(eq(payments.paymentDate, date)),
+      this.db
+        .select({
+          paid: sql<string>`COALESCE(SUM(${teacherPayouts.amount}), 0)::text`,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(teacherPayouts)
+        .where(eq(teacherPayouts.payoutDate, date)),
+      this.db
+        .select({
+          paid: sql<string>`COALESCE(SUM(${assistantPayouts.amount}), 0)::text`,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(assistantPayouts)
+        .where(eq(assistantPayouts.payoutDate, date)),
+      this.db
+        .select({
+          category: expenses.category,
+          amount: sql<string>`COALESCE(SUM(${expenses.amount}), 0)::text`,
+        })
+        .from(expenses)
+        .where(eq(expenses.expenseDate, date))
+        .groupBy(expenses.category),
+    ]);
+
+    const totalCollected = Number(payRow?.collected ?? 0);
+    const paymentsCount = Number(payRow?.count ?? 0);
+    const teacherPaid = Number(teacherPaidRow?.paid ?? 0);
+    const teacherPayoutsCount = Number(teacherPaidRow?.count ?? 0);
+    const assistantPaid = Number(assistantPaidRow?.paid ?? 0);
+    const assistantPayoutsCount = Number(assistantPaidRow?.count ?? 0);
+
+    const expByCat = new Map(expCategoriesRows.map((e) => [e.category, Number(e.amount)]));
+    const totalExpenses = Array.from(expByCat.values()).reduce((a, b) => a + b, 0);
+    const totalOutflow = Number((teacherPaid + assistantPaid + totalExpenses).toFixed(2));
+    const netCashFlow = Number((totalCollected - totalOutflow).toFixed(2));
+
+    const expenseRows = Object.values(ExpenseCategory).map((cat) => ({
+      id: `exp-${cat}`,
+      sectionAr: 'تفصيل المصروفات التشغيلية لليوم',
+      lineItemAr: EXPENSE_CATEGORY_AR[cat] || cat,
+      amount: expByCat.get(cat) ?? 0,
+      rowKind: 'DEDUCTION',
+      notes: `مصروف مسجل بتاريخ ${date}`,
+    }));
+
+    const statementRows = [
+      {
+        id: 'rev-coll',
+        sectionAr: 'الإيرادات والتحصيل لليوم',
+        lineItemAr: 'إجمالي تحصيلات الطلاب خلال اليوم',
+        amount: totalCollected,
+        rowKind: 'INFLOW',
+        notes: `عدد إيصالات التحصيل: ${paymentsCount} إيصال (${date})`,
+      },
+      {
+        id: 'split-tch',
+        sectionAr: 'المنصرف للمدرسين والمساعدين',
+        lineItemAr: 'إجمالي صرفيات المدرسين في اليوم',
+        amount: teacherPaid,
+        rowKind: 'DEDUCTION',
+        notes: `عدد حركات الصرف للمدرسين: ${teacherPayoutsCount}`,
+      },
+      {
+        id: 'ast-dues',
+        sectionAr: 'المنصرف للمدرسين والمساعدين',
+        lineItemAr: 'إجمالي صرفيات المساعدين في اليوم',
+        amount: assistantPaid,
+        rowKind: 'DEDUCTION',
+        notes: `عدد حركات الصرف للمساعدين: ${assistantPayoutsCount}`,
+      },
+      ...expenseRows,
+      {
+        id: 'exp-total',
+        sectionAr: 'إجمالي المصروفات',
+        lineItemAr: 'مجموع المصروفات التشغيلية لليوم',
+        amount: totalExpenses,
+        rowKind: 'SUBTOTAL',
+        notes: 'مجموع كافة بنود المصروفات المسجلة في هذا اليوم',
+      },
+      {
+        id: 'outflow-total',
+        sectionAr: 'صافي النتيجة اليومية',
+        lineItemAr: 'إجمالي المنصرف النقدي (مدرسين + مساعدين + مصروفات)',
+        amount: totalOutflow,
+        rowKind: 'SUBTOTAL',
+        notes: `إجمالي المبالغ الخارجة في يوم ${date}`,
+      },
+      {
+        id: 'net-cash',
+        sectionAr: 'صافي النتيجة اليومية',
+        lineItemAr: 'صافي التدفق النقدي الفعلي لليوم',
+        amount: netCashFlow,
+        rowKind: 'NET',
+        notes: 'التحصيل الفعلي لليوم - إجمالي المنصرف لليوم',
+      },
+    ];
+
+    const summary: ReportSummaryKpi[] = [
+      { key: 'coll', label: 'تحصيلات اليوم', value: totalCollected, format: 'currency', tone: 'success' },
+      { key: 'staffOut', label: 'صرفيات المدرسين والمساعدين', value: Number((teacherPaid + assistantPaid).toFixed(2)), format: 'currency', tone: 'purple' },
+      { key: 'exp', label: 'مصروفات اليوم التشغيلية', value: totalExpenses, format: 'currency', tone: 'warning' },
+      { key: 'cashFlow', label: 'صافي حركة الخزينة لليوم', value: netCashFlow, format: 'currency', tone: netCashFlow >= 0 ? 'success' : 'danger' },
     ];
 
     return {

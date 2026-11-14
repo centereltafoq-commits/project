@@ -15,6 +15,7 @@ import {
   CurrentUser,
 } from '../../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { DailyLedgerQueryDto } from './dto/daily-ledger.dto';
 import {
   CreateExpenseDto,
   ExpensesQueryDto,
@@ -31,6 +32,7 @@ import {
 import { ExpensesService } from './expenses.service';
 import { PaymentsService } from './payments.service';
 import { PayoutsService } from './payouts.service';
+import { DailyLedgerRepository } from './repositories/daily-ledger.repository';
 
 @Controller('finance')
 export class FinanceTransactionsController {
@@ -38,7 +40,14 @@ export class FinanceTransactionsController {
     private readonly paymentsService: PaymentsService,
     private readonly payoutsService: PayoutsService,
     private readonly expensesService: ExpensesService,
+    private readonly dailyLedgerRepository: DailyLedgerRepository,
   ) {}
+
+  @Get('daily-ledger')
+  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  async getDailyLedger(@Query() query: DailyLedgerQueryDto) {
+    return this.dailyLedgerRepository.getDailyLedger(query);
+  }
 
   @Get('payments')
   @RequirePermissions(PERMISSIONS.FINANCE_VIEW)

@@ -16,7 +16,11 @@ export class CashflowReportsRepository {
     yearMonth: string,
     pg: NormalizedReportPagination,
   ) {
-    const conds: SQL[] = [eq(payments.yearMonth, yearMonth)];
+    const conds: SQL[] = [
+      query.date
+        ? eq(payments.paymentDate, query.date)
+        : eq(payments.yearMonth, yearMonth),
+    ];
     if (query.studentId) conds.push(eq(payments.studentId, query.studentId));
     if (query.groupId) {
       conds.push(sql`EXISTS (
@@ -97,7 +101,11 @@ export class CashflowReportsRepository {
     yearMonth: string,
     pg: NormalizedReportPagination,
   ) {
-    const conds: SQL[] = [eq(expenses.yearMonth, yearMonth)];
+    const conds: SQL[] = [
+      query.date
+        ? eq(expenses.expenseDate, query.date)
+        : eq(expenses.yearMonth, yearMonth),
+    ];
     if (query.status) conds.push(eq(expenses.category, query.status));
     if (query.search) {
       const p = `%${query.search}%`;

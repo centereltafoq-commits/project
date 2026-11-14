@@ -166,4 +166,32 @@ describe('ReportsService - Access Control and Permissions Enforcement', () => {
     expect(filtered.groups).toHaveLength(0);
     expect(filtered.teachers).toHaveLength(0);
   });
+
+  it('forwards date filter to financial summary and derives yearMonth when date is provided', async () => {
+    mockFinancialSummaryRepo.getFinancialSummaryReport.mockResolvedValueOnce({
+      data: [],
+      meta: { total: 0, page: 1, limit: 10, totalPages: 1 },
+      summary: [],
+    });
+
+    const owner: AuthenticatedUser = {
+      id: 'owner-1',
+      email: 'owner@test.com',
+      fullName: 'Owner',
+      roleCode: SystemRole.OWNER,
+      permissions: [],
+    };
+
+    const result = await service.generateReport(
+      'financial-summary',
+      { date: '2026-11-14' },
+      owner,
+    );
+
+    expect(result.yearMonth).toBe('2026-11');
+    expect(mockFinancialSummaryRepo.getFinancialSummaryReport).toHaveBeenCalledWith(
+      '2026-11',
+      '2026-11-14',
+    );
+  });
 });

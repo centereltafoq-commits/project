@@ -20,10 +20,10 @@ export class StudentsProfileRepository {
   async fetchProfileBundle(studentId: string, yearMonth: string) {
     const [
       studentEnrollments,
-      monthlyRecords,
-      monthAttendance,
+      allMonthlyRecords,
+      allStudentAttendance,
       studentPayments,
-      monthAllocations,
+      allPaymentAllocations,
     ] = await Promise.all([
       this.db
         .select({
@@ -74,12 +74,7 @@ export class StudentsProfileRepository {
         })
         .from(studentMonthlyRecords)
         .innerJoin(groups, eq(studentMonthlyRecords.groupId, groups.id))
-        .where(
-          and(
-            eq(studentMonthlyRecords.studentId, studentId),
-            eq(studentMonthlyRecords.yearMonth, yearMonth),
-          ),
-        ),
+        .where(eq(studentMonthlyRecords.studentId, studentId)),
 
       this.db
         .select({
@@ -100,7 +95,7 @@ export class StudentsProfileRepository {
         .from(attendance)
         .innerJoin(sessions, eq(attendance.sessionId, sessions.id))
         .innerJoin(groups, eq(sessions.groupId, groups.id))
-        .where(and(eq(attendance.studentId, studentId), eq(sessions.yearMonth, yearMonth)))
+        .where(eq(attendance.studentId, studentId))
         .orderBy(desc(sessions.sessionDate)),
 
       this.db
@@ -114,21 +109,21 @@ export class StudentsProfileRepository {
           groupId: paymentAllocations.groupId,
           allocatedAmount: paymentAllocations.allocatedAmount,
           paymentId: paymentAllocations.paymentId,
+          yearMonth: paymentAllocations.yearMonth,
         })
         .from(paymentAllocations)
         .innerJoin(payments, eq(paymentAllocations.paymentId, payments.id))
-        .where(
-          and(eq(payments.studentId, studentId), eq(paymentAllocations.yearMonth, yearMonth)),
-        ),
+        .where(eq(payments.studentId, studentId)),
     ]);
 
     const enrolledGroupIds = Array.from(new Set(studentEnrollments.map((e) => e.groupId)));
-    const groupSessionsInMonth =
+    const allGroupSessions =
       enrolledGroupIds.length > 0
         ? await this.db
             .select({
               id: sessions.id,
               groupId: sessions.groupId,
+              yearMonth: sessions.yearMonth,
               sessionDate: sessions.sessionDate,
               status: sessions.status,
             })
@@ -136,11 +131,15 @@ export class StudentsProfileRepository {
             .where(
               and(
                 inArray(sessions.groupId, enrolledGroupIds),
-                eq(sessions.yearMonth, yearMonth),
                 ne(sessions.status, 'CANCELLED'),
               ),
             )
         : [];
+
+    const monthlyRecords = allMonthlyRecords.filter((r) => r.yearMonth === yearMonth);
+    const monthAttendance = allStudentAttendance.filter((r) => r.yearMonth === yearMonth);
+    const monthAllocations = allPaymentAllocations.filter((r) => r.yearMonth === yearMonth);
+    const groupSessionsInMonth = allGroupSessions.filter((s) => s.yearMonth === yearMonth);
 
     return {
       studentEnrollments,
@@ -149,6 +148,10 @@ export class StudentsProfileRepository {
       studentPayments,
       monthAllocations,
       groupSessionsInMonth,
+      allMonthlyRecords,
+      allStudentAttendance,
+      allPaymentAllocations,
+      allGroupSessions,
     };
   }
 }

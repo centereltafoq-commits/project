@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { RotateCcw } from 'lucide-react';
-import { Button, Card, MonthPicker, Select } from '@/design-system';
+import { Button, Card, DatePicker, MonthPicker, Select } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
 import { cn } from '@/lib/cn';
-import { formatDateAr, formatYearMonthAr } from '@/lib/formatters';
+import { formatDateAr, formatYearMonthAr, getTodayIsoDate } from '@/lib/formatters';
 import {
   ALL_REPORTS_DEFINITIONS,
   ReportDefinition,
@@ -17,6 +17,8 @@ interface ReportsToolbarProps {
   activeDefinition: ReportDefinition;
   yearMonth: string;
   onYearMonthChange: (val: string) => void;
+  date: string;
+  onDateChange: (val: string) => void;
   groupId: string;
   onGroupChange: (val: string) => void;
   teacherId: string;
@@ -34,6 +36,8 @@ export function ReportsToolbar({
   activeDefinition,
   yearMonth,
   onYearMonthChange,
+  date,
+  onDateChange,
   groupId,
   onGroupChange,
   teacherId,
@@ -72,6 +76,7 @@ export function ReportsToolbar({
           </div>
         </div>
         <div className="mt-2 flex flex-wrap gap-4 text-xs">
+          {date && <span>اليوم المحدد: {formatDateAr(date)}</span>}
           {selectedGroupLabel && <span>المجموعة: {selectedGroupLabel}</span>}
           {selectedTeacherLabel && <span>المدرس: {selectedTeacherLabel}</span>}
           {selectedStudentLabel && <span>الطالب: {selectedStudentLabel}</span>}
@@ -107,13 +112,40 @@ export function ReportsToolbar({
 
       {/* شريط الفلاتر الموحد */}
       <Card className="p-4 no-print">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
           <div className="space-y-1.5">
             <MonthPicker
               label="الشهر المالي"
               value={yearMonth}
               disabled={!activeDefinition.usesMonth}
               onChange={onYearMonthChange}
+              className="w-full"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <label className="block truncate text-xs font-bold text-muted-foreground">
+                تحديد يوم معين
+              </label>
+              {activeDefinition.usesDate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = getTodayIsoDate();
+                    onDateChange(date === today ? '' : today);
+                  }}
+                  className="text-[11px] font-bold text-primary hover:underline"
+                >
+                  {date ? 'عرض كل الشهر' : 'تقرير اليوم'}
+                </button>
+              )}
+            </div>
+            <DatePicker
+              value={date}
+              onChange={onDateChange}
+              disabled={!activeDefinition.usesDate}
+              placeholder="كل أيام الشهر..."
             />
           </div>
 

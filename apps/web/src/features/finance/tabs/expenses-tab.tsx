@@ -34,10 +34,17 @@ interface ExpensesResponse extends PaginatedResult<ExpenseRow> {
 
 interface ExpensesTabProps {
   yearMonth: string;
+  selectedDate?: string;
+  onClearDate?: () => void;
   isMonthClosed?: boolean;
 }
 
-export function ExpensesTab({ yearMonth, isMonthClosed = false }: ExpensesTabProps) {
+export function ExpensesTab({
+  yearMonth,
+  selectedDate,
+  onClearDate,
+  isMonthClosed = false,
+}: ExpensesTabProps) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const { hasPermission } = useAuth();
@@ -54,15 +61,25 @@ export function ExpensesTab({ yearMonth, isMonthClosed = false }: ExpensesTabPro
 
   React.useEffect(() => {
     setPage(1);
-  }, [yearMonth]);
+  }, [yearMonth, selectedDate]);
 
   const { data, isLoading } = useQuery<ExpensesResponse>({
-    queryKey: ['finance', 'expenses', yearMonth, page, limit, debouncedSearch, categoryFilter],
+    queryKey: [
+      'finance',
+      'expenses',
+      yearMonth,
+      selectedDate,
+      page,
+      limit,
+      debouncedSearch,
+      categoryFilter,
+    ],
     queryFn: async () =>
       (
         await apiClient.get('/finance/expenses', {
           params: {
             yearMonth,
+            date: selectedDate || undefined,
             page,
             limit,
             search: debouncedSearch || undefined,
@@ -183,7 +200,9 @@ export function ExpensesTab({ yearMonth, isMonthClosed = false }: ExpensesTabPro
         <Card className="p-4 flex flex-wrap items-center justify-between gap-3 bg-muted/20">
           <div>
             <span className="text-xs text-muted-foreground block">
-              إجمالي مصروفات الشهر المحدد
+              {selectedDate
+                ? `إجمالي مصروفات يوم ${formatDateAr(selectedDate)}`
+                : 'إجمالي مصروفات الشهر المحدد'}
             </span>
             <span className="text-xl font-extrabold text-rose-600 dark:text-rose-400">
               {formatCurrency(data.summary.monthTotal)}
@@ -228,6 +247,20 @@ export function ExpensesTab({ yearMonth, isMonthClosed = false }: ExpensesTabPro
         }}
         filters={
           <div className="flex flex-wrap items-center gap-2">
+            {selectedDate && (
+              <Badge variant="info" className="text-xs gap-1.5 py-1">
+                <span>تصفية باليوم: {formatDateAr(selectedDate)}</span>
+                {onClearDate && (
+                  <button
+                    type="button"
+                    onClick={onClearDate}
+                    className="mr-1 underline hover:opacity-80"
+                  >
+                    إلغاء
+                  </button>
+                )}
+              </Badge>
+            )}
             <Select
               searchable
               placeholder="كل بنود المصروفات"

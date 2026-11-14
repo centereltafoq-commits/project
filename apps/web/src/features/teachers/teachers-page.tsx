@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Edit3, Eye, Plus, RotateCcw, Upload } from 'lucide-react';
+import { Download, Edit3, ExternalLink, Eye, Plus, RotateCcw, Upload } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
@@ -149,15 +149,24 @@ export function TeachersPage() {
         >
           <Button
             size="sm"
-            variant="outline"
+            variant="primary"
             className="h-8 gap-1.5 px-3 text-xs font-bold"
+            onClick={() => navigate(`/teachers/${row.id}`)}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            ملف المدرس
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 px-2.5 text-xs font-bold"
             onClick={() => {
               setQuickViewTeacher(row);
               setQuickViewOpen(true);
             }}
           >
             <Eye className="h-3.5 w-3.5 text-primary" />
-            تفاصيل
+            نظرة سريعة
           </Button>
           {canManageTeachers && (
             <Button
@@ -253,10 +262,7 @@ export function TeachersPage() {
         meta={data?.meta}
         isLoading={isLoading}
         rowKey={(r) => r.id}
-        onRowClick={(r) => {
-          setQuickViewTeacher(r);
-          setQuickViewOpen(true);
-        }}
+        onRowClick={(r) => navigate(`/teachers/${r.id}`)}
         searchPlaceholder="ابحث باسم المدرس أو الكود أو الهاتف أو التخصص..."
         searchValue={search}
         onSearchChange={(val) => {

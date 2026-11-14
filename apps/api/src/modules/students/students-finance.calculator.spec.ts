@@ -4,6 +4,10 @@ import {
   FullMonthAbsencePolicy,
 } from '@edu-center/shared';
 import { computeStudentMonthlyBreakdown } from './students-finance.calculator';
+import {
+  buildStudentMonthsOverview,
+  classifyStudentMonthPaymentStatus,
+} from './students-months-overview.builder';
 
 describe('computeStudentMonthlyBreakdown', () => {
   it('bills all completed group sessions regardless of individual ABSENT/EXCUSED attendance while tracking academic counts separately', () => {
@@ -333,5 +337,96 @@ describe('computeStudentMonthlyBreakdown', () => {
     expect(result.monthTotals.totalPaid).toBe(1000);
     // Student overall has 0 remaining debt because they paid 1000 against 800
     expect(result.monthTotals.remaining).toBe(0);
+  });
+});
+
+describe('buildStudentMonthsOverview & classifyStudentMonthPaymentStatus', () => {
+  it('classifies PAID, PARTIAL, UNPAID, and NO_DUES accurately', () => {
+    expect(classifyStudentMonthPaymentStatus(0, 0, 0)).toBe('NO_DUES');
+    expect(classifyStudentMonthPaymentStatus(200, 200, 0)).toBe('PAID');
+    expect(classifyStudentMonthPaymentStatus(200, 120, 80)).toBe('PARTIAL');
+    expect(classifyStudentMonthPaymentStatus(200, 0, 200)).toBe('UNPAID');
+  });
+
+  it('builds descending month-by-month overview with attendance and payment statuses across multiple months', () => {
+    const bundle: any = {
+      monthlyRecords: [],
+      monthAllocations: [],
+      monthAttendance: [],
+      groupSessionsInMonth: [],
+      allMonthlyRecords: [],
+      studentEnrollments: [
+        {
+          id: 'enr-1',
+          groupId: 'grp-1',
+          groupName: 'Group Math',
+          startDate: '2026-09-01',
+          endDate: null,
+          agreedMonthlyPrice: '200.00',
+          agreedSessionsCount: 4,
+          agreedSessionPrice: '50.00',
+          fullMonthAbsencePolicy: FullMonthAbsencePolicy.EXEMPT_FULL_ABSENCE,
+          fullAbsenceFixedFee: '0.00',
+          chargeExcusedAbsence: false,
+        },
+      ],
+      allGroupSessions: [
+        // 2026-09: 2 completed sessions -> 100 due, 100 paid -> PAID
+        { id: 's-sep-1', groupId: 'grp-1', yearMonth: '2026-09', sessionDate: '2026-09-05', status: 'COMPLETED' },
+        { id: 's-sep-2', groupId: 'grp-1', yearMonth: '2026-09', sessionDate: '2026-09-12', status: 'COMPLETED' },
+        // 2026-10: 2 completed sessions -> 100 due, 50 paid -> PARTIAL
+        { id: 's-oct-1', groupId: 'grp-1', yearMonth: '2026-10', sessionDate: '2026-10-05', status: 'COMPLETED' },
+        { id: 's-oct-2', groupId: 'grp-1', yearMonth: '2026-10', sessionDate: '2026-10-12', status: 'COMPLETED' },
+        // 2026-11: 2 completed sessions -> 100 due, 0 paid -> UNPAID
+        { id: 's-nov-1', groupId: 'grp-1', yearMonth: '2026-11', sessionDate: '2026-11-05', status: 'COMPLETED' },
+        { id: 's-nov-2', groupId: 'grp-1', yearMonth: '2026-11', sessionDate: '2026-11-12', status: 'COMPLETED' },
+      ],
+      allStudentAttendance: [
+        { groupId: 'grp-1', sessionId: 's-sep-1', yearMonth: '2026-09', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-sep-2', yearMonth: '2026-09', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-oct-1', yearMonth: '2026-10', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-oct-2', yearMonth: '2026-10', status: AttendanceStatus.ABSENT },
+        { groupId: 'grp-1', sessionId: 's-nov-1', yearMonth: '2026-11', status: AttendanceStatus.PRESENT },
+        { groupId: 'grp-1', sessionId: 's-nov-2', yearMonth: '2026-11', status: AttendanceStatus.EXCUSED },
+      ],
+      allPaymentAllocations: [
+        { paymentId: 'p-sep', groupId: 'grp-1', yearMonth: '2026-09', allocatedAmount: '100.00' },
+        { paymentId: 'p-oct', groupId: 'grp-1', yearMonth: '2026-10', allocatedAmount: '50.00' },
+      ],
+      studentPayments: [
+        { id: 'p-sep', yearMonth: '2026-09', amount: '100.00' },
+        { id: 'p-oct', yearMonth: '2026-10', amount: '50.00' },
+      ],
+    };
+
+    const overview = buildStudentMonthsOverview('2026-11', '2026-11', bundle);
+
+    expect(overview.map((m) => m.yearMonth)).toEqual(['2026-11', '2026-10', '2026-09']);
+
+    const nov = overview.find((m) => m.yearMonth === '2026-11')!;
+    expect(nov.paymentStatus).toBe('UNPAID');
+    expect(nov.totalSessions).toBe(2);
+    expect(nov.presentCount).toBe(1);
+    expect(nov.excusedCount).toBe(1);
+    expect(nov.totalDue).toBe(100);
+    expect(nov.totalPaid).toBe(0);
+    expect(nov.remaining).toBe(100);
+
+    const oct = overview.find((m) => m.yearMonth === '2026-10')!;
+    expect(oct.paymentStatus).toBe('PARTIAL');
+    expect(oct.totalSessions).toBe(2);
+    expect(oct.presentCount).toBe(1);
+    expect(oct.absentCount).toBe(1);
+    expect(oct.totalDue).toBe(100);
+    expect(oct.totalPaid).toBe(50);
+    expect(oct.remaining).toBe(50);
+
+    const sep = overview.find((m) => m.yearMonth === '2026-09')!;
+    expect(sep.paymentStatus).toBe('PAID');
+    expect(sep.totalSessions).toBe(2);
+    expect(sep.presentCount).toBe(2);
+    expect(sep.totalDue).toBe(100);
+    expect(sep.totalPaid).toBe(100);
+    expect(sep.remaining).toBe(0);
   });
 });

@@ -33,9 +33,15 @@ export class ExpensesRepository {
   async findPaginatedWithSummary(query: ExpensesQueryDto) {
     const { page, limit, offset } = normalizePagination(query.page, query.limit);
     const conditions: SQL[] = [];
+    const summaryConditions: SQL[] = [];
 
     if (query.yearMonth) {
       conditions.push(eq(expenses.yearMonth, query.yearMonth));
+      summaryConditions.push(eq(expenses.yearMonth, query.yearMonth));
+    }
+    if (query.date) {
+      conditions.push(eq(expenses.expenseDate, query.date));
+      summaryConditions.push(eq(expenses.expenseDate, query.date));
     }
     if (query.category) {
       conditions.push(eq(expenses.category, query.category));
@@ -48,9 +54,8 @@ export class ExpensesRepository {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    const monthClause = query.yearMonth
-      ? eq(expenses.yearMonth, query.yearMonth)
-      : undefined;
+    const monthClause =
+      summaryConditions.length > 0 ? and(...summaryConditions) : undefined;
 
     const [rows, [{ total, filteredSum }], categorySums] = await Promise.all([
       this.db

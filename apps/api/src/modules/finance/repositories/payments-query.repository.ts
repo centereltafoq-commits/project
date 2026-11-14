@@ -44,6 +44,7 @@ export class PaymentsQueryRepository {
     const conditions: SQL[] = [];
 
     if (query.yearMonth) conditions.push(eq(payments.yearMonth, query.yearMonth));
+    if (query.date) conditions.push(eq(payments.paymentDate, query.date));
     if (query.paymentMethod) {
       conditions.push(eq(payments.paymentMethod, query.paymentMethod));
     }
