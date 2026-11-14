@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Building2,
   Calendar as CalendarIcon,
@@ -16,17 +16,19 @@ import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/cn';
 import { CalendarEventModal } from './calendar-event-modal';
 import {
-  CalendarEventCategory,
   CalendarResponse,
+  CalendarSessionVisualState,
   CalendarViewMode,
   computeViewRange,
   EVENT_CATEGORY_STYLES,
+  SESSION_VISUAL_STATE_STYLES,
   shiftAnchorDate,
   UnifiedCalendarEvent,
 } from './calendar.types';
 import { DailyTimelineView, MonthlyGridView, WeeklyGridView } from './calendar-views';
 
 export function CalendarPage() {
+  const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const canViewClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_VIEW);
   const canViewTeachers = hasPermission(PERMISSIONS.TEACHERS_VIEW);
@@ -68,13 +70,20 @@ export function CalendarPage() {
     return map;
   }, [data?.events]);
 
+  const handleSavedQuickSession = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['groups'] });
+    queryClient.invalidateQueries({ queryKey: ['finance'] });
+  }, [queryClient]);
+
   const summary = data?.classroomsSummary;
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="التقويم الموحد وحالة القاعات الدراسية"
-        description="متابعة شاملة لحصص المجموعات، الحجوزات المعتمدة، الطلبات المعلقة، وصيانة القاعات لحظياً"
+        description="متابعة شاملة وتلقائية لمواعيد المجموعات اليومية، مع تخصيص سريع لقاعة اليوم والساعة وتأكيد حضور المجموعة مباشرة"
       />
 
       {canViewClassrooms && (
@@ -206,22 +215,30 @@ export function CalendarPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4 border-t border-border pt-3 text-xs">
-          {(Object.keys(EVENT_CATEGORY_STYLES) as CalendarEventCategory[])
-            .filter((cat) => {
-              if (!canViewClassrooms && cat === 'CLASSROOM_MAINTENANCE') {
-                return false;
-              }
-              return true;
-            })
-            .map((cat) => {
-              const st = EVENT_CATEGORY_STYLES[cat];
-              return (
-                <div key={cat} className="flex items-center gap-1.5">
-                  <span className={cn('h-2.5 w-2.5 rounded-full', st.dotClass)} />
-                  <span className="font-semibold text-muted-foreground">{st.label}</span>
-                </div>
-              );
-            })}
+          {(
+            ['NEEDS_CLASSROOM', 'READY_SCHEDULED', 'COMPLETED'] as CalendarSessionVisualState[]
+          ).map((stateKey) => {
+            const st = SESSION_VISUAL_STATE_STYLES[stateKey];
+            return (
+              <div key={stateKey} className="flex items-center gap-1.5">
+                <span className={cn('h-2.5 w-2.5 rounded-full', st.dotClass)} />
+                <span className="font-semibold text-muted-foreground">{st.label}</span>
+              </div>
+            );
+          })}
+          {canViewClassrooms && (
+            <div className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'h-2.5 w-2.5 rounded-full',
+                  EVENT_CATEGORY_STYLES.CLASSROOM_MAINTENANCE.dotClass,
+                )}
+              />
+              <span className="font-semibold text-muted-foreground">
+                {EVENT_CATEGORY_STYLES.CLASSROOM_MAINTENANCE.label}
+              </span>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -250,7 +267,13 @@ export function CalendarPage() {
         />
       )}
 
-      <CalendarEventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      <CalendarEventModal
+        event={selectedEvent}
+        classrooms={data?.filters.classrooms ?? []}
+        dayEvents={selectedEvent ? eventsByDate.get(selectedEvent.date) ?? [] : []}
+        onClose={() => setSelectedEvent(null)}
+        onSaved={handleSavedQuickSession}
+      />
     </div>
   );
 }

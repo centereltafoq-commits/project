@@ -1,9 +1,10 @@
-import { Building2, Clock, User } from 'lucide-react';
+import { Building2, CheckCircle2, Clock, MapPin, User } from 'lucide-react';
 import { Card } from '@/design-system';
 import { cn } from '@/lib/cn';
 import { ARABIC_DAYS, formatTimeAr, formatTimeRangeAr } from '@/lib/formatters';
 import {
-  EVENT_CATEGORY_STYLES,
+  getEventVisualStyle,
+  resolveEventVisualState,
   toIsoDate,
   UnifiedCalendarEvent,
 } from './calendar.types';
@@ -36,7 +37,7 @@ export function DailyTimelineView({
   if (dayEvents.length === 0) {
     return (
       <Card className="p-12 text-center text-sm text-muted-foreground">
-        لا توجد حصص أو حجوزات أو مواعيد صيانة مسجلة في هذا اليوم.
+        لا توجد حصص أو مواعيد مجموعات أو صيانة مسجلة في هذا اليوم.
       </Card>
     );
   }
@@ -44,7 +45,10 @@ export function DailyTimelineView({
   return (
     <Card className="divide-y divide-border overflow-hidden">
       {dayEvents.map((ev) => {
-        const meta = EVENT_CATEGORY_STYLES[ev.category];
+        const meta = getEventVisualStyle(ev);
+        const isGroupSession = ev.category === 'GROUP_SESSION';
+        const vState = isGroupSession ? resolveEventVisualState(ev) : null;
+
         return (
           <button
             key={ev.id}
@@ -73,14 +77,27 @@ export function DailyTimelineView({
                   {ev.teacherName}
                 </span>
               )}
-              {ev.classroomName && (
+              {ev.classroomName ? (
                 <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-1 text-foreground">
                   <Building2 className="h-3 w-3" />
                   {ev.classroomName} ({ev.roomNumber})
                 </span>
+              ) : (
+                isGroupSession && (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-amber-500/50 bg-amber-500/10 px-2 py-1 font-semibold text-amber-800 dark:text-amber-300">
+                    <MapPin className="h-3 w-3" />
+                    بدون قاعة — اضغط للتحديد
+                  </span>
+                )
               )}
-              <span className={cn('rounded-full border px-2.5 py-0.5 font-semibold', meta.pillClass)}>
-                {meta.label}
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-semibold',
+                  meta.pillClass,
+                )}
+              >
+                {vState === 'COMPLETED' && <CheckCircle2 className="h-3 w-3" />}
+                {meta.badgeLabel}
               </span>
             </div>
           </button>
@@ -133,7 +150,10 @@ export function WeeklyGridView({
                   </p>
                 ) : (
                   items.map((ev) => {
-                    const style = EVENT_CATEGORY_STYLES[ev.category];
+                    const style = getEventVisualStyle(ev);
+                    const isGroupSession = ev.category === 'GROUP_SESSION';
+                    const vState = isGroupSession ? resolveEventVisualState(ev) : null;
+
                     return (
                       <button
                         key={ev.id}
@@ -144,14 +164,25 @@ export function WeeklyGridView({
                           style.pillClass,
                         )}
                       >
-                        <div className="font-bold">
-                          {formatTimeRangeAr(ev.startTime, ev.endTime)}
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold">
+                            {formatTimeRangeAr(ev.startTime, ev.endTime)}
+                          </span>
+                          {vState === 'COMPLETED' && (
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                          )}
                         </div>
                         <div className="mt-0.5 line-clamp-2 font-semibold">{ev.title}</div>
-                        {ev.classroomName && (
+                        {ev.classroomName ? (
                           <div className="mt-1 truncate text-[10px] opacity-85">
                             قاعة: {ev.classroomName}
                           </div>
+                        ) : (
+                          isGroupSession && (
+                            <div className="mt-1 truncate text-[10px] font-bold">
+                              اضغط لاختيار القاعة
+                            </div>
+                          )
                         )}
                       </button>
                     );
@@ -221,7 +252,9 @@ export function MonthlyGridView({
 
                 <div className="space-y-1">
                   {items.slice(0, 3).map((ev) => {
-                    const style = EVENT_CATEGORY_STYLES[ev.category];
+                    const style = getEventVisualStyle(ev);
+                    const isUnassigned =
+                      ev.category === 'GROUP_SESSION' && !ev.classroomId;
                     return (
                       <button
                         key={ev.id}
@@ -233,6 +266,7 @@ export function MonthlyGridView({
                         )}
                       >
                         {formatTimeAr(ev.startTime)} {ev.title}
+                        {isUnassigned ? ' (بدون قاعة)' : ''}
                       </button>
                     );
                   })}

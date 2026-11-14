@@ -7,27 +7,18 @@ import {
   expandMaintenanceDays,
   resolveAndValidateCalendarRange,
 } from './validators/calendar-range.validator';
+import {
+  CalendarEventCategory,
+  CalendarSessionVisualState,
+  expandAndMergeGroupScheduleEvents,
+  UnifiedCalendarEvent,
+} from './validators/calendar-schedule-expander.util';
 
-export type CalendarEventCategory =
-  | 'GROUP_SESSION'
-  | 'CLASSROOM_MAINTENANCE';
-
-export interface UnifiedCalendarEvent {
-  id: string;
-  sourceId: string;
-  category: CalendarEventCategory;
-  date: string;
-  startTime: string;
-  endTime: string;
-  title: string;
-  subtitle: string;
-  status: string;
-  teacherId?: string | null;
-  teacherName?: string | null;
-  classroomId?: string | null;
-  classroomName?: string | null;
-  roomNumber?: string | null;
-}
+export type {
+  CalendarEventCategory,
+  CalendarSessionVisualState,
+  UnifiedCalendarEvent,
+};
 
 @Injectable()
 export class CalendarService {
@@ -37,6 +28,12 @@ export class CalendarService {
     const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
     const perms = actor?.permissions ?? [];
     const canViewClassrooms = isOwner || perms.includes(PERMISSIONS.CLASSROOMS_VIEW);
+    const canManageQuickSessions =
+      isOwner ||
+      canViewClassrooms ||
+      perms.includes(PERMISSIONS.CLASSROOMS_MANAGE) ||
+      perms.includes(PERMISSIONS.SESSIONS_MANAGE) ||
+      perms.includes(PERMISSIONS.ATTENDANCE_RECORD);
     const canViewTeachers = isOwner || perms.includes(PERMISSIONS.TEACHERS_VIEW);
 
     const { fromDate, toDate, rangeStartUtc, rangeEndUtc } = resolveAndValidateCalendarRange(
@@ -44,16 +41,32 @@ export class CalendarService {
       query.to,
     );
 
+    const teacherFilterId = canViewTeachers ? query.teacherId : undefined;
+    const classroomFilterId = canViewClassrooms ? query.classroomId : undefined;
+
     const data = await this.repository.fetchUnifiedRangeData({
       fromDate,
       toDate,
       rangeStartUtc,
       rangeEndUtc,
-      teacherId: canViewTeachers ? query.teacherId : undefined,
-      classroomId: canViewClassrooms ? query.classroomId : undefined,
+      teacherId: teacherFilterId,
+      classroomId: classroomFilterId,
     });
 
-    const events: UnifiedCalendarEvent[] = [];
+    const classroomsMap = new Map(
+      data.allClassrooms.map((c) => [c.id, { id: c.id, name: c.name, roomNumber: c.roomNumber }]),
+    );
+
+    const events: UnifiedCalendarEvent[] = expandAndMergeGroupScheduleEvents({
+      fromDate,
+      toDate,
+      existingSessions: data.groupSessions,
+      activeGroups: data.activeGroups,
+      classroomsMap,
+      teacherFilterId,
+      classroomFilterId,
+    });
+
     const occupiedRoomIds = new Set<string>();
     const maintenanceRoomIds = new Set<string>();
     const eventsCountByRoom = new Map<string, number>();
@@ -63,26 +76,11 @@ export class CalendarService {
       eventsCountByRoom.set(roomId, (eventsCountByRoom.get(roomId) ?? 0) + 1);
     };
 
-    for (const s of data.groupSessions) {
-      if (s.classroomId) occupiedRoomIds.add(s.classroomId);
-      incrementRoomEvents(s.classroomId);
-
-      events.push({
-        id: `session-${s.id}`,
-        sourceId: s.id,
-        category: 'GROUP_SESSION',
-        date: s.sessionDate,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        title: `${s.groupName} (${s.subject})`,
-        subtitle: s.topic ? `${s.teacherName} — ${s.topic}` : s.teacherName,
-        status: s.status,
-        teacherId: s.teacherId,
-        teacherName: s.teacherName,
-        classroomId: s.classroomId,
-        classroomName: s.classroomName,
-        roomNumber: s.roomNumber,
-      });
+    for (const ev of events) {
+      if (ev.classroomId) {
+        occupiedRoomIds.add(ev.classroomId);
+        incrementRoomEvents(ev.classroomId);
+      }
     }
 
     if (canViewClassrooms) {
@@ -161,7 +159,7 @@ export class CalendarService {
       classroomsSummary,
       filters: {
         teachers: canViewTeachers ? data.allTeachers : [],
-        classrooms: canViewClassrooms ? data.allClassrooms : [],
+        classrooms: canManageQuickSessions ? data.allClassrooms : [],
       },
     };
   }
