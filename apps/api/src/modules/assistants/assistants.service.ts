@@ -10,6 +10,10 @@ import {
 } from './dto/assistant.dto';
 import { AssistantsRepository } from './assistants.repository';
 import { AssistantsProfileRepository } from './assistants-profile.repository';
+import {
+  buildAssistantMonthsOverview,
+  computeAssistantMonthlyBreakdown,
+} from './assistants-months-overview.builder';
 
 @Injectable()
 export class AssistantsService {
@@ -143,11 +147,26 @@ export class AssistantsService {
       ? bundle.linkedGroups
       : bundle.linkedGroups.map((g) => ({ ...g, overrideRateValue: null }));
 
+    const monthsOverview = buildAssistantMonthsOverview({
+      requestedYearMonth: yearMonth,
+      currentYearMonth: this.getCurrentYearMonth(),
+      assistant: rawAssistant,
+      bundle,
+    });
+
     if (!canViewFinance) {
       return {
         assistant,
         yearMonth,
         linkedGroups: maskedLinkedGroups,
+        monthsOverview: monthsOverview.map((m) => ({
+          ...m,
+          payoutStatus: 'NO_DUES' as const,
+          totalDues: 0,
+          totalPayouts: 0,
+          remainingBalance: 0,
+          payoutsCount: 0,
+        })),
         monthlyBreakdown: {
           groupDues: [],
           baseGlobalDue: 0,
@@ -160,122 +179,23 @@ export class AssistantsService {
       };
     }
 
-    const execByGroup = new Map(
-      bundle.sessionCounts.map((s) => [s.groupId, Number(s.executedCount || 0)]),
-    );
-    const hoursByGroup = new Map(
-      bundle.sessionCounts.map((s) => [
-        s.groupId,
-        this.round2(Number((s as { executedMinutes?: number }).executedMinutes || 0) / 60),
-      ]),
-    );
-    const presentByGroup = new Map(
-      bundle.attendanceCounts.map((a) => [a.groupId, Number(a.presentEntries || 0)]),
-    );
-    const storedByGroup = new Map(
-      bundle.storedDues.filter((d) => d.groupId).map((d) => [d.groupId!, d]),
-    );
-
-    const groupDues = bundle.linkedGroups.map((grp) => {
-      const sessionsCount = execByGroup.get(grp.groupId) ?? 0;
-      const stored = storedByGroup.get(grp.groupId);
-      if (stored && (stored.isLocked || stored.sessionsCount === sessionsCount)) {
-        return {
-          groupId: grp.groupId,
-          groupName: grp.groupName,
-          calculationMethod: stored.calculationMethod,
-          rateValue: Number(grp.overrideRateValue ?? rawAssistant.rateValue),
-          sessionsCount: stored.sessionsCount,
-          studentsCount: stored.studentsCount,
-          amount: Number(stored.amount),
-          isLocked: stored.isLocked,
-        };
-      }
-
-      const method = (grp.overrideCalculationMethod ||
-        rawAssistant.calculationMethod) as AssistantCalculationMethod;
-      const rate = Number(grp.overrideRateValue ?? rawAssistant.rateValue ?? 0);
-      const hoursCount = hoursByGroup.get(grp.groupId) ?? sessionsCount * 2;
-      const studentsCount = Number(grp.activeStudentsCount || 0);
-      const presentEntries = presentByGroup.get(grp.groupId) ?? 0;
-      const sessionPrice = Number(grp.calculatedSessionPrice || 0);
-
-      let amount = 0;
-      if (method === AssistantCalculationMethod.FIXED_PER_STUDENT) {
-        amount = studentsCount * rate;
-      } else if (method === AssistantCalculationMethod.PER_ATTENDING_STUDENT) {
-        amount = presentEntries * rate;
-      } else if (method === AssistantCalculationMethod.FIXED_PER_SESSION) {
-        amount = sessionsCount * rate;
-      } else if (method === AssistantCalculationMethod.HOURLY) {
-        amount = (hoursCount > 0 ? hoursCount : sessionsCount * 2) * rate;
-      } else if (method === AssistantCalculationMethod.SESSION_COMMISSION_PERCENT) {
-        const clampedRate = Math.min(100, Math.max(0, rate));
-        const rev =
-          presentEntries > 0
-            ? presentEntries * sessionPrice
-            : studentsCount * sessionsCount * sessionPrice;
-        amount = (rev * clampedRate) / 100;
-      } else if (method === AssistantCalculationMethod.FIXED_MONTHLY) {
-        amount = grp.overrideRateValue !== null ? rate : 0;
-      } else {
-        amount = grp.overrideRateValue !== null ? rate : 0;
-      }
-
-      return {
-        groupId: grp.groupId,
-        groupName: grp.groupName,
-        calculationMethod: method,
-        rateValue: rate,
-        sessionsCount,
-        studentsCount,
-        amount: this.round2(amount),
-        isLocked: false,
-      };
+    const monthlyBreakdown = computeAssistantMonthlyBreakdown({
+      yearMonth,
+      assistant: rawAssistant,
+      linkedGroups: bundle.linkedGroups,
+      storedDues: bundle.storedDues,
+      storedMonthlyRecord: bundle.storedMonthlyRecord,
+      payouts: bundle.payouts,
+      sessionCounts: bundle.sessionCounts,
+      attendanceCounts: bundle.attendanceCounts,
     });
-
-    const globalStoredDue = bundle.storedDues.find((d) => !d.groupId);
-    const hasNonOverriddenOrNoLinks =
-      bundle.linkedGroups.length === 0 ||
-      bundle.linkedGroups.some((g) => !g.overrideCalculationMethod && g.overrideRateValue === null);
-
-    const baseGlobalDue = globalStoredDue
-      ? Number(globalStoredDue.amount)
-      : (rawAssistant.calculationMethod === AssistantCalculationMethod.FIXED_MONTHLY ||
-            rawAssistant.calculationMethod === AssistantCalculationMethod.CUSTOM_AGREEMENT) &&
-          hasNonOverriddenOrNoLinks
-        ? Number(rawAssistant.rateValue || 0)
-        : 0;
-
-    const liveTotalDues = this.round2(
-      groupDues.reduce((s, d) => s + d.amount, 0) + baseGlobalDue,
-    );
-    const monthPayoutsTotal = this.round2(
-      bundle.payouts
-        .filter((p) => p.yearMonth === yearMonth)
-        .reduce((s, p) => s + Number(p.amount || 0), 0),
-    );
-
-    const totalDues = bundle.storedMonthlyRecord?.isClosed
-      ? Number(bundle.storedMonthlyRecord.totalDues)
-      : liveTotalDues;
-    const totalPayouts = bundle.storedMonthlyRecord?.isClosed
-      ? Number(bundle.storedMonthlyRecord.totalPaidOut)
-      : monthPayoutsTotal;
-    const remainingBalance = Math.max(0, this.round2(totalDues - totalPayouts));
 
     return {
       assistant,
       yearMonth,
       linkedGroups: maskedLinkedGroups,
-      monthlyBreakdown: {
-        groupDues,
-        baseGlobalDue,
-        totalDues,
-        totalPayouts,
-        remainingBalance,
-        isClosed: bundle.storedMonthlyRecord?.isClosed ?? false,
-      },
+      monthsOverview,
+      monthlyBreakdown,
       payouts: bundle.payouts,
     };
   }

@@ -8,13 +8,20 @@ import {
   Lock,
 } from 'lucide-react';
 import { Badge, Card } from '@/design-system';
-import { formatCurrency, formatYearMonthAr } from '@/lib/formatters';
+import { YearSummaryGrid } from '@/components/year-summary/year-summary-grid';
+import {
+  ExplorerViewMode,
+  YearSummaryHeader,
+} from '@/components/year-summary/year-summary-header';
+import { PAYOUT_YEAR_SUMMARY_LABELS } from '@/components/year-summary/year-summary.types';
+import { formatCurrency, formatYearMonthAr, getCurrentYearMonth } from '@/lib/formatters';
 import {
   TEACHER_PAYOUT_STATUS_META,
   TeacherMonthOverviewItem,
   TeacherProfileData,
 } from '../teachers.types';
 import { TeacherMonthDetailPanel } from './teacher-month-detail-panel';
+import { buildTeacherYearSummary } from './teacher-year-grid.helper';
 
 interface TeacherMonthsExplorerProps {
   data: TeacherProfileData;
@@ -32,6 +39,31 @@ export function TeacherMonthsExplorer({
   canViewFinance,
 }: TeacherMonthsExplorerProps) {
   const [filterMode, setFilterMode] = React.useState<MonthFilterMode>('ALL');
+  const [viewMode, setViewMode] = React.useState<ExplorerViewMode>('YEAR_SUMMARY');
+  const currentYearMonth = React.useMemo(() => getCurrentYearMonth(), []);
+  const [selectedYear, setSelectedYear] = React.useState<number>(() => {
+    const parsed = Number(selectedYearMonth.slice(0, 4));
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : new Date().getFullYear();
+  });
+
+  React.useEffect(() => {
+    const parsed = Number(selectedYearMonth.slice(0, 4));
+    if (Number.isInteger(parsed) && parsed > 0) {
+      setSelectedYear(parsed);
+    }
+  }, [selectedYearMonth]);
+
+  const yearSummary = React.useMemo(
+    () =>
+      buildTeacherYearSummary({
+        year: selectedYear,
+        data,
+        monthsList: data.monthsOverview ?? [],
+        selectedYearMonth,
+        currentYearMonth,
+      }),
+    [selectedYear, data, selectedYearMonth, currentYearMonth],
+  );
 
   const monthsOverview: TeacherMonthOverviewItem[] = React.useMemo(() => {
     if (data.monthsOverview && data.monthsOverview.length > 0) {
@@ -84,6 +116,25 @@ export function TeacherMonthsExplorer({
 
   return (
     <div className="space-y-6">
+      <YearSummaryHeader
+        title="خريطة شهور المدرس (المستحقات والصرف شهر بشهر)"
+        subtitle="استعرض السنة كاملة بنظرة سريعة (تم الصرف / لم يُصرف / لم يكن موجوداً) أو انتقل لعرض تفاصيل كل شهر على حدة"
+        viewMode={viewMode}
+        onChangeViewMode={setViewMode}
+        monthsCount={data.monthsOverview?.length ?? 1}
+      />
+
+      {viewMode === 'YEAR_SUMMARY' ? (
+        <YearSummaryGrid
+          summary={yearSummary}
+          selectedYearMonth={selectedYearMonth}
+          canViewFinance={canViewFinance}
+          onChangeYear={setSelectedYear}
+          onSelectMonth={onSelectMonth}
+          labels={PAYOUT_YEAR_SUMMARY_LABELS}
+        />
+      ) : (
+        <>
       {/* شريط إحصائيات وفلاتر الشهور */}
       <Card className="p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -160,7 +211,7 @@ export function TeacherMonthsExplorer({
           لا توجد شهور مطابقة لفلتر العرض المختار حالياً
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {filteredMonths.map((item) => {
             const isSelected = item.yearMonth === selectedYearMonth;
             const statusMeta = TEACHER_PAYOUT_STATUS_META[item.payoutStatus];
@@ -248,6 +299,9 @@ export function TeacherMonthsExplorer({
             );
           })}
         </div>
+      )}
+
+        </>
       )}
 
       {/* اللوحة الشاملة لتفاصيل الشهر المختار */}

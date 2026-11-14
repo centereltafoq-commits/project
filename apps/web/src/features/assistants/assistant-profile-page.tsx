@@ -23,9 +23,9 @@ import { useAuth } from '@/features/auth/auth-context';
 import { AssistantFormModal } from './assistant-form-modal';
 import {
   AssistantLinkedGroupsTab,
-  AssistantMonthlyDuesTab,
   AssistantPayoutsTab,
 } from './assistant-profile-tabs';
+import { AssistantMonthsExplorer } from './components/assistant-months-explorer';
 import { ASSISTANT_CALC_METHOD_LABELS, AssistantProfileData } from './assistants.types';
 
 export function AssistantProfilePage() {
@@ -161,14 +161,12 @@ export function AssistantProfilePage() {
         )}
       </div>
 
-      <Tabs defaultValue={canViewFinance ? 'dues' : 'groups'}>
+      <Tabs defaultValue="summary">
         <TabsList>
-          {canViewFinance && (
-            <TabsTrigger value="dues">
-              <Wallet className="h-4 w-4" />
-              تفاصيل المستحقات الشهرية
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="summary">
+            <Wallet className="h-4 w-4" />
+            سجل الشهور والمستحقات ({data.monthsOverview?.length ?? 1})
+          </TabsTrigger>
           <TabsTrigger value="groups">
             <BookOpen className="h-4 w-4" />
             المجموعات المرتبطة ({data.linkedGroups.length})
@@ -181,11 +179,14 @@ export function AssistantProfilePage() {
           )}
         </TabsList>
 
-        {canViewFinance && (
-          <TabsContent value="dues">
-            <AssistantMonthlyDuesTab data={data} />
-          </TabsContent>
-        )}
+        <TabsContent value="summary">
+          <AssistantMonthsExplorer
+            data={data}
+            selectedYearMonth={yearMonth}
+            onSelectMonth={setYearMonth}
+            canViewFinance={canViewFinance}
+          />
+        </TabsContent>
         <TabsContent value="groups">
           <AssistantLinkedGroupsTab data={data} />
         </TabsContent>
