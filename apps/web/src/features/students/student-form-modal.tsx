@@ -5,7 +5,7 @@ import { Button, DatePicker, Input, Modal, Select, Textarea, useToast } from '@/
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { getTodayIsoDate } from '@/lib/formatters';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
-import { GRADE_LEVEL_OPTIONS, STUDENT_STATUS_OPTIONS, StudentRow } from './students.types';
+import { STUDENT_STATUS_OPTIONS, StudentRow } from './students.types';
 
 interface StudentFormModalProps {
   open: boolean;
@@ -17,13 +17,14 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const isEdit = Boolean(student);
-  const { gradeLevels: allGradeLevels } = useGradeLevels(false);
-  const activeGradeOptions = React.useMemo(() => {
-    const active = allGradeLevels
-      .filter((g) => g.isActive)
-      .map((g) => ({ value: g.name, label: g.name }));
-    return active.length > 0 ? active : GRADE_LEVEL_OPTIONS;
-  }, [allGradeLevels]);
+  const { gradeLevels: allGradeLevels, isLoading: isLoadingGrades } = useGradeLevels(false);
+  const activeGradeOptions = React.useMemo(
+    () =>
+      allGradeLevels
+        .filter((g) => g.isActive)
+        .map((g) => ({ value: g.name, label: g.name })),
+    [allGradeLevels],
+  );
 
   const gradeOptions = React.useMemo(() => {
     const currentGrade = student?.gradeLevel;
@@ -40,14 +41,14 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
     ];
   }, [activeGradeOptions, allGradeLevels, student?.gradeLevel]);
 
-  const defaultGrade = activeGradeOptions[0]?.value || 'الصف الأول الثانوي';
+  const defaultGrade = activeGradeOptions[0]?.value ?? '';
 
   const [form, setForm] = React.useState({
     studentCode: '',
     fullName: '',
     phone: '',
     guardianPhone: '',
-    gradeLevel: 'الصف الأول الثانوي',
+    gradeLevel: '',
     registrationDate: getTodayIsoDate(),
     status: StudentStatus.ACTIVE,
     notes: '',
@@ -121,6 +122,10 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (!form.gradeLevel.trim()) {
+            notify('يرجى إضافة صف دراسي وتحديده أولاً من «إدارة الصفوف الدراسية»', 'error');
+            return;
+          }
           mutation.mutate();
         }}
         className="space-y-4"
@@ -156,7 +161,18 @@ export function StudentFormModal({ open, onOpenChange, student }: StudentFormMod
             label="الصف الدراسي"
             required
             searchable
+            placeholder={
+              gradeOptions.length === 0
+                ? 'لا توجد صفوف دراسية مسجلة'
+                : 'اختر الصف الدراسي...'
+            }
             searchPlaceholder="ابحث في المراحل والصفوف..."
+            emptyText="لا توجد صفوف دراسية مفعّلة. أضف صفاً من «إدارة الصفوف الدراسية» أولاً."
+            error={
+              !isLoadingGrades && gradeOptions.length === 0
+                ? 'لا توجد صفوف دراسية مفعّلة حالياً. أضف صفاً من «إدارة الصفوف الدراسية» أولاً.'
+                : undefined
+            }
             value={form.gradeLevel}
             onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
             options={gradeOptions}

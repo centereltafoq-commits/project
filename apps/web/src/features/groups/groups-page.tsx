@@ -34,7 +34,6 @@ import { downloadBlobFile } from '@/lib/file-download';
 import { ARABIC_DAYS, formatCurrency } from '@/lib/formatters';
 import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
-import { GRADE_LEVEL_OPTIONS } from '../students/students.types';
 import { GroupFormModal } from './group-form-modal';
 import { GroupQuickViewModal } from './components/group-quick-view-modal';
 import { GroupDetailData, GroupRow } from './groups.types';
@@ -63,8 +62,7 @@ export function GroupsPage() {
   const [isExporting, setIsExporting] = React.useState(false);
 
   const { options: dynamicGradeOptions } = useGradeLevels(false);
-  const baseGradeOptions =
-    dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
+  const baseGradeOptions = dynamicGradeOptions;
 
   const { data, isLoading } = useQuery<PaginatedResult<GroupRow>>({
     queryKey: ['groups', page, limit, debouncedSearch, gradeFilter, activeFilter],

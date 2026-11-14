@@ -99,15 +99,6 @@ export interface StudentProfileData {
   monthsOverview?: StudentMonthOverviewItem[];
 }
 
-export const GRADE_LEVEL_OPTIONS = [
-  { value: 'الأول الإعدادي', label: 'الأول الإعدادي' },
-  { value: 'الثاني الإعدادي', label: 'الثاني الإعدادي' },
-  { value: 'الثالث الإعدادي', label: 'الثالث الإعدادي' },
-  { value: 'الأول الثانوي', label: 'الأول الثانوي' },
-  { value: 'الثاني الثانوي', label: 'الثاني الثانوي' },
-  { value: 'الثالث الثانوي', label: 'الثالث الثانوي' },
-];
-
 export const STUDENT_STATUS_OPTIONS = [
   { value: StudentStatus.ACTIVE, label: 'نشط' },
   { value: StudentStatus.SUSPENDED, label: 'موقوف مؤقتاً' },

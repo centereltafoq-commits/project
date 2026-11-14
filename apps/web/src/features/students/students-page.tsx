@@ -23,7 +23,6 @@ import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { StudentFormModal } from './student-form-modal';
 import { StudentQuickViewModal } from './components/student-quick-view-modal';
 import {
-  GRADE_LEVEL_OPTIONS,
   STUDENT_STATUS_META,
   STUDENT_STATUS_OPTIONS,
   StudentRow,
@@ -54,8 +53,7 @@ export function StudentsPage() {
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
   const { options: dynamicGradeOptions } = useGradeLevels(false);
-  const baseGradeOptions =
-    dynamicGradeOptions.length > 0 ? dynamicGradeOptions : GRADE_LEVEL_OPTIONS;
+  const baseGradeOptions = dynamicGradeOptions;
 
   const { data, isLoading } = useQuery<PaginatedResult<StudentRow>>({
     queryKey: ['students', page, limit, debouncedSearch, statusFilter, gradeFilter],

@@ -28,8 +28,8 @@ vi.mock('@/lib/file-download', () => ({
   downloadBlobFile: vi.fn().mockResolvedValue(undefined),
 }));
 
-const MOCK_GRADE_LEVELS = {
-  gradeLevels: [],
+let MOCK_GRADE_LEVELS = {
+  gradeLevels: [{ id: 'gl-1', name: 'الأول الثانوي', isActive: true, orderIndex: 1 }],
   options: [{ value: 'الأول الثانوي', label: 'الأول الثانوي' }],
   isLoading: false,
 };
@@ -128,5 +128,26 @@ describe('StudentsPage Excel Import & Export Integration', () => {
         }),
       );
     });
+  });
+
+  it('shows no fake hardcoded grade levels when registered grade levels are empty', async () => {
+    const prev = MOCK_GRADE_LEVELS;
+    MOCK_GRADE_LEVELS = {
+      gradeLevels: [],
+      options: [],
+      isLoading: false,
+    };
+
+    try {
+      renderPage([PERMISSIONS.STUDENTS_VIEW, PERMISSIONS.STUDENTS_CREATE]);
+      fireEvent.click(screen.getByRole('button', { name: /تسجيل طالب جديد/i }));
+
+      expect(
+        await screen.findByText(/لا توجد صفوف دراسية مفعّلة حالياً/i),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('الأول الإعدادي')).not.toBeInTheDocument();
+    } finally {
+      MOCK_GRADE_LEVELS = prev;
+    }
   });
 });

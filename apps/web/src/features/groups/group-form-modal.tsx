@@ -9,7 +9,6 @@ import {
 import { Badge, Button, Input, Modal, Select, Textarea, useToast } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
-import { GRADE_LEVEL_OPTIONS } from '../students/students.types';
 import {
   GroupFinancialPolicyFields,
   GroupPolicyFormState,
@@ -42,13 +41,14 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const isEdit = Boolean(group);
-  const { gradeLevels: allGradeLevels } = useGradeLevels(false);
-  const activeGradeOptions = React.useMemo(() => {
-    const active = allGradeLevels
-      .filter((g) => g.isActive)
-      .map((g) => ({ value: g.name, label: g.name }));
-    return active.length > 0 ? active : GRADE_LEVEL_OPTIONS;
-  }, [allGradeLevels]);
+  const { gradeLevels: allGradeLevels, isLoading: isLoadingGrades } = useGradeLevels(false);
+  const activeGradeOptions = React.useMemo(
+    () =>
+      allGradeLevels
+        .filter((g) => g.isActive)
+        .map((g) => ({ value: g.name, label: g.name })),
+    [allGradeLevels],
+  );
 
   const gradeOptions = React.useMemo(() => {
     const currentGrade = group?.gradeLevel;
@@ -65,13 +65,13 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
     ];
   }, [activeGradeOptions, allGradeLevels, group?.gradeLevel]);
 
-  const defaultGrade = activeGradeOptions[0]?.value ?? 'الثالث الثانوي';
+  const defaultGrade = activeGradeOptions[0]?.value ?? '';
 
   const [form, setForm] = React.useState({
     groupCode: '',
     name: '',
     subject: '',
-    gradeLevel: 'الثالث الثانوي',
+    gradeLevel: '',
     primaryTeacherId: '',
     defaultClassroomId: '',
     maxStudents: '50',
@@ -147,6 +147,12 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
     );
   }, [group, open]);
 
+  React.useEffect(() => {
+    if (!group && open && !form.gradeLevel && defaultGrade) {
+      setForm((prev) => ({ ...prev, gradeLevel: defaultGrade }));
+    }
+  }, [group, open, defaultGrade, form.gradeLevel]);
+
   const mutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -213,6 +219,10 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (!form.gradeLevel.trim()) {
+            notify('يرجى إضافة صف دراسي وتحديده أولاً من «إدارة الصفوف الدراسية»', 'error');
+            return;
+          }
           const monthlyPrice = Number(policyForm.monthlyPrice || 0);
           const teacherShare = Number(policyForm.teacherSharePerStudent || 0);
           const centerShare = Number(policyForm.centerSharePerStudent || 0);
@@ -264,7 +274,26 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Input label="اسم المجموعة" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input label="المادة الدراسية" required value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-          <Select label="الصف الدراسي" searchable searchPlaceholder="ابحث في المراحل..." value={form.gradeLevel} onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })} options={gradeOptions} />
+          <Select
+            label="الصف الدراسي"
+            required
+            searchable
+            placeholder={
+              gradeOptions.length === 0
+                ? 'لا توجد صفوف دراسية مسجلة'
+                : 'اختر الصف الدراسي...'
+            }
+            searchPlaceholder="ابحث في المراحل..."
+            emptyText="لا توجد صفوف دراسية مفعّلة. أضف صفاً من «إدارة الصفوف الدراسية» أولاً."
+            error={
+              !isLoadingGrades && gradeOptions.length === 0
+                ? 'لا توجد صفوف دراسية مفعّلة حالياً. أضف صفاً من «إدارة الصفوف الدراسية» أولاً.'
+                : undefined
+            }
+            value={form.gradeLevel}
+            onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
+            options={gradeOptions}
+          />
           <Select
             label="المدرس الأساسي"
             required
