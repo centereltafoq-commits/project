@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { assertPayoutWithinRemainingBalance } from './money.util';
 
@@ -18,6 +18,21 @@ describe('assertPayoutWithinRemainingBalance', () => {
     ).not.toThrow();
   });
 
+  it('allows settling remaining unpaid balance on closed months without exceeding remaining dues', () => {
+    expect(() =>
+      assertPayoutWithinRemainingBalance(
+        { totalDues: '100.00', totalPaidOut: '25.00', isClosed: true },
+        50,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertPayoutWithinRemainingBalance(
+        { totalDues: '100.00', totalPaidOut: '25.00', isClosed: true },
+        80,
+      ),
+    ).toThrow(BadRequestException);
+  });
+
   it('rejects payouts exceeding remaining due balance', () => {
     expect(() =>
       assertPayoutWithinRemainingBalance(
@@ -33,7 +48,7 @@ describe('assertPayoutWithinRemainingBalance', () => {
     ).toThrow(BadRequestException);
   });
 
-  it('rejects payout when no balance remains or month is closed', () => {
+  it('rejects payout when no balance remains', () => {
     expect(() =>
       assertPayoutWithinRemainingBalance(
         { totalDues: '30.00', totalPaidOut: '30.00', isClosed: false },
@@ -43,11 +58,5 @@ describe('assertPayoutWithinRemainingBalance', () => {
     expect(() =>
       assertPayoutWithinRemainingBalance(undefined, 10),
     ).toThrow(BadRequestException);
-    expect(() =>
-      assertPayoutWithinRemainingBalance(
-        { totalDues: '100.00', totalPaidOut: '0.00', isClosed: true },
-        50,
-      ),
-    ).toThrow(ConflictException);
   });
 });

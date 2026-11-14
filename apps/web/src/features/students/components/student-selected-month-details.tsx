@@ -9,14 +9,18 @@ import {
   UserCheck,
   XCircle,
 } from 'lucide-react';
-import { Badge, Card } from '@/design-system';
+import { Badge, Button, Card } from '@/design-system';
 import {
   formatCurrency,
   formatDateAr,
   formatTimeRangeAr,
   formatYearMonthAr,
 } from '@/lib/formatters';
-import { PAYMENT_METHOD_LABELS, StudentProfileData } from '../students.types';
+import {
+  PAYMENT_METHOD_LABELS,
+  StudentMonthlyBreakdownItem,
+  StudentProfileData,
+} from '../students.types';
 
 const ATTENDANCE_STATUS_BADGE: Record<
   string,
@@ -43,11 +47,15 @@ function getGroupPaymentBadge(totalDue: number, totalPaid: number, remaining: nu
 interface StudentSelectedMonthDetailsProps {
   data: StudentProfileData;
   canViewFinance: boolean;
+  canCollectPayment?: boolean;
+  onCollectMonthPayment?: (groupItem?: StudentMonthlyBreakdownItem) => void;
 }
 
 export function StudentSelectedMonthDetails({
   data,
   canViewFinance,
+  canCollectPayment = false,
+  onCollectMonthPayment,
 }: StudentSelectedMonthDetailsProps) {
   const monthPayments = data.payments.filter((p) => p.yearMonth === data.yearMonth);
   const { monthTotals } = data;
@@ -100,6 +108,20 @@ export function StudentSelectedMonthDetails({
               بعذر: {monthTotals.excusedCount}
             </span>
           )}
+          {canViewFinance &&
+            canCollectPayment &&
+            onCollectMonthPayment &&
+            monthTotals.remaining > 0.009 && (
+              <Button
+                size="sm"
+                variant="success"
+                onClick={() => onCollectMonthPayment()}
+                className="h-8 gap-1.5 px-3 text-xs font-bold shadow-sm"
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                تحصيل متأخرات هذا الشهر ({formatCurrency(monthTotals.remaining)})
+              </Button>
+            )}
         </div>
       </div>
 
@@ -183,6 +205,18 @@ export function StudentSelectedMonthDetails({
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <Badge variant={groupBadge.variant}>{groupBadge.label}</Badge>
                                 {item.isClosed && <Badge variant="neutral">مقفل</Badge>}
+                                {canCollectPayment &&
+                                  onCollectMonthPayment &&
+                                  item.remaining > 0.009 && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => onCollectMonthPayment(item)}
+                                      className="h-7 px-2 text-[11px] font-bold text-emerald-700 border-emerald-500/40 hover:bg-emerald-500/10 dark:text-emerald-400"
+                                    >
+                                      سداد
+                                    </Button>
+                                  )}
                               </div>
                             </td>
                           </>

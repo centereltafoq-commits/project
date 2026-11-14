@@ -30,11 +30,10 @@ interface AssistantDuesTabProps {
 export function AssistantDuesTab({
   yearMonth,
   selectedDate,
-  isMonthClosed = false,
   lookups,
 }: AssistantDuesTabProps) {
   const { hasPermission } = useAuth();
-  const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS) && !isMonthClosed;
+  const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS);
 
   const [viewMode, setViewMode] = React.useState<'dues' | 'payouts'>('dues');
   const [page, setPage] = React.useState(1);

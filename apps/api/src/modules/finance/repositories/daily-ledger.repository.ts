@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../../database/database.module';
 import {
   assistantPayouts,
@@ -106,14 +106,12 @@ export class DailyLedgerRepository {
           .innerJoin(students, eq(students.id, payments.studentId))
           .leftJoin(users, eq(users.id, payments.receivedByUserId))
           .where(
-            or(
-              and(
-                gte(payments.paymentDate, startOfMonth),
-                lte(payments.paymentDate, endOfMonth),
-              ),
-              eq(payments.yearMonth, resolvedYearMonth),
-              ...(query.date ? [eq(payments.paymentDate, query.date)] : []),
-            ),
+            query.date
+              ? eq(payments.paymentDate, query.date)
+              : and(
+                  gte(payments.paymentDate, startOfMonth),
+                  lte(payments.paymentDate, endOfMonth),
+                ),
           )
           .orderBy(desc(payments.paymentDate), desc(payments.createdAt)),
 
@@ -135,14 +133,12 @@ export class DailyLedgerRepository {
           .innerJoin(teachers, eq(teachers.id, teacherPayouts.teacherId))
           .leftJoin(users, eq(users.id, teacherPayouts.paidByUserId))
           .where(
-            or(
-              and(
-                gte(teacherPayouts.payoutDate, startOfMonth),
-                lte(teacherPayouts.payoutDate, endOfMonth),
-              ),
-              eq(teacherPayouts.yearMonth, resolvedYearMonth),
-              ...(query.date ? [eq(teacherPayouts.payoutDate, query.date)] : []),
-            ),
+            query.date
+              ? eq(teacherPayouts.payoutDate, query.date)
+              : and(
+                  gte(teacherPayouts.payoutDate, startOfMonth),
+                  lte(teacherPayouts.payoutDate, endOfMonth),
+                ),
           )
           .orderBy(desc(teacherPayouts.payoutDate), desc(teacherPayouts.createdAt)),
 
@@ -164,14 +160,12 @@ export class DailyLedgerRepository {
           .innerJoin(assistants, eq(assistants.id, assistantPayouts.assistantId))
           .leftJoin(users, eq(users.id, assistantPayouts.paidByUserId))
           .where(
-            or(
-              and(
-                gte(assistantPayouts.payoutDate, startOfMonth),
-                lte(assistantPayouts.payoutDate, endOfMonth),
-              ),
-              eq(assistantPayouts.yearMonth, resolvedYearMonth),
-              ...(query.date ? [eq(assistantPayouts.payoutDate, query.date)] : []),
-            ),
+            query.date
+              ? eq(assistantPayouts.payoutDate, query.date)
+              : and(
+                  gte(assistantPayouts.payoutDate, startOfMonth),
+                  lte(assistantPayouts.payoutDate, endOfMonth),
+                ),
           )
           .orderBy(desc(assistantPayouts.payoutDate), desc(assistantPayouts.createdAt)),
 
@@ -191,14 +185,12 @@ export class DailyLedgerRepository {
           .from(expenses)
           .leftJoin(users, eq(users.id, expenses.recordedByUserId))
           .where(
-            or(
-              and(
-                gte(expenses.expenseDate, startOfMonth),
-                lte(expenses.expenseDate, endOfMonth),
-              ),
-              eq(expenses.yearMonth, resolvedYearMonth),
-              ...(query.date ? [eq(expenses.expenseDate, query.date)] : []),
-            ),
+            query.date
+              ? eq(expenses.expenseDate, query.date)
+              : and(
+                  gte(expenses.expenseDate, startOfMonth),
+                  lte(expenses.expenseDate, endOfMonth),
+                ),
           )
           .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt)),
       ]);
@@ -214,7 +206,10 @@ export class DailyLedgerRepository {
           referenceNumber: r.receiptNumber,
           partyName: r.studentName,
           partyCode: r.studentCode,
-          categoryLabel: 'تحصيل رسوم طالب',
+          categoryLabel:
+            r.yearMonth !== r.paymentDate.slice(0, 7)
+              ? `تحصيل متأخرات طالب (عن شهر ${r.yearMonth})`
+              : `تحصيل اشتراك طالب (${r.yearMonth})`,
           amount: parseMoney(r.amount),
           paymentMethod: r.paymentMethod,
           recordedByName: r.receivedByName,
@@ -232,7 +227,10 @@ export class DailyLedgerRepository {
           referenceNumber: r.referenceNumber,
           partyName: r.teacherName,
           partyCode: r.teacherCode,
-          categoryLabel: 'صرف مستحقات مدرس',
+          categoryLabel:
+            r.yearMonth !== r.payoutDate.slice(0, 7)
+              ? `صرف متأخرات مدرس (عن شهر ${r.yearMonth})`
+              : `صرف مستحقات مدرس (${r.yearMonth})`,
           amount: parseMoney(r.amount),
           paymentMethod: r.paymentMethod,
           recordedByName: r.paidByName,
@@ -250,7 +248,10 @@ export class DailyLedgerRepository {
           referenceNumber: r.referenceNumber,
           partyName: r.assistantName,
           partyCode: r.assistantCode,
-          categoryLabel: 'صرف مستحقات مساعد',
+          categoryLabel:
+            r.yearMonth !== r.payoutDate.slice(0, 7)
+              ? `صرف متأخرات مساعد (عن شهر ${r.yearMonth})`
+              : `صرف مستحقات مساعد (${r.yearMonth})`,
           amount: parseMoney(r.amount),
           paymentMethod: r.paymentMethod,
           recordedByName: r.paidByName,

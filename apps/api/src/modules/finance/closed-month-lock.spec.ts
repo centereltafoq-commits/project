@@ -123,22 +123,52 @@ describe('Finance Closed-Month Lock Enforcement', () => {
     expect(readRepo.fetchMonthSettlementSnapshot).not.toHaveBeenCalled();
   });
 
-  it('rejects student payment collection on a closed month', async () => {
-    await expect(
-      paymentsService.collectPayment(
-        {
-          studentId: 'std-1',
-          yearMonth: '2026-10',
-          amount: 100,
-          paymentMethod: PaymentMethod.CASH,
-        },
-        actor,
-      ),
-    ).rejects.toThrow(ConflictException);
-    expect(paymentsWriteRepo.createPaymentWithAllocations).not.toHaveBeenCalled();
+  it('allows collecting overdue student payment on a closed month without recalculating frozen dues', async () => {
+    paymentsWriteRepo.createPaymentWithAllocations.mockResolvedValue({
+      id: 'pay-1',
+      receiptNumber: 'RCP-202610-000001',
+      studentId: 'std-1',
+      yearMonth: '2026-10',
+      amount: 100,
+      paymentDate: '2026-11-14',
+      paymentMethod: PaymentMethod.CASH,
+      allocations: [],
+    });
+
+    const result = await paymentsService.collectPayment(
+      {
+        studentId: 'std-1',
+        yearMonth: '2026-10',
+        amount: 100,
+        paymentDate: '2026-11-14',
+        paymentMethod: PaymentMethod.CASH,
+      },
+      actor,
+    );
+
+    expect(result.id).toBe('pay-1');
+    expect(readRepo.fetchMonthSettlementSnapshot).not.toHaveBeenCalled();
+    expect(paymentsWriteRepo.createPaymentWithAllocations).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects teacher and assistant payouts on a closed month', async () => {
+  it('allows settling remaining teacher and assistant payouts on a closed month without recalculating', async () => {
+    teacherPayoutRepo.createTx.mockResolvedValue({
+      id: 'tpy-1',
+      referenceNumber: 'TPY-202610-0001',
+      teacherId: 'tch-1',
+      yearMonth: '2026-10',
+      amount: 100,
+      paymentMethod: PaymentMethod.CASH,
+    });
+    assistantPayoutRepo.createTx.mockResolvedValue({
+      id: 'apy-1',
+      referenceNumber: 'APY-202610-0001',
+      assistantId: 'ast-1',
+      yearMonth: '2026-10',
+      amount: 50,
+      paymentMethod: PaymentMethod.CASH,
+    });
+
     await expect(
       payoutsService.recordTeacherPayout(
         {
@@ -149,7 +179,7 @@ describe('Finance Closed-Month Lock Enforcement', () => {
         },
         actor,
       ),
-    ).rejects.toThrow(ConflictException);
+    ).resolves.toMatchObject({ id: 'tpy-1' });
 
     await expect(
       payoutsService.recordAssistantPayout(
@@ -161,10 +191,9 @@ describe('Finance Closed-Month Lock Enforcement', () => {
         },
         actor,
       ),
-    ).rejects.toThrow(ConflictException);
+    ).resolves.toMatchObject({ id: 'apy-1' });
 
-    expect(teacherPayoutRepo.createTx).not.toHaveBeenCalled();
-    expect(assistantPayoutRepo.createTx).not.toHaveBeenCalled();
+    expect(readRepo.fetchMonthSettlementSnapshot).not.toHaveBeenCalled();
   });
 
   it('rejects expense create, update, and delete on a closed month', async () => {

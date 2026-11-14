@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { ExpenseCategory } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../../database/database.module';
+import { getMonthDateBounds } from '../../finance/utils/money.util';
 import {
   assistantDues,
   assistantMonthlyRecords,
@@ -26,9 +27,12 @@ export class FinancialSummaryRepository {
       return this.getDailyFinancialSummaryReport(date);
     }
 
+    const { monthStart, monthEnd } = getMonthDateBounds(yearMonth);
+
     const [
       [stuRow],
       [payRow],
+      [actualCashPayRow],
       [teacherShareRow],
       [teacherPaidRow],
       [assistantDueRow],
@@ -46,6 +50,10 @@ export class FinancialSummaryRepository {
         .select({ collected: sql<string>`COALESCE(SUM(${payments.amount}), 0)::text` })
         .from(payments)
         .where(eq(payments.yearMonth, yearMonth)),
+      this.db
+        .select({ collected: sql<string>`COALESCE(SUM(${payments.amount}), 0)::text` })
+        .from(payments)
+        .where(and(gte(payments.paymentDate, monthStart), lte(payments.paymentDate, monthEnd))),
       this.db.execute<{ teacher_share: string; center_share: string }>(sql`
         SELECT
           COALESCE(
@@ -83,6 +91,7 @@ export class FinancialSummaryRepository {
     const totalRevenue = Number(stuRow?.totalRevenue ?? 0);
     const totalReceivables = Number(stuRow?.totalReceivables ?? 0);
     const totalCollected = Number(payRow?.collected ?? 0);
+    const actualMonthCashCollected = Number(actualCashPayRow?.collected ?? 0);
     const teacherShare = Number(teacherShareRow?.teacher_share ?? 0);
     const centerShare = Number((totalRevenue - teacherShare).toFixed(2));
     const teacherPaid = Number(teacherPaidRow?.paid ?? 0);
@@ -104,8 +113,9 @@ export class FinancialSummaryRepository {
     }));
 
     const statementRows = [
-      { id: 'rev-gross', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'إجمالي إيرادات المجموعات (مستحقات الطلاب)', amount: totalRevenue, rowKind: 'INFLOW', notes: 'إجمالي قيمة الحصص والاشتراكات المستحقة' },
-      { id: 'rev-coll', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'إجمالي التحصيل الفعلي بالخزينة والمحافظ', amount: totalCollected, rowKind: 'INFLOW', notes: 'المبالغ المسددة فعلياً خلال الشهر' },
+      { id: 'rev-gross', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'إجمالي إيرادات المجموعات (مستحقات الطلاب)', amount: totalRevenue, rowKind: 'INFLOW', notes: 'إجمالي قيمة الحصص والاشتراكات المستحقة عن هذا الشهر' },
+      { id: 'rev-coll', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'المحصّل لحساب مستحقات هذا الشهر', amount: totalCollected, rowKind: 'INFLOW', notes: 'المبالغ المسددة لصالح فواتير هذا الشهر' },
+      { id: 'rev-cash-window', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'إجمالي النقدية الداخلة للخزينة خلال أيام الشهر (شاملة متأخرات شهور سابقة)', amount: actualMonthCashCollected, rowKind: 'INFLOW', notes: 'حسب تاريخ السداد الفعلي (paymentDate) خلال أيام الشهر' },
       { id: 'rev-rec', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'متأخرات ومديونيات الطلاب المتبقية', amount: totalReceivables, rowKind: 'SUBTOTAL', notes: 'مستحقات لم تُحصّل بعد' },
       { id: 'split-tch', sectionAr: 'توزيع أنصبة المجموعات', lineItemAr: 'نصيب المدرسين المستحق', amount: teacherShare, rowKind: 'DEDUCTION', notes: `المنصرف الفعلي للمدرسين: ${teacherPaid} ج.م` },
       { id: 'split-ctr', sectionAr: 'توزيع أنصبة المجموعات', lineItemAr: 'نصيب السنتر الإجمالي من المجموعات', amount: centerShare, rowKind: 'SUBTOTAL', notes: 'إيراد السنتر قبل المساعدين والمصروفات' },

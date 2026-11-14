@@ -42,7 +42,17 @@ import {
 import {
   StudentPaymentsTab,
 } from './student-activity-tabs';
-import { STUDENT_STATUS_META, StudentProfileData } from './students.types';
+import { PaymentRow } from '../finance/finance.types';
+import {
+  CollectPaymentModal,
+  PresetStudentPaymentTarget,
+} from '../finance/modals/collect-payment-modal';
+import { ReceiptPrintModal } from '../finance/modals/receipt-print-modal';
+import {
+  STUDENT_STATUS_META,
+  StudentMonthlyBreakdownItem,
+  StudentProfileData,
+} from './students.types';
 
 export function StudentProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -50,9 +60,13 @@ export function StudentProfilePage() {
   const { hasPermission } = useAuth();
   const canUpdate = hasPermission(PERMISSIONS.STUDENTS_UPDATE);
   const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+  const canCollectPayment = hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
 
   const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
   const [editOpen, setEditOpen] = React.useState(false);
+  const [collectOpen, setCollectOpen] = React.useState(false);
+  const [collectTarget, setCollectTarget] = React.useState<PresetStudentPaymentTarget | null>(null);
+  const [activeReceipt, setActiveReceipt] = React.useState<PaymentRow | null>(null);
 
   const { data, isLoading } = useQuery<StudentProfileData>({
     queryKey: ['student-profile', id, yearMonth],
@@ -213,6 +227,18 @@ export function StudentProfilePage() {
             selectedYearMonth={yearMonth}
             onSelectMonth={setYearMonth}
             canViewFinance={canViewFinance}
+            canCollectPayment={canCollectPayment}
+            onCollectMonthPayment={(groupItem?: StudentMonthlyBreakdownItem) => {
+              setCollectTarget({
+                id: student.id,
+                fullName: student.fullName,
+                studentCode: student.studentCode,
+                remainingBalance: groupItem ? groupItem.remaining : monthTotals.remaining,
+                groupId: groupItem?.groupId,
+                groupName: groupItem?.groupName,
+              });
+              setCollectOpen(true);
+            }}
           />
         </TabsContent>
         <TabsContent value="enrollments">
@@ -229,6 +255,19 @@ export function StudentProfilePage() {
       </Tabs>
 
       <StudentFormModal open={editOpen} onOpenChange={setEditOpen} student={student} />
+
+      <CollectPaymentModal
+        open={collectOpen}
+        onOpenChange={setCollectOpen}
+        yearMonth={yearMonth}
+        presetStudent={collectTarget}
+        onReceiptCreated={(receipt) => setActiveReceipt(receipt)}
+      />
+
+      <ReceiptPrintModal
+        receipt={activeReceipt}
+        onClose={() => setActiveReceipt(null)}
+      />
     </div>
   );
 }

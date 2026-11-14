@@ -12,7 +12,11 @@ import {
 } from 'lucide-react';
 import { Badge, Card } from '@/design-system';
 import { formatCurrency, formatYearMonthAr } from '@/lib/formatters';
-import { StudentMonthOverviewItem, StudentProfileData } from '../students.types';
+import {
+  StudentMonthOverviewItem,
+  StudentMonthlyBreakdownItem,
+  StudentProfileData,
+} from '../students.types';
 import { StudentSelectedMonthDetails } from './student-selected-month-details';
 
 type MonthFilterType = 'ALL' | 'PAID' | 'UNPAID_OR_PARTIAL';
@@ -57,6 +61,8 @@ interface StudentMonthsExplorerProps {
   selectedYearMonth: string;
   onSelectMonth: (yearMonth: string) => void;
   canViewFinance: boolean;
+  canCollectPayment?: boolean;
+  onCollectMonthPayment?: (groupItem?: StudentMonthlyBreakdownItem) => void;
 }
 
 export function StudentMonthsExplorer({
@@ -64,6 +70,8 @@ export function StudentMonthsExplorer({
   selectedYearMonth,
   onSelectMonth,
   canViewFinance,
+  canCollectPayment = false,
+  onCollectMonthPayment,
 }: StudentMonthsExplorerProps) {
   const [filter, setFilter] = React.useState<MonthFilterType>('ALL');
 
@@ -341,7 +349,12 @@ export function StudentMonthsExplorer({
       )}
 
       {/* لوحة التفاصيل الشاملة للشهر المختار */}
-      <StudentSelectedMonthDetails data={data} canViewFinance={canViewFinance} />
+      <StudentSelectedMonthDetails
+        data={data}
+        canViewFinance={canViewFinance}
+        canCollectPayment={canCollectPayment}
+        onCollectMonthPayment={onCollectMonthPayment}
+      />
     </div>
   );
 }

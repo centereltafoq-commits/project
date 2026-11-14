@@ -42,7 +42,7 @@ export class PaymentsService {
       }
     }
 
-    await this.monthlySettlementService.assertMonthOpen(dto.yearMonth);
+    // إذا كان الشهر مفتوحاً يُعاد احتسابه، وإذا كان مغلقاً يتم تخطي إعادة الاحتساب تلقائياً مع السماح بتحصيل المتأخرات
     await this.monthlySettlementService.recalculateMonth(dto.yearMonth);
 
     const receiptNumber =

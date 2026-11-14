@@ -26,11 +26,10 @@ interface TeacherDuesTabProps {
 export function TeacherDuesTab({
   yearMonth,
   selectedDate,
-  isMonthClosed = false,
   lookups,
 }: TeacherDuesTabProps) {
   const { hasPermission } = useAuth();
-  const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS) && !isMonthClosed;
+  const canPayout = hasPermission(PERMISSIONS.FINANCE_PAYOUTS);
 
   const [viewMode, setViewMode] = React.useState<'dues' | 'payouts'>('dues');
   const [page, setPage] = React.useState(1);

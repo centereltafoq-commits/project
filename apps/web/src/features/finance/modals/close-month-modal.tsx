@@ -27,8 +27,9 @@ export function CloseMonthModal({
       <div className="space-y-4 text-sm">
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-foreground leading-relaxed">
           سيقوم النظام أولاً بإعادة احتساب جميع السجلات المفتوحة للشهر، ثم قفل وتجميد{' '}
-          <strong>أسعار الحصص التاريخية ومستحقات الطلاب والمدرسين والمساعدين</strong>{' '}
-          نهائياً بحيث لا تتأثر بتعديل أسعار المجموعات أو السياسات في الشهور القادمة.
+          <strong>أسعار الحصص التاريخية وإجمالي مستحقات الطلاب والمدرسين والمساعدين والمصروفات</strong>{' '}
+          نهائياً بحيث لا تتأثر بتعديل أسعار المجموعات أو السياسات في الشهور القادمة — مع استمرار
+          إمكانية <strong>تحصيل المتأخرات المتبقية</strong> على الطلاب وصرف الأرصدة المتبقية للمدرسين والمساعدين لاحقاً.
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

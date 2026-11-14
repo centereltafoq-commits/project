@@ -29,12 +29,11 @@ interface StudentBillingTabProps {
 
 export function StudentBillingTab({
   yearMonth,
-  isMonthClosed = false,
   lookups,
   onShowReceipt,
 }: StudentBillingTabProps) {
   const { hasPermission } = useAuth();
-  const canCollect = hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT) && !isMonthClosed;
+  const canCollect = hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -176,7 +175,7 @@ export function StudentBillingTab({
               }}
             >
               <Banknote className="h-3.5 w-3.5" />
-              تحصيل
+              {r.isClosed ? 'تحصيل متأخرات' : 'تحصيل'}
             </Button>
           </div>
         ),

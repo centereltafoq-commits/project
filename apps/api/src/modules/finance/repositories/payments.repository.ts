@@ -67,13 +67,22 @@ export class PaymentsRepository {
         )
         .for('update');
 
-      if (monthlyRows.some((r) => r.isClosed)) {
-        throw new ConflictException('الشهر المالي مغلق نهائياً ولا يمكن تحصيل دفعات عليه');
+      const isClosedMonth = monthlyRows.some((r) => r.isClosed);
+      if (isClosedMonth && monthlyRows.length === 0) {
+        throw new ConflictException(
+          'هذا الشهر المالي مغلق ولا توجد مستحقات مسجلة على الطالب فيه',
+        );
       }
 
       const totalRemaining = roundMoney(
         monthlyRows.reduce((sum, r) => sum + parseMoney(r.remainingBalance), 0),
       );
+
+      if (monthlyRows.length > 0 && totalRemaining <= 0) {
+        throw new BadRequestException(
+          'لا توجد مبالغ متبقية مستحقة على الطالب لهذا الشهر (خالص بالكامل)',
+        );
+      }
 
       if (monthlyRows.length > 0 && input.amount > totalRemaining) {
         throw new BadRequestException(

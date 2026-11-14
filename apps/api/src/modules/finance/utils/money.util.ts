@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 
 /**
@@ -57,8 +57,8 @@ export function generateReferenceCode(
 }
 
 /**
- * Ensures a staff payout cannot exceed the remaining unpaid dues for the month
- * and rejects payouts on closed financial periods.
+ * Ensures a staff payout cannot exceed the remaining unpaid dues for the month,
+ * including settling unpaid balances on closed financial periods.
  */
 export function assertPayoutWithinRemainingBalance(
   monthly:
@@ -66,10 +66,6 @@ export function assertPayoutWithinRemainingBalance(
     | undefined,
   requestedAmount: number,
 ): void {
-  if (monthly?.isClosed) {
-    throw new ConflictException('الشهر المالي مغلق نهائياً ولا يمكن تسجيل صرفيات عليه');
-  }
-
   const totalDues = monthly ? parseMoney(monthly.totalDues) : 0;
   const totalPaidOut = monthly ? parseMoney(monthly.totalPaidOut) : 0;
   const remaining = roundMoney(Math.max(0, totalDues - totalPaidOut));

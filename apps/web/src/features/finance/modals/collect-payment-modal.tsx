@@ -6,12 +6,18 @@ import {
   DatePicker,
   Input,
   Modal,
+  MonthPicker,
   Select,
   Textarea,
   useToast,
 } from '@/design-system';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { formatCurrency, getTodayIsoDate } from '@/lib/formatters';
+import {
+  formatCurrency,
+  formatDateAr,
+  formatYearMonthAr,
+  getTodayIsoDate,
+} from '@/lib/formatters';
 import {
   FinanceLookups,
   PAYMENT_METHOD_OPTIONS,
@@ -19,11 +25,21 @@ import {
   StudentMonthlyRecordRow,
 } from '../finance.types';
 
+export interface PresetStudentPaymentTarget {
+  id: string;
+  fullName: string;
+  studentCode: string;
+  remainingBalance?: number;
+  groupId?: string;
+  groupName?: string;
+}
+
 interface CollectPaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   yearMonth: string;
-  presetRecord: StudentMonthlyRecordRow | null;
+  presetRecord?: StudentMonthlyRecordRow | null;
+  presetStudent?: PresetStudentPaymentTarget | null;
   lookups?: FinanceLookups;
   onReceiptCreated: (receipt: PaymentRow) => void;
 }
@@ -32,7 +48,8 @@ export function CollectPaymentModal({
   open,
   onOpenChange,
   yearMonth,
-  presetRecord,
+  presetRecord = null,
+  presetStudent = null,
   lookups,
   onReceiptCreated,
 }: CollectPaymentModalProps) {
@@ -41,6 +58,7 @@ export function CollectPaymentModal({
 
   const [studentId, setStudentId] = React.useState('');
   const [groupId, setGroupId] = React.useState('');
+  const [targetYearMonth, setTargetYearMonth] = React.useState(yearMonth);
   const [amount, setAmount] = React.useState('');
   const [paymentMethod, setPaymentMethod] = React.useState<string>(PaymentMethod.CASH);
   const [paymentDate, setPaymentDate] = React.useState(getTodayIsoDate());
@@ -52,28 +70,45 @@ export function CollectPaymentModal({
     if (presetRecord) {
       setStudentId(presetRecord.studentId);
       setGroupId(presetRecord.groupId);
+      setTargetYearMonth(presetRecord.yearMonth || yearMonth);
       setAmount(
         presetRecord.remainingBalance > 0
           ? String(presetRecord.remainingBalance)
           : '',
       );
+    } else if (presetStudent) {
+      setStudentId(presetStudent.id);
+      setGroupId(presetStudent.groupId ?? '');
+      setTargetYearMonth(yearMonth);
+      setAmount(
+        presetStudent.remainingBalance && presetStudent.remainingBalance > 0
+          ? String(presetStudent.remainingBalance)
+          : '',
+      );
     } else {
       setStudentId('');
       setGroupId('');
+      setTargetYearMonth(yearMonth);
       setAmount('');
     }
     setPaymentMethod(PaymentMethod.CASH);
     setPaymentDate(getTodayIsoDate());
     setReceiptNumber('');
     setNotes('');
-  }, [open, presetRecord]);
+  }, [open, presetRecord, presetStudent, yearMonth]);
+
+  const effectiveRemainingBalance =
+    presetRecord?.remainingBalance ?? presetStudent?.remainingBalance;
+
+  const isCrossMonthPayment =
+    Boolean(paymentDate) && targetYearMonth !== paymentDate.slice(0, 7);
 
   const collectMutation = useMutation({
     mutationFn: async () => {
       const numericAmount = Number(amount);
       const payload = {
         studentId,
-        yearMonth,
+        yearMonth: targetYearMonth,
         amount: numericAmount,
         paymentDate,
         paymentMethod,
@@ -101,15 +136,19 @@ export function CollectPaymentModal({
       open={open}
       onOpenChange={onOpenChange}
       title="تسجيل دفعة / إيصال تحصيل طالب"
-      description="يدعم التحصيل الكلي أو الجزئي أو الدفعات المتعددة مع التوزيع التلقائي أو المحدد"
+      description="يدعم التحصيل الكلي أو الجزئي أو تحصيل متأخرات أي شهر سابق مع التوزيع التلقائي أو المحدد"
     >
       <form
         onSubmit={(e) => {
           e.preventDefault();
           const numericAmount = Number(amount);
-          if (presetRecord && presetRecord.remainingBalance > 0 && numericAmount > presetRecord.remainingBalance) {
+          if (
+            effectiveRemainingBalance !== undefined &&
+            effectiveRemainingBalance > 0 &&
+            numericAmount > effectiveRemainingBalance
+          ) {
             notify(
-              `المبلغ المدفوع لا يمكن أن يتجاوز الرصيد المتبقي على الطالب (${presetRecord.remainingBalance} ج.م)`,
+              `المبلغ المدفوع لا يمكن أن يتجاوز الرصيد المتبقي على الطالب (${effectiveRemainingBalance} ج.م)`,
               'error',
             );
             return;
@@ -124,10 +163,34 @@ export function CollectPaymentModal({
               {presetRecord.studentName} ({presetRecord.studentCode})
             </div>
             <div className="text-xs text-muted-foreground">
-              المجموعة: <strong>{presetRecord.groupName}</strong> — المتبقي الحالي:{' '}
+              المجموعة: <strong>{presetRecord.groupName}</strong> — الشهر:{' '}
+              <strong>{formatYearMonthAr(targetYearMonth)}</strong> — المتبقي الحالي:{' '}
               <strong className="text-rose-600 dark:text-rose-400">
                 {formatCurrency(presetRecord.remainingBalance)}
               </strong>
+            </div>
+          </div>
+        ) : presetStudent ? (
+          <div className="rounded-xl border border-border bg-muted/30 p-3.5 text-sm space-y-1">
+            <div className="font-bold text-foreground">
+              {presetStudent.fullName} ({presetStudent.studentCode})
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {presetStudent.groupName ? (
+                <>
+                  المجموعة: <strong>{presetStudent.groupName}</strong> —{' '}
+                </>
+              ) : null}
+              الشهر المستحق: <strong>{formatYearMonthAr(targetYearMonth)}</strong>
+              {presetStudent.remainingBalance !== undefined ? (
+                <>
+                  {' '}
+                  — المتبقي الحالي:{' '}
+                  <strong className="text-rose-600 dark:text-rose-400">
+                    {formatCurrency(presetStudent.remainingBalance)}
+                  </strong>
+                </>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -148,6 +211,7 @@ export function CollectPaymentModal({
             <Select
               label="تخصيص لمجموعة محددة (اختياري)"
               searchable
+              clearable
               searchPlaceholder="ابحث باسم المجموعة أو الكود..."
               placeholder="توزيع تلقائي على مستحقات الطالب غير المسددة"
               value={groupId}
@@ -158,6 +222,29 @@ export function CollectPaymentModal({
               }))}
             />
           </>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <MonthPicker
+            label="الشهر المستحق السداد عنه"
+            value={targetYearMonth}
+            disabled={Boolean(presetRecord)}
+            onChange={setTargetYearMonth}
+            className="w-full"
+          />
+          <DatePicker
+            label="تاريخ السداد الفعلي (اليوم)"
+            value={paymentDate}
+            onChange={setPaymentDate}
+          />
+        </div>
+
+        {isCrossMonthPayment && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-amber-800 dark:text-amber-300">
+            سيتم خصم هذه الدفعة من متأخرات شهر{' '}
+            <strong>{formatYearMonthAr(targetYearMonth)}</strong>، بينما ستُسجّل حركة النقدية في
+            يومية وتقارير تحصيل تاريخ <strong>{formatDateAr(paymentDate)}</strong>.
+          </div>
         )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -180,19 +267,12 @@ export function CollectPaymentModal({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <DatePicker
-            label="تاريخ السداد"
-            value={paymentDate}
-            onChange={setPaymentDate}
-          />
-          <Input
-            label="رقم إيصال يدوي (اختياري)"
-            placeholder="يُولّد تلقائياً RCP-..."
-            value={receiptNumber}
-            onChange={(e) => setReceiptNumber(e.target.value)}
-          />
-        </div>
+        <Input
+          label="رقم إيصال يدوي (اختياري)"
+          placeholder="يُولّد تلقائياً RCP-..."
+          value={receiptNumber}
+          onChange={(e) => setReceiptNumber(e.target.value)}
+        />
 
         <Textarea
           label="ملاحظات الإيصال"
