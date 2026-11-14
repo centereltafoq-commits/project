@@ -3,7 +3,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderAttendanceReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -51,7 +50,6 @@ export function renderAttendanceReport(ctx: ReportPrintContext): ReportTemplateR
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي الطلاب المسجلين بالتقرير: <strong>${ctx.rows.length} طالب</strong></span>
-          <span>بيانات حضور وغياب رسمية مسجلة ومطابقة للكشوف الميدانية</span>
         </div>
 
         <table>
@@ -73,12 +71,7 @@ export function renderAttendanceReport(ctx: ReportPrintContext): ReportTemplateR
         </table>
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'مسؤول الرصد والمتابعة', subtitle: 'إدخال ومطابقة كشوف الحضور' },
-        { title: 'المشرف التربوي', subtitle: 'متابعة انضباط المجموعات' },
-      ])}
-
-      ${renderOfficialFooter('سجل رسمي لمتابعة الحضور والغياب الأكاديمي للطلاب')}
+      ${renderOfficialFooter('تقرير الحضور والغياب الأكاديمي للطلاب')}
     </div>
   `;
 

@@ -4,7 +4,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderTeacherStatementReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -56,7 +55,6 @@ export function renderTeacherStatementReport(ctx: ReportPrintContext): ReportTem
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي تسويات المدرسين: <strong>${ctx.rows.length} مدرس</strong></span>
-          <span>مسند مالي معتمد لإثبات الأتعاب والحصص المنفذة والمدفوعات</span>
         </div>
 
         <table>
@@ -79,12 +77,7 @@ export function renderTeacherStatementReport(ctx: ReportPrintContext): ReportTem
         </table>
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'المحاسب المالي', subtitle: 'إعداد ومراجعة المستحقات' },
-        { title: 'توقيع المدرس', subtitle: 'بالمطابقة والاستلام' },
-      ])}
-
-      ${renderOfficialFooter('سند تسوية مستحقات مالية معتمد لأعضاء هيئة التدريس')}
+      ${renderOfficialFooter('كشف مستحقات وتسويات أعضاء هيئة التدريس')}
     </div>
   `;
 

@@ -3,7 +3,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderStudentsReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -51,7 +50,6 @@ export function renderStudentsReport(ctx: ReportPrintContext): ReportTemplateRes
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي الطلاب بالقائمة: <strong>${ctx.rows.length} طالب</strong></span>
-          <span>سجل معتمد لشؤون الطلاب وقيد المراحل التعليمية</span>
         </div>
 
         <table>
@@ -73,12 +71,7 @@ export function renderStudentsReport(ctx: ReportPrintContext): ReportTemplateRes
         </table>
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'مسؤول شؤون الطلاب', subtitle: 'مراجعة بيانات القيد' },
-        { title: 'المشرف الأكاديمي', subtitle: 'اعتماد الملف التعليمي' },
-      ])}
-
-      ${renderOfficialFooter('سجل قيد طلاب رسمي معتمد بفرع السنتر التعليمي')}
+      ${renderOfficialFooter('سجل قيد طلاب السنتر التعليمي')}
     </div>
   `;
 

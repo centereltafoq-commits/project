@@ -63,36 +63,10 @@ export function renderKpisGrid(ctx: ReportPrintContext): string {
   return `<div class="kpi-grid">${cardsHtml}</div>`;
 }
 
-export interface SignatureRole {
-  title: string;
-  subtitle: string;
-  name?: string;
-}
-
-export function renderSignaturesRow(signatures: SignatureRole[]): string {
-  if (!signatures || signatures.length === 0) return '';
-
-  const boxesHtml = signatures
-    .map((sig) => `
-      <div class="signature-box">
-        <div class="signature-title">${sig.title}</div>
-        <div style="font-size: 10px; color: #475569; margin-bottom: 25px;">${sig.name || sig.subtitle}</div>
-        <div class="signature-line">${sig.subtitle}</div>
-      </div>
-    `)
-    .join(`
-      <div class="signature-box" style="display: flex; align-items: center; justify-content: center;">
-        <div class="stamp-box">خاتم السنتر</div>
-      </div>
-    `);
-
-  return `<div class="signatures-row">${boxesHtml}</div>`;
-}
-
 export function renderOfficialFooter(note?: string): string {
   return `
     <div class="official-footer">
-      ${note || 'تم استخراج هذا التقرير آلياً عبر نظام إدارة المراكز التعليمية (Nazzem Edu ERP) • جميع البيانات رسمية ومطابقة لسجلات السنتر'}
+      ${note || 'تم استخراج هذا التقرير آلياً عبر نظام إدارة المراكز التعليمية'}
     </div>
   `;
 }

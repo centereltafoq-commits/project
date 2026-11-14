@@ -104,24 +104,8 @@ export async function printAttendanceSheetA4(options: AttendanceSheetPrintOption
         </tbody>
       </table>
 
-      <div class="signatures-row" style="margin-top: 26px;">
-        <div class="signature-box">
-          <div class="signature-title">توقيع مدرس المادة</div>
-          <div style="font-size: 10px; color: #475569; margin-bottom: 25px;">${session.teacherName || 'مدرس المادة'}</div>
-          <div class="signature-line">التوقيع والاعتماد</div>
-        </div>
-        <div class="signature-box" style="display: flex; align-items: center; justify-content: center;">
-          <div class="stamp-box">ختم الحضور</div>
-        </div>
-        <div class="signature-box">
-          <div class="signature-title">مسؤول الرصد والمتابعة</div>
-          <div style="font-size: 10px; color: #475569; margin-bottom: 25px;">إدارة شؤون الطلاب</div>
-          <div class="signature-line">اعتماد رصد الحصة</div>
-        </div>
-      </div>
-
       <div class="official-footer">
-        كشف رصد حضور وغياب رسمي معتمد للحصص الدراسية • يُسلّم للإدارة فور انتهاء الحصة
+        كشف رصد حضور وغياب الطلاب • ${centerName}
       </div>
     </div>
   `;

@@ -11,9 +11,36 @@ import {
 } from './print-service';
 
 describe('Print Service (Modular Enterprise A4 & POS Print Engine)', () => {
+  let printedHtmlChunks: string[];
+
+  const assertNoStampOrSignatures = () => {
+    const html = printedHtmlChunks.join('\n');
+    expect(html.length).toBeGreaterThan(0);
+    expect(html).not.toContain('stamp-box');
+    expect(html).not.toContain('signatures-row');
+    expect(html).not.toContain('خاتم السنتر');
+    expect(html).not.toContain('ختم الاعتماد');
+    expect(html).not.toContain('ختم الحضور');
+  };
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    printedHtmlChunks = [];
     window.print = vi.fn();
+
+    const originalAppendChild = document.body.appendChild.bind(document.body);
+    vi.spyOn(document.body, 'appendChild').mockImplementation(<T extends Node>(node: T): T => {
+      const appended = originalAppendChild(node);
+      if (appended instanceof HTMLIFrameElement && appended.contentWindow?.document) {
+        const doc = appended.contentWindow.document;
+        const origWrite = doc.write.bind(doc);
+        doc.write = (markup: string) => {
+          printedHtmlChunks.push(markup);
+          origWrite(markup);
+        };
+      }
+      return appended;
+    });
   });
 
   it('prints document inside an isolated iframe and calls print', async () => {
@@ -55,6 +82,7 @@ describe('Print Service (Modular Enterprise A4 & POS Print Engine)', () => {
 
     expect(appendChildSpy).toHaveBeenCalled();
     expect(window.print).toHaveBeenCalled();
+    assertNoStampOrSignatures();
   });
 
   it('generates a POS 80mm thermal receipt html', () => {
@@ -112,6 +140,7 @@ describe('Print Service (Modular Enterprise A4 & POS Print Engine)', () => {
 
     expect(appendChildSpy).toHaveBeenCalled();
     expect(window.print).toHaveBeenCalled();
+    assertNoStampOrSignatures();
   });
 
   it('prints documentation guide A4', async () => {
@@ -184,6 +213,7 @@ describe('Print Service (Modular Enterprise A4 & POS Print Engine)', () => {
       });
 
       expect(window.print).toHaveBeenCalled();
+      assertNoStampOrSignatures();
     },
   );
 
@@ -196,5 +226,6 @@ describe('Print Service (Modular Enterprise A4 & POS Print Engine)', () => {
     });
 
     expect(window.print).toHaveBeenCalled();
+    assertNoStampOrSignatures();
   });
 });

@@ -3,7 +3,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderClassroomsReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -49,7 +48,6 @@ export function renderClassroomsReport(ctx: ReportPrintContext): ReportTemplateR
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي القاعات بالقائمة: <strong>${ctx.rows.length} قاعة</strong></span>
-          <span>سجل مرافق وتجهيزات تعليمية معتمد لإدارة السنتر</span>
         </div>
 
         <table>
@@ -69,12 +67,7 @@ export function renderClassroomsReport(ctx: ReportPrintContext): ReportTemplateR
         </table>
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'مسؤول الصيانة والمرافق', subtitle: 'فحص التجهيزات والسلامة' },
-        { title: 'مشرف التشغيل', subtitle: 'إدارة جداول القاعات' },
-      ])}
-
-      ${renderOfficialFooter('سجل رسمي للطاقة الاستيعابية ومرافق السنتر التعليمي')}
+      ${renderOfficialFooter('سجل الطاقة الاستيعابية ومرافق السنتر التعليمي')}
     </div>
   `;
 

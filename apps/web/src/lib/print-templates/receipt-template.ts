@@ -160,7 +160,7 @@ export async function printReceiptA4(options: {
           <div style="font-size: 10px; color: #64748b; margin-bottom: 2px;">تفاصيل عملية التحصيل</div>
           <div style="font-size: 13px; font-weight: 700; color: #0f172a;">طريقة السداد: ${receipt.paymentMethod}</div>
           <div style="font-size: 11px; color: #475569; margin-top: 2px;">المحصّل / الخزينة: <strong>${receipt.receivedByName || 'الخزينة الرئيسية'}</strong></div>
-          <div style="font-size: 11px; color: #047857; font-weight: 700; margin-top: 2px;">الحالة المالية: معتمد ومسجل بالدفاتر الحسابية</div>
+          <div style="font-size: 11px; color: #047857; font-weight: 700; margin-top: 2px;">الحالة المالية: مسجل بالنظام</div>
         </div>
       </div>
 
@@ -205,24 +205,9 @@ export async function printReceiptA4(options: {
           : ''
       }
 
-      <!-- Signatures Row -->
-      <div class="signatures-row" style="margin-top: 28px;">
-        <div class="signature-box">
-          <div class="signature-title">المستلم / أمين الخزينة</div>
-          <div class="signature-line">${receipt.receivedByName || 'الخزينة المعتمدة'}</div>
-        </div>
-        <div class="signature-box" style="display: flex; align-items: center; justify-content: center;">
-          <div class="stamp-box">خاتم السنتر</div>
-        </div>
-        <div class="signature-box">
-          <div class="signature-title">اعتماد الإدارة المالية</div>
-          <div class="signature-line">إدارة ${centerName}</div>
-        </div>
-      </div>
-
-      <!-- Official Footer -->
+      <!-- Footer -->
       <div class="official-footer">
-        يعتبر هذا السند وثيقة مالية رسمية لإثبات سداد الرسوم • يرجى الاحتفاظ بهذا الإيصال للمراجعة والاستفسار
+        إيصال سداد رسوم دراسية • يرجى الاحتفاظ بهذا الإيصال للمراجعة والاستفسار
       </div>
     </div>
   `;

@@ -4,7 +4,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderFinancialSummaryReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -123,20 +122,10 @@ export function renderFinancialSummaryReport(ctx: ReportPrintContext): ReportTem
       ${renderKpisGrid(ctx)}
 
       <div style="margin: 16px 0;">
-        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 8px;">
-          <span>تقرير الإدارة المالية العليا ومجلس الإدارة</span>
-          <span>سري وخاص بإدارة السنتر • أرقام مدققة ومطابقة لميزان المراجعة</span>
-        </div>
-
         ${breakdownTableHtml}
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'المدير المالي', subtitle: 'إعداد ومطابقة القوائم المالية' },
-        { title: 'المالك / المدير العام', subtitle: 'الاعتماد النهائي للأرباح' },
-      ])}
-
-      ${renderOfficialFooter('القائمة المالية التنفيذية لنتائج الأعمال التشغيلية - معتمدة من الإدارة المالية')}
+      ${renderOfficialFooter('الملخص المالي التنفيذي لنتائج الأعمال التشغيلية')}
     </div>
   `;
 

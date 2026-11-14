@@ -4,7 +4,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderExpensesReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -48,13 +47,12 @@ export function renderExpensesReport(ctx: ReportPrintContext): ReportTemplateRes
 
   const bodyHtml = `
     <div>
-      ${renderHeaderBanner(ctx, { customSubtitle: 'سجل يومية المصروفات والنثريات والمدفوعات التشغيلية المعتمدة' })}
+      ${renderHeaderBanner(ctx, { customSubtitle: 'سجل يومية المصروفات والنثريات والمدفوعات التشغيلية' })}
       ${renderKpisGrid(ctx)}
 
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي سندات الصرف بالقائمة: <strong>${ctx.rows.length} سند</strong></span>
-          <span>سجل مصروفات ونفقات رسمي مطابق لفواتير ومستندات الصرف</span>
         </div>
 
         <table>
@@ -75,12 +73,7 @@ export function renderExpensesReport(ctx: ReportPrintContext): ReportTemplateRes
         </table>
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'المحاسب القائم بالصرف', subtitle: 'إعداد ومطابقة الفاتورة' },
-        { title: 'المدير المالي والتنفيذي', subtitle: 'اعتماد سندات الصرف' },
-      ])}
-
-      ${renderOfficialFooter('سجل رسمي لإثبات سندات الصرف والمصروفات التشغيلية المعتمدة')}
+      ${renderOfficialFooter('سجل المصروفات والمدفوعات التشغيلية')}
     </div>
   `;
 

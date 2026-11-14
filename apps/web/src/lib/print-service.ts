@@ -107,7 +107,6 @@ export async function printReportA4(options: {
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي السجلات: <strong>${rows.length}</strong></span>
-          <span>صفحة مطبوعة رسمية ومطابقة لدفاتر السنتر</span>
         </div>
 
         <table>
@@ -122,22 +121,8 @@ export async function printReportA4(options: {
         </table>
       </div>
 
-      <div class="signatures-row">
-        <div class="signature-box">
-          <div class="signature-title">المحاسب المسؤول</div>
-          <div class="signature-line">إعداد ومطابقة الحسابات</div>
-        </div>
-        <div class="signature-box" style="display: flex; align-items: center; justify-content: center;">
-          <div class="stamp-box">ختم الاعتماد</div>
-        </div>
-        <div class="signature-box">
-          <div class="signature-title">اعتماد إدارة السنتر</div>
-          <div class="signature-line">المدير المالي والتنفيذي</div>
-        </div>
-      </div>
-
       <div class="official-footer">
-        تم استخراج هذا التقرير آلياً عبر نظام إدارة المراكز التعليمية (Nazzem Edu ERP) • جميع الأرقام مدققة ومطابقة لقيود السجلات
+        تم استخراج هذا التقرير آلياً عبر نظام إدارة المراكز التعليمية
       </div>
     </div>
   `;

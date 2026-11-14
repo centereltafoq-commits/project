@@ -4,7 +4,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderCollectionsReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -52,7 +51,6 @@ export function renderCollectionsReport(ctx: ReportPrintContext): ReportTemplate
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي سندات التحصيل بالقائمة: <strong>${ctx.rows.length} إيصال</strong></span>
-          <span>سجل مقبوضات رسمي مطابق لقيود الخزينة والحسابات البنكية</span>
         </div>
 
         <table>
@@ -74,12 +72,7 @@ export function renderCollectionsReport(ctx: ReportPrintContext): ReportTemplate
         </table>
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'أمين الخزينة', subtitle: 'استلام النقدية والتحصيلات' },
-        { title: 'المراجع المالي', subtitle: 'مطابقة الإيرادات والقيود' },
-      ])}
-
-      ${renderOfficialFooter('سجل رسمي لإثبات سندات التحصيل والمقبوضات النقدية والإلكترونية')}
+      ${renderOfficialFooter('سجل التحصيل والمقبوضات النقدية والإلكترونية')}
     </div>
   `;
 

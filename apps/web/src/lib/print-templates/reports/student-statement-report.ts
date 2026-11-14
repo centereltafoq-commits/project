@@ -4,7 +4,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderStudentStatementReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -55,7 +54,6 @@ export function renderStudentStatementReport(ctx: ReportPrintContext): ReportTem
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي المطالبات المسجلة: <strong>${ctx.rows.length} سجل</strong></span>
-          <span>كشف مالي رسمي ملزم لمطابقة الأرصدة والمتأخرات الدراسية</span>
         </div>
 
         <table>
@@ -77,12 +75,7 @@ export function renderStudentStatementReport(ctx: ReportPrintContext): ReportTem
         </table>
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'محاسب شؤون الطلاب', subtitle: 'إعداد ومطابقة الحساب' },
-        { title: 'الإدارة المالية', subtitle: 'اعتماد كشوف المستحقات' },
-      ])}
-
-      ${renderOfficialFooter('كشف حساب رسمي معتمد لإثبات مستحقات ومديونيات الطلاب طرف السنتر')}
+      ${renderOfficialFooter('كشف حساب مستحقات ومدفوعات الطلاب')}
     </div>
   `;
 

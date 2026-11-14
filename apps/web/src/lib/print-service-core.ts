@@ -154,30 +154,6 @@ export function printDocument({
               font-weight: 800;
               color: #0f172a;
             }
-            .signatures-row {
-              margin-top: 24px;
-              display: flex;
-              justify-content: space-between;
-              padding-top: 16px;
-              border-top: 1px dashed #cbd5e1;
-              page-break-inside: avoid;
-            }
-            .signature-box {
-              text-align: center;
-              width: 30%;
-            }
-            .signature-title {
-              font-size: 11px;
-              font-weight: 700;
-              color: #334155;
-              margin-bottom: 4px;
-            }
-            .signature-line {
-              border-top: 1px solid #94a3b8;
-              font-size: 10px;
-              color: #64748b;
-              padding-top: 4px;
-            }
             .official-footer {
               margin-top: 20px;
               text-align: center;
@@ -185,19 +161,6 @@ export function printDocument({
               color: #64748b;
               border-top: 1px solid #e2e8f0;
               padding-top: 8px;
-            }
-            .stamp-box {
-              display: inline-block;
-              border: 2px dashed #94a3b8;
-              border-radius: 50%;
-              width: 72px;
-              height: 72px;
-              line-height: 72px;
-              text-align: center;
-              font-size: 10px;
-              color: #94a3b8;
-              font-weight: bold;
-              margin: 0 auto;
             }
           </style>
         </head>

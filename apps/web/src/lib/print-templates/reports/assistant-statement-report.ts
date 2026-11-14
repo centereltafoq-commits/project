@@ -4,7 +4,6 @@ import {
   renderHeaderBanner,
   renderKpisGrid,
   renderOfficialFooter,
-  renderSignaturesRow,
 } from './report-template-helper';
 
 export function renderAssistantStatementReport(ctx: ReportPrintContext): ReportTemplateResult {
@@ -59,7 +58,6 @@ export function renderAssistantStatementReport(ctx: ReportPrintContext): ReportT
       <div style="margin: 12px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px;">
           <span>إجمالي المساعدين بالمسير: <strong>${ctx.rows.length} مساعد</strong></span>
-          <span>مسير أجور معتمد لإدارة المساعدين والعمليات الأكاديمية</span>
         </div>
 
         <table>
@@ -81,12 +79,7 @@ export function renderAssistantStatementReport(ctx: ReportPrintContext): ReportT
         </table>
       </div>
 
-      ${renderSignaturesRow([
-        { title: 'المشرف الإداري', subtitle: 'مراجعة وتأكيد الحضور' },
-        { title: 'توقيع المساعد', subtitle: 'استلام الأجر بالكامل' },
-      ])}
-
-      ${renderOfficialFooter('مسير رسمي معتمد لأجور ومستحقات المساعدين')}
+      ${renderOfficialFooter('مسير أجور ومستحقات المساعدين')}
     </div>
   `;
 
