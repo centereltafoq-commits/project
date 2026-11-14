@@ -43,6 +43,7 @@ export class DashboardRepository {
       [studentSessionsRow],
       [studentFinRow],
       [paymentsRow],
+      [todayPaymentsRow],
       [teacherFinRow],
       [assistantFinRow],
       [teacherPaidRow],
@@ -151,6 +152,13 @@ export class DashboardRepository {
         })
         .from(payments)
         .where(eq(payments.yearMonth, yearMonth)),
+      this.db
+        .select({
+          todayCollected: sql<string>`COALESCE(SUM(${payments.amount}), 0)::text`,
+          todayCount: sql<number>`COUNT(*)::int`,
+        })
+        .from(payments)
+        .where(eq(payments.paymentDate, todayDate)),
       this.db.execute<{ total_dues: string }>(sql`
         SELECT COALESCE(
           NULLIF((SELECT SUM(${teacherMonthlyRecords.totalDues}) FROM ${teacherMonthlyRecords} WHERE ${teacherMonthlyRecords.yearMonth} = ${yearMonth}), 0),
@@ -209,6 +217,8 @@ export class DashboardRepository {
 
     const totalRevenue = Number(studentFinRow?.totalRevenue ?? 0);
     const totalCollectedPayments = Number(paymentsRow?.totalCollected ?? 0);
+    const todayCollectedPayments = Number(todayPaymentsRow?.todayCollected ?? 0);
+    const todayPaymentsCount = Number(todayPaymentsRow?.todayCount ?? 0);
     const totalReceivables = Number(studentFinRow?.totalReceivables ?? 0);
     const totalTeacherDues = Number(teacherFinRow?.total_dues ?? 0);
     const totalAssistantDues = Number(assistantFinRow?.total_dues ?? 0);
@@ -294,6 +304,8 @@ export class DashboardRepository {
       monthlySessionProgress: sessionProgressSummary,
       totalRevenue,
       totalCollectedPayments,
+      todayCollectedPayments,
+      todayPaymentsCount,
       totalReceivables,
       totalTeacherDues,
       totalAssistantDues,

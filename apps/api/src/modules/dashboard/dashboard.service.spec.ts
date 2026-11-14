@@ -76,6 +76,8 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     },
     totalRevenue: 50000,
     totalCollectedPayments: 42000,
+    todayCollectedPayments: 3500,
+    todayPaymentsCount: 9,
     totalReceivables: 8000,
     totalTeacherDues: 25000,
     totalAssistantDues: 5000,
@@ -110,6 +112,8 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     const res = await service.getSummary('2026-11', owner);
     expect(res.totalRevenue).toBe(50000);
     expect(res.totalCollectedPayments).toBe(42000);
+    expect(res.todayCollectedPayments).toBe(3500);
+    expect(res.todayPaymentsCount).toBe(9);
     expect(res.totalReceivables).toBe(8000);
     expect(res.totalTeacherDues).toBe(25000);
     expect(res.totalAssistantDues).toBe(5000);
@@ -155,6 +159,8 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.todaySessionsCount).toBe(5);
     expect(res.totalRevenue).toBe(0);
     expect(res.totalCollectedPayments).toBe(0);
+    expect(res.todayCollectedPayments).toBe(0);
+    expect(res.todayPaymentsCount).toBe(0);
     expect(res.totalReceivables).toBe(0);
     expect(res.totalTeacherDues).toBe(0);
     expect(res.totalAssistantDues).toBe(0);

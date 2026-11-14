@@ -153,7 +153,7 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
           </CardHeader>
 
           <CardContent className="space-y-4 pt-4">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <span className="text-[11px] text-muted-foreground block">المستهدف الكلي</span>
                 <p className="mt-1 text-base font-black text-foreground tabular-nums">
@@ -162,9 +162,17 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
               </div>
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
                 <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 block">
-                  المحصّل فعلياً
+                  تحصيل اليوم
                 </span>
                 <p className="mt-1 text-base font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {formatCurrency(data.todayCollectedPayments ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-teal-500/30 bg-teal-500/5 p-3">
+                <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-300 block">
+                  المحصّل للشهر
+                </span>
+                <p className="mt-1 text-base font-black text-teal-600 dark:text-teal-400 tabular-nums">
                   {formatCurrency(data.totalCollectedPayments)}
                 </p>
               </div>

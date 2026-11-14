@@ -12,7 +12,7 @@ import {
 import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Card } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrency, formatDateAr } from '@/lib/formatters';
 import { DashboardSummaryData } from '../dashboard.types';
 
 interface DashboardHeroKpisProps {
@@ -187,8 +187,54 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
     );
   }
 
+  const todayPaymentsCount = data.todayPaymentsCount ?? 0;
+
   return (
     <div className="space-y-3">
+      {/* بطاقة إجمالي التحصيل اليومي للسنتر */}
+      <Card className="border-emerald-500/30 bg-gradient-to-l from-emerald-500/[0.06] via-card to-card p-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+              <Banknote className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-black text-foreground">
+                  إجمالي التحصيل اليومي للسنتر
+                </span>
+                <Badge variant="success" className="px-2 py-0.5 text-[11px]">
+                  اليوم {formatDateAr(data.todayDate)}
+                </Badge>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {todayPaymentsCount > 0
+                  ? `${todayPaymentsCount.toLocaleString('en-US')} إيصال تحصيل مسجل اليوم`
+                  : 'لم تُسجَّل إيصالات تحصيل اليوم بعد'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 sm:justify-end">
+            <div className="text-right sm:text-left">
+              <span className="text-[11px] font-semibold text-muted-foreground block">
+                المحصّل اليوم
+              </span>
+              <p className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {formatCurrency(data.todayCollectedPayments ?? 0)}
+              </p>
+            </div>
+
+            <Link
+              to="/finance?tab=payments-history"
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-500/20 dark:text-emerald-300"
+            >
+              سجل الإيصالات
+            </Link>
+          </div>
+        </div>
+      </Card>
+
       {/* الصف الرئيسي: 4 مؤشرات أساسية لحالة سداد الطلاب والمجموعات للشهر */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         {/* 1. الطلاب اللي دفعت */}

@@ -138,6 +138,8 @@ const MOCK_SUMMARY: DashboardSummaryData = {
   },
   totalRevenue: 45000,
   totalCollectedPayments: 36000,
+  todayCollectedPayments: 4250,
+  todayPaymentsCount: 11,
   totalReceivables: 9000,
   totalTeacherDues: 22000,
   totalAssistantDues: 4000,
@@ -243,7 +245,10 @@ describe('DashboardPage Bento Executive UX', () => {
     expect(screen.getByText('المجموعات اللي دفعت')).toBeInTheDocument();
     expect(screen.getByText('المجموعات اللي مدفعتش')).toBeInTheDocument();
 
-    // Paid/unpaid student & group counts & teacher dues appear clearly at top
+    // Paid/unpaid student & group counts & daily/teacher figures appear clearly at top
+    expect(screen.getByText('إجمالي التحصيل اليومي للسنتر')).toBeInTheDocument();
+    expect(screen.getByText('4,250 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('11 إيصال تحصيل مسجل اليوم')).toBeInTheDocument();
     expect(screen.getByText('85')).toBeInTheDocument();
     expect(screen.getByText('23')).toBeInTheDocument();
     expect(screen.getByText('18')).toBeInTheDocument();
@@ -360,6 +365,7 @@ describe('DashboardPage Bento Executive UX', () => {
       expect(screen.getByText('الطلاب النشطون بالسنتر')).toBeInTheDocument();
     });
 
+    expect(screen.queryByText('إجمالي التحصيل اليومي للسنتر')).not.toBeInTheDocument();
     expect(screen.queryByText('الطلاب اللي دفعت')).not.toBeInTheDocument();
     expect(screen.queryByText('المجموعات اللي دفعت')).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /التحليل المالي للشهر/i })).not.toBeInTheDocument();

@@ -122,6 +122,8 @@ export interface DashboardSummaryResponse {
   monthlySessionProgress: DashboardSessionProgressSummary;
   totalRevenue: number;
   totalCollectedPayments: number;
+  todayCollectedPayments?: number;
+  todayPaymentsCount?: number;
   totalReceivables: number;
   totalTeacherDues: number;
   totalAssistantDues: number;

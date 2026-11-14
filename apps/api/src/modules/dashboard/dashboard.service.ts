@@ -106,6 +106,8 @@ export class DashboardService {
             },
             totalRevenue: 0,
             totalCollectedPayments: 0,
+            todayCollectedPayments: 0,
+            todayPaymentsCount: 0,
             totalReceivables: 0,
             totalTeacherDues: 0,
             totalAssistantDues: 0,
