@@ -66,6 +66,10 @@ describe('registerIpcHandlers', () => {
     mockNetworkUtils = {
       getLocalNetworkIps: vi.fn().mockReturnValue(['192.168.1.50']),
       testServerConnection: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
+      discoverLanServers: vi.fn().mockResolvedValue([
+        { url: 'http://192.168.1.50:4000', ip: '192.168.1.50', port: 4000, centerName: 'EduCenter' },
+      ]),
+      configureFirewall: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
     };
 
     mockWebContentsGetter = vi.fn().mockReturnValue({ id: 'webContentsMock' });
@@ -357,6 +361,36 @@ describe('registerIpcHandlers', () => {
       expect(mockPrinterManager.printReceiptSilent).not.toHaveBeenCalled();
       expect(res.success).toBe(false);
       expect(res.error).toBeDefined();
+    });
+  });
+
+  describe('LAN discovery, firewall, and config callback channels', () => {
+    it('DISCOVER_SERVERS and CONFIGURE_FIREWALL delegate to networkUtils', async () => {
+      const onConfigSaved = vi.fn();
+      registerIpcHandlers({
+        ipcMain: mockIpcMain as any,
+        storeManager: mockStoreManager,
+        serverManager: mockServerManager,
+        printerManager: mockPrinterManager,
+        webContentsGetter: mockWebContentsGetter,
+        networkUtils: mockNetworkUtils,
+        onConfigSaved,
+      });
+
+      const discoverHandler = registeredHandlers.get(DESKTOP_CHANNELS.DISCOVER_SERVERS)!;
+      const servers = await discoverHandler({} as any);
+      expect(mockNetworkUtils.discoverLanServers).toHaveBeenCalled();
+      expect(servers).toHaveLength(1);
+      expect(servers[0].url).toBe('http://192.168.1.50:4000');
+
+      const fwHandler = registeredHandlers.get(DESKTOP_CHANNELS.CONFIGURE_FIREWALL)!;
+      const fwRes = await fwHandler({} as any);
+      expect(mockNetworkUtils.configureFirewall).toHaveBeenCalled();
+      expect(fwRes.success).toBe(true);
+
+      const saveHandler = registeredHandlers.get(DESKTOP_CHANNELS.SAVE_CONFIG)!;
+      await saveHandler({} as any, { serverMode: 'server' });
+      expect(onConfigSaved).toHaveBeenCalledWith(expect.objectContaining({ serverMode: 'server' }));
     });
   });
 });

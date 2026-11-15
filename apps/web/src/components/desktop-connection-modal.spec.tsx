@@ -132,4 +132,59 @@ describe('DesktopConnectionModal Component', () => {
       );
     });
   });
+
+  it('discovers LAN servers in client mode and allows 1-click selection, plus triggers firewall setup in server mode', async () => {
+    const mockDiscover = vi.fn().mockResolvedValue([
+      { name: 'RECEPTION-MAIN', url: 'http://192.168.1.99:4000', ip: '192.168.1.99', port: 4000, latencyMs: 5 },
+    ]);
+    const mockFirewall = vi.fn().mockResolvedValue({ success: true, message: 'تم الفتح بنجاح' });
+    const mockTestConnection = vi.fn().mockResolvedValue({ ok: true });
+
+    (window as any).desktopApi = {
+      isDesktop: true,
+      platform: 'win32',
+      version: '1.0.0',
+      getConfig: vi.fn().mockResolvedValue({
+        serverMode: 'server',
+        serverUrl: 'http://localhost:4000',
+        isFirstLaunch: true,
+      }),
+      getServerStatus: vi.fn().mockResolvedValue({
+        running: true,
+        port: 4000,
+        database: { running: true, source: 'portable', port: 5432 },
+      }),
+      getLocalIps: vi.fn().mockResolvedValue(['192.168.1.99']),
+      getPrinters: vi.fn().mockResolvedValue([]),
+      saveConfig: vi.fn().mockResolvedValue({}),
+      testConnection: mockTestConnection,
+      startServer: vi.fn().mockResolvedValue({ success: true }),
+      stopServer: vi.fn().mockResolvedValue({ success: true }),
+      printReceipt: vi.fn().mockResolvedValue({ success: true }),
+      discoverServers: mockDiscover,
+      configureFirewall: mockFirewall,
+    };
+
+    render(<DesktopConnectionModal />);
+
+    expect(await screen.findByText('قاعدة البيانات المدمجة تعمل')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /فتح منافذ الشبكة في Windows Firewall/i }));
+    await waitFor(() => {
+      expect(mockFirewall).toHaveBeenCalled();
+      expect(screen.getByText('تم الفتح بنجاح')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('الاتصال بسيرفر السنتر'));
+    fireEvent.click(screen.getByRole('button', { name: /اكتشاف الجهاز الرئيسي تلقائياً/i }));
+
+    await waitFor(() => {
+      expect(mockDiscover).toHaveBeenCalled();
+      expect(screen.getByText('RECEPTION-MAIN')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /اختيار واتصال/i }));
+    await waitFor(() => {
+      expect(mockTestConnection).toHaveBeenCalledWith('http://192.168.1.99:4000');
+    });
+  });
 });

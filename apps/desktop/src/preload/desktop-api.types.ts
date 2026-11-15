@@ -1,6 +1,8 @@
 import type { DesktopConfig } from '../main/store-manager';
 import type { ServerStatus } from '../main/server-manager';
 import type { PrinterInfo, SilentPrintOptions } from '../main/printer-manager';
+import type { DiscoveredServer } from '../main/lan-discovery';
+import type { FirewallConfigResult } from '../main/firewall-utils';
 
 /**
  * Whitelist of all IPC channels exposed between Electron Main process and Preload script.
@@ -15,6 +17,8 @@ export const DESKTOP_CHANNELS = {
   STOP_SERVER: 'desktop:stop-server',
   GET_PRINTERS: 'desktop:get-printers',
   PRINT_RECEIPT: 'desktop:print-receipt',
+  DISCOVER_SERVERS: 'desktop:discover-servers',
+  CONFIGURE_FIREWALL: 'desktop:configure-firewall',
 } as const;
 
 export type DesktopChannels = typeof DESKTOP_CHANNELS;
@@ -36,6 +40,15 @@ export interface DesktopApi {
   stopServer: () => Promise<{ success: boolean; error?: string }>;
   getPrinters: () => Promise<PrinterInfo[]>;
   printReceipt: (options: SilentPrintOptions) => Promise<{ success: boolean; error?: string }>;
+  discoverServers: () => Promise<DiscoveredServer[]>;
+  configureFirewall: () => Promise<FirewallConfigResult>;
 }
 
-export type { DesktopConfig, ServerStatus, PrinterInfo, SilentPrintOptions };
+export type {
+  DesktopConfig,
+  ServerStatus,
+  PrinterInfo,
+  SilentPrintOptions,
+  DiscoveredServer,
+  FirewallConfigResult,
+};

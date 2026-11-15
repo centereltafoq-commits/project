@@ -3,6 +3,8 @@ import { StoreManager, DesktopConfig } from './store-manager';
 import { ServerManager } from './server-manager';
 import { PrinterManager } from './printer-manager';
 import { getLocalNetworkIps, testServerConnection } from './network-utils';
+import { discoverLanServers, type DiscoveredServer } from './lan-discovery';
+import { configureLanFirewallRules, type FirewallConfigResult } from './firewall-utils';
 
 export interface RegisterIpcHandlersOptions {
   ipcMain: any;
@@ -10,9 +12,12 @@ export interface RegisterIpcHandlersOptions {
   serverManager: ServerManager;
   printerManager: PrinterManager;
   webContentsGetter: () => any;
+  onConfigSaved?: (config: DesktopConfig) => Promise<void> | void;
   networkUtils?: {
     getLocalNetworkIps: () => string[];
     testServerConnection: (url: string) => Promise<{ ok: boolean; status?: number; error?: string }>;
+    discoverLanServers?: () => Promise<DiscoveredServer[]>;
+    configureFirewall?: () => Promise<FirewallConfigResult>;
   };
 }
 
@@ -90,8 +95,14 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
     serverManager,
     printerManager,
     webContentsGetter,
-    networkUtils = { getLocalNetworkIps, testServerConnection },
+    onConfigSaved,
+    networkUtils,
   } = options;
+
+  const resolveLocalIps = networkUtils?.getLocalNetworkIps ?? getLocalNetworkIps;
+  const resolveTestConnection = networkUtils?.testServerConnection ?? testServerConnection;
+  const resolveDiscoverLanServers = networkUtils?.discoverLanServers ?? discoverLanServers;
+  const resolveConfigureFirewall = networkUtils?.configureFirewall ?? configureLanFirewallRules;
 
   const registeredChannels: string[] = [];
 
@@ -129,7 +140,11 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
 
   registerHandler(DESKTOP_CHANNELS.SAVE_CONFIG, async (_event, rawUpdates) => {
     const sanitized = sanitizeConfigUpdates(rawUpdates);
-    return storeManager.saveConfig(sanitized);
+    const saved = storeManager.saveConfig(sanitized);
+    if (typeof onConfigSaved === 'function') {
+      await onConfigSaved(saved);
+    }
+    return saved;
   });
 
   // 2. Network & Health Channels
@@ -140,11 +155,19 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
         error: 'رابط الخادم غير صالح (يجب أن يبدأ بـ http:// أو https://)',
       };
     }
-    return networkUtils.testServerConnection(url.trim());
+    return resolveTestConnection(url.trim());
   });
 
   registerHandler(DESKTOP_CHANNELS.GET_LOCAL_IPS, async () => {
-    return networkUtils.getLocalNetworkIps();
+    return resolveLocalIps();
+  });
+
+  registerHandler(DESKTOP_CHANNELS.DISCOVER_SERVERS, async () => {
+    return resolveDiscoverLanServers();
+  });
+
+  registerHandler(DESKTOP_CHANNELS.CONFIGURE_FIREWALL, async () => {
+    return resolveConfigureFirewall();
   });
 
   // 3. Local Server Management Channels

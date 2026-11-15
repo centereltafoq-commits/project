@@ -19,6 +19,7 @@
     "dev:web": "npm run dev --workspace=@edu-center/web",
     "dev:desktop": "npm run --workspace=@edu-center/desktop dev",
     "pack:desktop": "npm run --workspace=@edu-center/desktop pack:win",
+    "dist:win": "npm run build && npm run build:desktop && npm run pack:desktop",
     "db:migrate": "npm run db:push --workspace=@edu-center/api",
     "db:seed": "npm run db:seed --workspace=@edu-center/api",
     "test:api": "npm run test --workspace=@edu-center/api",

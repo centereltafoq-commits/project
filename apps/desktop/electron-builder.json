@@ -10,7 +10,18 @@
   "files": [
     "dist/**/*",
     "resources/**/*",
+    "!resources/pgsql/**/*",
     "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "runtime/app-runtime",
+      "to": "app-runtime"
+    },
+    {
+      "from": "runtime/pgsql",
+      "to": "pgsql"
+    }
   ],
   "win": {
     "target": ["nsis"],

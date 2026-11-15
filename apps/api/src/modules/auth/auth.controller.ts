@@ -29,7 +29,7 @@ export class AuthController {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
-    this.setRefreshCookie(res, result.refreshToken);
+    this.setRefreshCookie(res, result.refreshToken, req);
     return {
       accessToken: result.accessToken,
       user: result.user,
@@ -46,7 +46,7 @@ export class AuthController {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
-    this.setRefreshCookie(res, result.refreshToken);
+    this.setRefreshCookie(res, result.refreshToken, req);
     return {
       accessToken: result.accessToken,
       user: result.user,
@@ -79,12 +79,14 @@ export class AuthController {
     return this.authService.getMe(user.id);
   }
 
-  private setRefreshCookie(res: Response, token: string): void {
+  private setRefreshCookie(res: Response, token: string, req: Request): void {
     const days = this.config.get<number>('jwtRefreshExpiresInDays') || 7;
     const isProd = this.config.get<string>('nodeEnv') === 'production';
+    const isHttps =
+      req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie(REFRESH_COOKIE_NAME, token, {
       httpOnly: true,
-      secure: isProd,
+      secure: isProd && isHttps,
       sameSite: 'lax',
       path: '/api/auth',
       maxAge: days * 24 * 60 * 60 * 1000,

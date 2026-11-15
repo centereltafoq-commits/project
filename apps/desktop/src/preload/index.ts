@@ -18,6 +18,8 @@ export function createDesktopApi(customIpcRenderer = ipcRenderer): DesktopApi {
     stopServer: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.STOP_SERVER),
     getPrinters: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.GET_PRINTERS),
     printReceipt: (options) => customIpcRenderer.invoke(DESKTOP_CHANNELS.PRINT_RECEIPT, options),
+    discoverServers: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.DISCOVER_SERVERS),
+    configureFirewall: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.CONFIGURE_FIREWALL),
   };
 }
 

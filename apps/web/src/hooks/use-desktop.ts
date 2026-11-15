@@ -14,12 +14,35 @@ export interface DesktopConfig {
   };
 }
 
+export interface DatabaseStatus {
+  running: boolean;
+  source: 'external' | 'portable' | 'none';
+  port: number;
+  databaseUrl?: string;
+  error?: string;
+}
+
+export interface DiscoveredServer {
+  name: string;
+  url: string;
+  ip: string;
+  port: number;
+  latencyMs: number;
+}
+
+export interface FirewallConfigResult {
+  success: boolean;
+  message: string;
+  error?: string;
+}
+
 export interface ServerStatus {
   running: boolean;
   pid?: number;
   port: number;
   uptime?: number;
   error?: string;
+  database?: DatabaseStatus;
 }
 
 export interface PrinterInfo {
@@ -49,6 +72,8 @@ export interface DesktopApi {
   stopServer: () => Promise<{ success: boolean; error?: string }>;
   getPrinters: () => Promise<PrinterInfo[]>;
   printReceipt: (options: SilentPrintOptions) => Promise<{ success: boolean; error?: string }>;
+  discoverServers?: () => Promise<DiscoveredServer[]>;
+  configureFirewall?: () => Promise<FirewallConfigResult>;
 }
 
 declare global {
@@ -176,6 +201,20 @@ export function useDesktop() {
     [isDesktop],
   );
 
+  const discoverServers = React.useCallback(async (): Promise<DiscoveredServer[]> => {
+    if (!isDesktop || !window.desktopApi || typeof window.desktopApi.discoverServers !== 'function') {
+      return [];
+    }
+    return window.desktopApi.discoverServers();
+  }, [isDesktop]);
+
+  const configureFirewall = React.useCallback(async (): Promise<FirewallConfigResult> => {
+    if (!isDesktop || !window.desktopApi || typeof window.desktopApi.configureFirewall !== 'function') {
+      return { success: false, message: 'إعدادات الجدار الناري غير متاحة في المتصفح.' };
+    }
+    return window.desktopApi.configureFirewall();
+  }, [isDesktop]);
+
   return {
     isDesktop,
     platform,
@@ -189,6 +228,9 @@ export function useDesktop() {
     startServer,
     stopServer,
     printReceipt,
+    discoverServers,
+    configureFirewall,
     reloadPrinters,
+    reloadServerStatus,
   };
 }

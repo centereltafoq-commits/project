@@ -52,6 +52,10 @@ describe('useDesktop Hook', () => {
       startServer: vi.fn().mockResolvedValue({ success: true }),
       stopServer: vi.fn().mockResolvedValue({ success: true }),
       printReceipt: vi.fn().mockResolvedValue({ success: true }),
+      discoverServers: vi.fn().mockResolvedValue([
+        { name: 'SERVER-PC', url: 'http://192.168.1.50:4000', ip: '192.168.1.50', port: 4000, latencyMs: 12 },
+      ]),
+      configureFirewall: vi.fn().mockResolvedValue({ success: true, message: 'تم الفتح' }),
     };
 
     const { result } = renderHook(() => useDesktop());
@@ -79,6 +83,15 @@ describe('useDesktop Hook', () => {
     await act(async () => {
       const printRes = await result.current.printReceipt({ htmlContent: '<p>receipt</p>' });
       expect(printRes.success).toBe(true);
+    });
+
+    await act(async () => {
+      const discovered = await result.current.discoverServers();
+      expect(discovered).toHaveLength(1);
+      expect(discovered[0].url).toBe('http://192.168.1.50:4000');
+
+      const fw = await result.current.configureFirewall();
+      expect(fw.success).toBe(true);
     });
   });
 });

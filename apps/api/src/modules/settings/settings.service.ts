@@ -95,7 +95,8 @@ export class SettingsService {
   }
 
   getLogoStorageDir(): string {
-    const dir = path.resolve(process.cwd(), 'storage', 'uploads', 'branding');
+    const storageRoot = process.env.STORAGE_ROOT_DIR || process.cwd();
+    const dir = path.resolve(storageRoot, 'storage', 'uploads', 'branding');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }

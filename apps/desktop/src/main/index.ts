@@ -3,6 +3,8 @@ import * as path from 'path';
 import { StoreManager } from './store-manager';
 import { ServerManager } from './server-manager';
 import { PrinterManager } from './printer-manager';
+import { PostgresManager } from './postgres-manager';
+import { LanDiscoveryResponder } from './lan-discovery';
 import { registerIpcHandlers } from './ipc-handlers';
 import { testServerConnection } from './network-utils';
 
@@ -10,6 +12,7 @@ export interface AppContext {
   storeManager: StoreManager;
   serverManager: ServerManager;
   printerManager: PrinterManager;
+  discoveryResponder?: LanDiscoveryResponder;
   mainWindow: BrowserWindow | null;
 }
 
@@ -151,7 +154,10 @@ export function getConnectionSetupFallbackHtml(targetUrl: string, errorReason: s
       <input type="text" id="serverUrlInput" value="${targetUrl}" placeholder="http://192.168.1.50:4000">
     </div>
 
+    <div id="discoveredList" style="display:none; text-align:right; margin-bottom:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px;"></div>
+
     <div class="actions">
+      <button class="btn-secondary" id="discoverBtn" onclick="discoverLan()" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">البحث التلقائي عن سيرفر السنتر في الشبكة</button>
       <button class="btn-primary" id="retryBtn" onclick="retryConnection()">فحص الاتصال وإعادة المحاولة</button>
       <button class="btn-secondary" id="serverModeBtn" onclick="switchToServerMode()">تشغيل هذا الجهاز كسيرفر رئيسي للسنتر</button>
     </div>
@@ -160,6 +166,52 @@ export function getConnectionSetupFallbackHtml(targetUrl: string, errorReason: s
   </div>
 
   <script>
+    async function discoverLan() {
+      const btn = document.getElementById('discoverBtn');
+      const list = document.getElementById('discoveredList');
+      const msg = document.getElementById('statusMsg');
+
+      if (!window.desktopApi || typeof window.desktopApi.discoverServers !== 'function') {
+        msg.innerText = 'ميزة البحث التلقائي غير متاحة حالياً';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'جاري البحث عن السيرفر في الشبكة...';
+      msg.innerText = '';
+      list.style.display = 'none';
+      list.innerHTML = '';
+
+      try {
+        const servers = await window.desktopApi.discoverServers();
+        if (!servers || servers.length === 0) {
+          msg.innerText = 'لم يتم العثور على سيرفر يعمل على الشبكة حالياً — تأكد من فتح السيرفر على الجهاز الرئيسي';
+          return;
+        }
+
+        list.style.display = 'block';
+        list.innerHTML = '<div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px;">السيرفرات المكتشفة:</div>';
+        servers.forEach((srv) => {
+          const item = document.createElement('div');
+          item.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px; background:#fff; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:6px;';
+          item.innerHTML =
+            '<div><div style="font-size:13px; font-weight:700; color:#0f172a;">' + (srv.name || 'سيرفر السنتر') + '</div>' +
+            '<div style="font-size:11px; color:#64748b; direction:ltr;">' + srv.url + '</div></div>' +
+            '<button style="padding:6px 12px; font-size:12px; background:#2563eb; color:#fff; border-radius:6px; cursor:pointer; border:none;">اتصال الآن</button>';
+          item.querySelector('button').onclick = async () => {
+            document.getElementById('serverUrlInput').value = srv.url;
+            await retryConnection();
+          };
+          list.appendChild(item);
+        });
+      } catch (err) {
+        msg.innerText = 'حدث خطأ أثناء البحث التلقائي عن السيرفر';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'البحث التلقائي عن سيرفر السنتر في الشبكة';
+      }
+    }
+
     async function retryConnection() {
       const input = document.getElementById('serverUrlInput');
       const msg = document.getElementById('statusMsg');
@@ -230,23 +282,29 @@ export async function loadAppContent(
   const testConn = options?.testConnectionFn || testServerConnection;
 
   if (config.serverMode === 'server') {
-    // 1. Server Mode: ensure local NestJS API is started
+    // 1. Server Mode: ensure local NestJS API is started & LAN discovery announces it
     const status = serverManager.getStatus();
     if (!status.running) {
       await serverManager.start();
     }
 
+    try {
+      await context.discoveryResponder?.start();
+    } catch (err) {
+      console.warn('[App] LAN discovery responder start skipped:', err);
+    }
+
     const serverUrl = config.serverUrl || 'http://localhost:4000';
     let isReady = false;
 
-    // Retry checking health up to 5 times while the backend boots
-    for (let i = 0; i < 5; i++) {
+    // Retry checking health while PostgreSQL + NestJS + Drizzle bootstrap settle
+    for (let i = 0; i < 15; i++) {
       const health = await testConn(serverUrl, 1500);
       if (health.ok) {
         isReady = true;
         break;
       }
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     if (isReady) {
@@ -262,7 +320,13 @@ export async function loadAppContent(
       });
     }
   } else {
-    // 2. Client Mode: test connection to remote server
+    // 2. Client Mode: stop any LAN broadcast and test connection to remote server
+    try {
+      await context.discoveryResponder?.stop();
+    } catch {
+      // Ignore responder stop errors
+    }
+
     const targetUrl = config.serverUrl || 'http://localhost:4000';
     const connection = await testConn(targetUrl, 3000);
 
@@ -334,6 +398,13 @@ export async function createMainWindow(
     serverManager,
     printerManager,
     webContentsGetter: () => (mainWindow.isDestroyed() ? null : mainWindow.webContents),
+    onConfigSaved: async (saved) => {
+      if (saved.serverMode === 'server') {
+        await context.discoveryResponder?.start();
+      } else {
+        await context.discoveryResponder?.stop();
+      }
+    },
   });
 
   await loadAppContent(mainWindow, context, options);
@@ -345,12 +416,29 @@ export async function createMainWindow(
  * Initializes the full Electron application lifecycle.
  */
 export function setupApp(customContext?: AppContext) {
-  const context: AppContext = customContext || {
-    storeManager: new StoreManager(),
-    serverManager: new ServerManager(),
-    printerManager: new PrinterManager(),
-    mainWindow: null,
-  };
+  let context: AppContext;
+
+  if (customContext) {
+    context = customContext;
+  } else {
+    const postgresManager = new PostgresManager();
+    const discoveryResponder = new LanDiscoveryResponder(4000);
+    const serverManager = new ServerManager({
+      postgresManager,
+      onRunningChange: (running) => {
+        if (!running) {
+          void discoveryResponder.stop();
+        }
+      },
+    });
+    context = {
+      storeManager: new StoreManager(),
+      serverManager,
+      printerManager: new PrinterManager(),
+      discoveryResponder,
+      mainWindow: null,
+    };
+  }
 
   const gotTheLock = app.requestSingleInstanceLock();
   if (!gotTheLock) {
@@ -385,6 +473,9 @@ export function setupApp(customContext?: AppContext) {
 
   app.on('before-quit', async () => {
     try {
+      if (context.discoveryResponder) {
+        await context.discoveryResponder.stop();
+      }
       if (context.serverManager) {
         await context.serverManager.stop();
       }

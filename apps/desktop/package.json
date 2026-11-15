@@ -10,7 +10,9 @@
     "build": "npm run build:main",
     "dev": "npm run build:main && electron dist/main/index.js",
     "test": "vitest run",
-    "pack:win": "electron-builder --win --x64"
+    "stage": "node scripts/stage-desktop-runtime.mjs",
+    "pack:win": "npm run stage && electron-builder --win --x64",
+    "prepare:postgres": "powershell -ExecutionPolicy Bypass -File scripts/prepare-portable-postgres.ps1"
   },
   "dependencies": {
     "@edu-center/shared": "*"

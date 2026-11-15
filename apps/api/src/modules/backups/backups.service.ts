@@ -38,18 +38,26 @@ export class BackupsService {
     private readonly cacheService: CacheService,
     private readonly auditLogsService: AuditLogsService,
   ) {
-    this.storageDir = path.resolve(process.cwd(), 'storage', 'backups');
+    const storageRoot = process.env.STORAGE_ROOT_DIR || process.cwd();
+    this.storageDir = path.resolve(storageRoot, 'storage', 'backups');
     if (!fs.existsSync(this.storageDir)) {
       fs.mkdirSync(this.storageDir, { recursive: true });
     }
 
-    const laragonBin = 'C:\\laragon\\bin\\postgresql\\postgresql\\bin';
-    this.pgDumpPath = fs.existsSync(path.join(laragonBin, 'pg_dump.exe'))
-      ? path.join(laragonBin, 'pg_dump.exe')
-      : 'pg_dump';
-    this.psqlPath = fs.existsSync(path.join(laragonBin, 'psql.exe'))
-      ? path.join(laragonBin, 'psql.exe')
-      : 'psql';
+    const candidateBins = [
+      process.env.PG_BIN_DIR,
+      'C:\\laragon\\bin\\postgresql\\postgresql\\bin',
+    ].filter((dir): dir is string => Boolean(dir));
+
+    const foundPgDump = candidateBins
+      .map((dir) => path.join(dir, 'pg_dump.exe'))
+      .find((file) => fs.existsSync(file));
+    const foundPsql = candidateBins
+      .map((dir) => path.join(dir, 'psql.exe'))
+      .find((file) => fs.existsSync(file));
+
+    this.pgDumpPath = foundPgDump ?? 'pg_dump';
+    this.psqlPath = foundPsql ?? 'psql';
   }
 
   private getDbCredentials(): { dbUrl: string; password?: string } {

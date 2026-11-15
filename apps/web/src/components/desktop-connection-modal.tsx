@@ -9,10 +9,15 @@ import {
   Copy,
   Check,
   Radio,
+  Search,
+  ShieldCheck,
+  Database,
+  QrCode,
 } from 'lucide-react';
 import { Button, Input, Modal, Badge } from '@/design-system';
 import { cn } from '@/lib/cn';
-import { useDesktop } from '@/hooks/use-desktop';
+import { useDesktop, type DiscoveredServer } from '@/hooks/use-desktop';
+import { generateQrDataUrl } from '@/lib/qr-code.util';
 
 export interface DesktopConnectionModalProps {
   open?: boolean;
@@ -33,6 +38,8 @@ export function DesktopConnectionModal({
     saveConfig,
     testConnection,
     startServer,
+    discoverServers,
+    configureFirewall,
   } = useDesktop();
 
   const [internalOpen, setInternalOpen] = React.useState(false);
@@ -42,6 +49,31 @@ export function DesktopConnectionModal({
   const [pingMessage, setPingMessage] = React.useState('');
   const [isSaving, setIsSaving] = React.useState(false);
   const [copiedIp, setCopiedIp] = React.useState<string | null>(null);
+  const [isDiscovering, setIsDiscovering] = React.useState(false);
+  const [discoveredServers, setDiscoveredServers] = React.useState<DiscoveredServer[]>([]);
+  const [discoverySearched, setDiscoverySearched] = React.useState(false);
+  const [firewallLoading, setFirewallLoading] = React.useState(false);
+  const [firewallFeedback, setFirewallFeedback] = React.useState<{ ok: boolean; text: string } | null>(null);
+  const [lanQrDataUrl, setLanQrDataUrl] = React.useState<string>('');
+
+  React.useEffect(() => {
+    if (localIps.length === 0) {
+      setLanQrDataUrl('');
+      return;
+    }
+    let cancelled = false;
+    const primaryUrl = `http://${localIps[0]}:4000`;
+    generateQrDataUrl(primaryUrl)
+      .then((dataUrl) => {
+        if (!cancelled) setLanQrDataUrl(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setLanQrDataUrl('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [localIps]);
 
   React.useEffect(() => {
     if (config?.serverMode) {
@@ -95,6 +127,56 @@ export function DesktopConnectionModal({
     } catch (e: any) {
       setPingStatus('error');
       setPingMessage(e.message || 'حدث خطأ أثناء فحص الاتصال.');
+    }
+  };
+
+  const handleDiscoverServers = async () => {
+    setIsDiscovering(true);
+    setDiscoverySearched(false);
+    try {
+      const found = await discoverServers();
+      setDiscoveredServers(found);
+      setDiscoverySearched(true);
+    } catch {
+      setDiscoveredServers([]);
+      setDiscoverySearched(true);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  const handleSelectDiscovered = async (url: string) => {
+    setClientUrl(url);
+    setPingStatus('testing');
+    setPingMessage('');
+    try {
+      const res = await testConnection(url);
+      if (res.ok) {
+        setPingStatus('success');
+        setPingMessage('تم اختيار السيرفر والتأكد من جاهزيته! اضغط "حفظ ومتابعة".');
+      } else {
+        setPingStatus('error');
+        setPingMessage(res.error || 'تعذر الوصول لهذا السيرفر.');
+      }
+    } catch (e: any) {
+      setPingStatus('error');
+      setPingMessage(e?.message || 'حدث خطأ أثناء التحقق من السيرفر.');
+    }
+  };
+
+  const handleConfigureFirewall = async () => {
+    setFirewallLoading(true);
+    setFirewallFeedback(null);
+    try {
+      const res = await configureFirewall();
+      setFirewallFeedback({
+        ok: res.success,
+        text: res.message || (res.success ? 'تم فتح منافذ الشبكة في جدار حماية ويندوز بنجاح.' : 'تعذر تهيئة جدار الحماية.'),
+      });
+    } catch {
+      setFirewallFeedback({ ok: false, text: 'تعذر تشغيل أداة تهيئة الجدار الناري.' });
+    } finally {
+      setFirewallLoading(false);
     }
   };
 
@@ -202,57 +284,90 @@ export function DesktopConnectionModal({
         {/* Details based on mode */}
         {mode === 'server' ? (
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <Wifi className="h-4 w-4 text-primary" />
                 <span className="text-xs font-semibold text-foreground">حالة السيرفر والشبكة المحلية (LAN)</span>
               </div>
-              <Badge variant={serverStatus?.running ? 'success' : 'neutral'} className="text-[11px]">
-                {serverStatus?.running ? 'السيرفر يعمل حالياً' : 'جاهز للتشغيل'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {serverStatus?.database && (
+                  <Badge
+                    variant={serverStatus.database.running ? 'success' : 'warning'}
+                    className="text-[11px] gap-1"
+                  >
+                    <Database className="h-3 w-3" />
+                    <span>
+                      {serverStatus.database.running
+                        ? serverStatus.database.source === 'portable'
+                          ? 'قاعدة البيانات المدمجة تعمل'
+                          : 'قاعدة البيانات متصلة'
+                        : 'قاعدة البيانات غير جاهزة'}
+                    </span>
+                  </Badge>
+                )}
+                <Badge variant={serverStatus?.running ? 'success' : 'neutral'} className="text-[11px]">
+                  {serverStatus?.running ? 'السيرفر يعمل حالياً' : 'جاهز للتشغيل'}
+                </Badge>
+              </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <span className="block text-xs font-semibold text-muted-foreground">
                 عناوين IP الخاصة بهذا الجهاز على الشبكة المحلية:
               </span>
               {localIps.length > 0 ? (
-                <div className="space-y-2">
-                  {localIps.map((ip) => {
-                    const fullUrl = `http://${ip}:4000`;
-                    return (
-                      <div
-                        key={ip}
-                        className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-xs"
-                      >
-                        <span className="font-mono text-foreground font-semibold" dir="ltr">
-                          {fullUrl}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 px-2 text-xs"
-                          onClick={() => handleCopy(fullUrl)}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] items-start">
+                  <div className="space-y-2">
+                    {localIps.map((ip) => {
+                      const fullUrl = `http://${ip}:4000`;
+                      return (
+                        <div
+                          key={ip}
+                          className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-xs"
                         >
-                          {copiedIp === fullUrl ? (
-                            <>
-                              <Check className="h-3.5 w-3.5 text-emerald-500" />
-                              <span className="text-emerald-500">تم النسخ</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3.5 w-3.5" />
-                              <span>نسخ الرابط</span>
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  <p className="text-[11px] text-muted-foreground">
-                    💡 شارك هذا العنوان مع أجهزة الاستقبال والكاشير لتتمكن من الاتصال بهذا السيرفر عبر الشبكة.
-                  </p>
+                          <span className="font-mono text-foreground font-semibold" dir="ltr">
+                            {fullUrl}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => handleCopy(fullUrl)}
+                          >
+                            {copiedIp === fullUrl ? (
+                              <>
+                                <Check className="h-3.5 w-3.5 text-emerald-500" />
+                                <span className="text-emerald-500">تم النسخ</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3.5 w-3.5" />
+                                <span>نسخ الرابط</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    <p className="text-[11px] text-muted-foreground">
+                      💡 أجهزة الاستقبال الثانية يمكنها البحث التلقائي بضغطة زر أو مسح رمز QR من الموبايل/التابلت.
+                    </p>
+                  </div>
+
+                  {lanQrDataUrl && (
+                    <div className="flex flex-col items-center rounded-xl border border-border bg-card p-2.5 text-center shadow-sm">
+                      <img
+                        src={lanQrDataUrl}
+                        alt="QR للدخول السريع من الشبكة"
+                        className="h-24 w-24 rounded"
+                      />
+                      <span className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                        <QrCode className="h-3 w-3 text-primary" />
+                        فتح من التابلت / المتصفح
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="rounded-lg bg-card p-3 text-xs text-muted-foreground border border-border">
@@ -261,7 +376,37 @@ export function DesktopConnectionModal({
               )}
             </div>
 
-            <div className="flex justify-end pt-2">
+            {firewallFeedback && (
+              <div
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border p-2.5 text-xs',
+                  firewallFeedback.ok
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                    : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300',
+                )}
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span>{firewallFeedback.text}</span>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleConfigureFirewall}
+                disabled={firewallLoading}
+                className="gap-1.5 text-xs"
+              >
+                {firewallLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                )}
+                <span>فتح منافذ الشبكة في Windows Firewall</span>
+              </Button>
+
               <Button
                 type="button"
                 onClick={handleConfirmServer}
@@ -275,6 +420,65 @@ export function DesktopConnectionModal({
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
+            {/* Automatic LAN Server Discovery */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h5 className="text-xs font-bold text-foreground">اكتشاف الجهاز الرئيسي تلقائياً (بدون كتابة IP)</h5>
+                  <p className="text-[11px] text-muted-foreground">
+                    ابحث عن السيرفر الرئيسي العامل على نفس شبكة الواي فاي أو السويتش الآن.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleDiscoverServers}
+                  disabled={isDiscovering}
+                  className="gap-1.5 text-xs"
+                >
+                  {isDiscovering ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Search className="h-3.5 w-3.5" />
+                  )}
+                  <span>اكتشاف الجهاز الرئيسي تلقائياً</span>
+                </Button>
+              </div>
+
+              {discoveredServers.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  {discoveredServers.map((srv) => (
+                    <div
+                      key={srv.url}
+                      className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-xs"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-foreground">{srv.name}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground" dir="ltr">
+                          {srv.url}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleSelectDiscovered(srv.url)}
+                      >
+                        اختيار واتصال
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {discoverySearched && discoveredServers.length === 0 && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                  لم يتم العثور على سيرفر متاح تلقائياً — تأكد من فتح البرنامج على الجهاز الرئيسي، أو أدخل العنوان يدوياً بالأسفل.
+                </p>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <label
                 htmlFor="client-server-url"
