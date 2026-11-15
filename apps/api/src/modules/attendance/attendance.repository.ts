@@ -1,11 +1,29 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, gt, ilike, inArray, lt, ne, or, sql, SQL } from 'drizzle-orm';
-import { ClassroomStatus, SessionStatus } from '@edu-center/shared';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+  SQL,
+} from 'drizzle-orm';
+import { ClassroomStatus, EnrollmentStatus, SessionStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   attendance,
   classroomMaintenances,
   classrooms,
+  enrollments,
   groups,
   sessions,
   students,
@@ -324,5 +342,83 @@ export class AttendanceRepository {
   async insertSessionsBatch(rows: Array<typeof sessions.$inferInsert>) {
     if (rows.length === 0) return [];
     return this.db.insert(sessions).values(rows).returning();
+  }
+
+  async findStudentActiveGroupsForDate(studentId: string, sessionDate: string) {
+    return this.db
+      .select({
+        enrollmentId: enrollments.id,
+        groupId: groups.id,
+        groupCode: groups.groupCode,
+        groupName: groups.name,
+        subject: groups.subject,
+        gradeLevel: groups.gradeLevel,
+        primaryTeacherId: groups.primaryTeacherId,
+        teacherName: teachers.fullName,
+        defaultClassroomId: groups.defaultClassroomId,
+        classroomName: classrooms.name,
+        roomNumber: classrooms.roomNumber,
+        scheduleSlots: groups.scheduleSlots,
+      })
+      .from(enrollments)
+      .innerJoin(groups, eq(enrollments.groupId, groups.id))
+      .innerJoin(teachers, eq(groups.primaryTeacherId, teachers.id))
+      .leftJoin(classrooms, eq(groups.defaultClassroomId, classrooms.id))
+      .where(
+        and(
+          eq(enrollments.studentId, studentId),
+          eq(enrollments.status, EnrollmentStatus.ACTIVE),
+          eq(groups.isActive, true),
+          lte(enrollments.startDate, sessionDate),
+          or(isNull(enrollments.endDate), gte(enrollments.endDate, sessionDate))!,
+        ),
+      )
+      .orderBy(asc(groups.name));
+  }
+
+  async findSessionsByGroupsAndDateForStudent(
+    groupIds: string[],
+    studentId: string,
+    sessionDate: string,
+  ) {
+    if (groupIds.length === 0) return [];
+
+    return this.db
+      .select({
+        sessionId: sessions.id,
+        groupId: sessions.groupId,
+        groupCode: groups.groupCode,
+        groupName: groups.name,
+        subject: groups.subject,
+        teacherId: sessions.teacherId,
+        teacherName: teachers.fullName,
+        classroomId: sessions.classroomId,
+        classroomName: classrooms.name,
+        roomNumber: classrooms.roomNumber,
+        sessionDate: sessions.sessionDate,
+        yearMonth: sessions.yearMonth,
+        startTime: sessions.startTime,
+        endTime: sessions.endTime,
+        sessionStatus: sessions.status,
+        attendanceId: attendance.id,
+        attendanceStatus: attendance.status,
+        recordedAt: attendance.recordedAt,
+      })
+      .from(sessions)
+      .innerJoin(groups, eq(sessions.groupId, groups.id))
+      .innerJoin(teachers, eq(sessions.teacherId, teachers.id))
+      .leftJoin(classrooms, eq(sessions.classroomId, classrooms.id))
+      .leftJoin(
+        attendance,
+        and(eq(attendance.sessionId, sessions.id), eq(attendance.studentId, studentId)),
+      )
+      .where(
+        and(
+          inArray(sessions.groupId, groupIds),
+          eq(sessions.sessionDate, sessionDate),
+          ne(sessions.status, SessionStatus.CANCELLED),
+        ),
+      )
+      .orderBy(asc(sessions.startTime));
   }
 }

@@ -4,6 +4,7 @@ import { printDocument, PrintDocumentOptions } from './print-service-core';
 export { printDocument, type PrintDocumentOptions } from './print-service-core';
 export * from './print-templates/receipt-template';
 export * from './print-templates/attendance-roster-template';
+export * from './print-templates/student-qr-card-template';
 export * from './print-templates/docs-template';
 export * from './print-templates/reports';
 

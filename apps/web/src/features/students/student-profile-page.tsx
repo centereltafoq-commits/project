@@ -9,6 +9,7 @@ import {
   CreditCard,
   Edit3,
   Phone,
+  QrCode,
   UserCheck,
   Wallet,
 } from 'lucide-react';
@@ -33,6 +34,8 @@ import {
 } from '@/lib/formatters';
 import { PERMISSIONS } from '@edu-center/shared';
 import { useAuth } from '@/features/auth/auth-context';
+import { useCenterSettings } from '@/features/settings/center-settings-context';
+import { printStudentQrCard } from '@/lib/print-service';
 import { StudentFormModal } from './student-form-modal';
 import { StudentMonthsExplorer } from './components/student-months-explorer';
 import {
@@ -58,6 +61,7 @@ export function StudentProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+  const { settings } = useCenterSettings();
   const canUpdate = hasPermission(PERMISSIONS.STUDENTS_UPDATE);
   const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
   const canCollectPayment = hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
@@ -112,6 +116,26 @@ export function StudentProfilePage() {
               value={yearMonth}
               onChange={setYearMonth}
             />
+            <Button
+              variant="outline"
+              onClick={() =>
+                printStudentQrCard({
+                  student: {
+                    studentCode: student.studentCode,
+                    fullName: student.fullName,
+                    gradeLevel: student.gradeLevel,
+                    phone: student.phone,
+                    guardianPhone: student.guardianPhone,
+                    groupNames: data.enrollments.map((e) => e.groupName),
+                  },
+                  settings,
+                })
+              }
+              className="gap-1.5"
+            >
+              <QrCode className="h-4 w-4 text-primary" />
+              طباعة كارت QR
+            </Button>
             {canUpdate && (
               <Button variant="outline" onClick={() => setEditOpen(true)}>
                 <Edit3 className="h-4 w-4" />

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Edit3, Eye, GraduationCap, Plus, RotateCcw, Upload } from 'lucide-react';
+import { Download, Edit3, Eye, GraduationCap, Plus, QrCode, RotateCcw, Upload } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
@@ -14,10 +14,12 @@ import {
 } from '@/design-system';
 import { ExcelImportModal } from '@/components/excel-import-modal';
 import { useAuth } from '@/features/auth/auth-context';
+import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import { downloadBlobFile } from '@/lib/file-download';
 import { formatDateAr } from '@/lib/formatters';
+import { printStudentQrCard } from '@/lib/print-service';
 import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { StudentFormModal } from './student-form-modal';
@@ -32,6 +34,7 @@ export function StudentsPage() {
   const navigate = useNavigate();
   const { notify } = useToast();
   const { hasPermission } = useAuth();
+  const { settings } = useCenterSettings();
   const canCreate = hasPermission(PERMISSIONS.STUDENTS_CREATE);
   const canUpdate = hasPermission(PERMISSIONS.STUDENTS_UPDATE);
   const canExport =
@@ -163,6 +166,27 @@ export function StudentsPage() {
           >
             <Eye className="h-3.5 w-3.5 text-primary" />
             سريع
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 px-2.5 text-xs font-bold"
+            title="طباعة كارت QR"
+            onClick={() =>
+              printStudentQrCard({
+                student: {
+                  studentCode: row.studentCode,
+                  fullName: row.fullName,
+                  gradeLevel: row.gradeLevel,
+                  phone: row.phone,
+                  guardianPhone: row.guardianPhone,
+                },
+                settings,
+              })
+            }
+          >
+            <QrCode className="h-3.5 w-3.5 text-emerald-600" />
+            QR
           </Button>
           {canUpdate && (
             <Button

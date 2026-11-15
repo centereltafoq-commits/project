@@ -187,6 +187,21 @@ export class StudentsRepository {
     return row ?? null;
   }
 
+  async findByCodeOrId(rawCode: string) {
+    const trimmed = rawCode.trim();
+    if (!trimmed) return null;
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        trimmed,
+      );
+    const [row] = await this.db
+      .select()
+      .from(students)
+      .where(isUuid ? eq(students.id, trimmed) : ilike(students.studentCode, trimmed))
+      .limit(1);
+    return row ?? null;
+  }
+
   async create(data: {
     studentCode: string;
     fullName: string;

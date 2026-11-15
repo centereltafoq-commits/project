@@ -13,8 +13,10 @@ import {
   RequireAnyPermissions,
   RequirePermissions,
 } from '../../common/decorators/permissions.decorator';
+import { AttendanceQrService } from './attendance-qr.service';
 import { AttendanceService } from './attendance.service';
 import { RecordSessionAttendanceDto } from './dto/attendance-record.dto';
+import { QrCheckInDto, QrLookupQueryDto } from './dto/qr-attendance.dto';
 import {
   CreateSessionDto,
   GenerateMonthSessionsDto,
@@ -23,7 +25,32 @@ import {
 
 @Controller('attendance')
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(
+    private readonly attendanceService: AttendanceService,
+    private readonly attendanceQrService: AttendanceQrService,
+  ) {}
+
+  @Get('qr/lookup')
+  @RequireAnyPermissions(
+    PERMISSIONS.ATTENDANCE_VIEW,
+    PERMISSIONS.ATTENDANCE_RECORD,
+    PERMISSIONS.SESSIONS_VIEW,
+  )
+  async lookupStudentByQr(
+    @Query() query: QrLookupQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.attendanceQrService.lookupStudentByQr(query.code, query.sessionDate, actor);
+  }
+
+  @Post('qr/check-in')
+  @RequirePermissions(PERMISSIONS.ATTENDANCE_RECORD)
+  async checkInStudentByQr(
+    @Body() dto: QrCheckInDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.attendanceQrService.checkInStudentByQr(dto, actor);
+  }
 
   @Get('lookups')
   @RequireAnyPermissions(
