@@ -1,7 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeacherEmploymentStatus } from '@edu-center/shared';
+import { CacheService } from '../../common/cache/cache.module';
 import { ExcelWorkbookService } from '../../common/excel/excel-workbook.service';
+import { AppLoggerService } from '../../common/logger/app-logger.service';
 import type { UploadedMulterFile } from '../../common/types/multer.types';
 import { TeachersExcelService } from './teachers-excel.service';
 
@@ -13,6 +16,7 @@ describe('TeachersExcelService', () => {
     createManyTx: ReturnType<typeof vi.fn>;
   };
   let mockAudit: { record: ReturnType<typeof vi.fn> };
+  let cache: CacheService;
   let service: TeachersExcelService;
 
   const actor = {
@@ -55,10 +59,12 @@ describe('TeachersExcelService', () => {
       record: vi.fn().mockResolvedValue(undefined),
     };
 
+    cache = new CacheService(new ConfigService(), new AppLoggerService());
     service = new TeachersExcelService(
       excelService,
       mockRepo as never,
       mockAudit as never,
+      cache,
     );
   });
 
@@ -202,6 +208,21 @@ describe('TeachersExcelService', () => {
         actor,
       ),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('expires dashboard totals and report filters after importing teachers', async () => {
+    const dashboardKey = 'dashboard:summary:2026-11:2026-11-18:14:0';
+    const reportFiltersKey = 'reports:filter-options';
+    await cache.set(dashboardKey, { teachersCount: 4 });
+    await cache.set(reportFiltersKey, { teachers: [] });
+    const file = await buildXlsxUpload([
+      { fullName: 'مدرس مستورد', phone: '01012345678', specialization: 'الرياضيات' },
+    ]);
+
+    await expect(service.commitImport(file, {}, actor)).resolves.toMatchObject({ importedCount: 1 });
+
+    expect(await cache.get(dashboardKey)).toBeNull();
+    expect(await cache.get(reportFiltersKey)).toBeNull();
   });
 
   it('exports filtered teachers preserving phone leading zeros', async () => {

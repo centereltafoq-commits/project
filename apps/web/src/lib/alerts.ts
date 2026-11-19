@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom';
 import Swal, { SweetAlertIcon, SweetAlertOptions } from 'sweetalert2';
 
 export interface ConfirmActionOptions {
@@ -26,7 +27,8 @@ function getBaseSwalOptions(): SweetAlertOptions {
 
   return {
     willOpen: () => {
-      emitSwalToggle(true);
+      // Release the Radix modal's aria-hidden state before SweetAlert snapshots it.
+      flushSync(() => emitSwalToggle(true));
     },
     didOpen: (popup) => {
       const container = popup.closest('.swal2-container') as HTMLElement | null;

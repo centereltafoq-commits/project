@@ -71,6 +71,13 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
+  async invalidateRosterViews(): Promise<void> {
+    await Promise.allSettled([
+      this.invalidatePrefix('dashboard:summary:'),
+      this.invalidatePrefix('reports:filter-options'),
+    ]);
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (this.redisClient) {
       await this.redisClient.quit().catch(() => undefined);

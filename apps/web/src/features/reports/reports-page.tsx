@@ -76,6 +76,7 @@ export function ReportsPage() {
       return res.data;
     },
     staleTime: 60_000,
+    refetchOnMount: 'always',
   });
 
   const queryParams = React.useMemo(

@@ -1,5 +1,6 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PERMISSIONS, StudentStatus, SystemRole } from '@edu-center/shared';
+import { CacheService } from '../../common/cache/cache.module';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -15,6 +16,7 @@ export class StudentsService {
     private readonly repository: StudentsRepository,
     private readonly profileRepository: StudentsProfileRepository,
     private readonly audit: AuditLogsService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   async list(query: StudentQueryDto) {
@@ -58,6 +60,7 @@ export class StudentsService {
       afterData: created,
     });
 
+    await this.cache?.invalidateRosterViews();
     return created;
   }
 
@@ -88,6 +91,7 @@ export class StudentsService {
       afterData: updated,
     });
 
+    await this.cache?.invalidateRosterViews();
     return updated;
   }
 
@@ -105,6 +109,7 @@ export class StudentsService {
       afterData: updated,
     });
 
+    await this.cache?.invalidateRosterViews();
     return updated;
   }
 

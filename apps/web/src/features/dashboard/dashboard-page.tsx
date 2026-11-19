@@ -41,6 +41,7 @@ export function DashboardPage() {
         return res.data;
       },
       staleTime: 25_000,
+      refetchOnMount: 'always',
     });
 
   return (

@@ -45,6 +45,10 @@ export function ClassroomMaintenanceModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classroom-detail', classroom?.id] });
       queryClient.invalidateQueries({ queryKey: ['classrooms'] });
+      queryClient.invalidateQueries({ queryKey: ['classrooms-available'] });
+      queryClient.invalidateQueries({ queryKey: ['classroom-schedule', classroom?.id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
       setStartAt('');
       setEndAt('');
       setReason('');
@@ -59,6 +63,10 @@ export function ClassroomMaintenanceModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classroom-detail', classroom?.id] });
       queryClient.invalidateQueries({ queryKey: ['classrooms'] });
+      queryClient.invalidateQueries({ queryKey: ['classrooms-available'] });
+      queryClient.invalidateQueries({ queryKey: ['classroom-schedule', classroom?.id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
       notify('تم إلغاء فترة الصيانة', 'success');
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),

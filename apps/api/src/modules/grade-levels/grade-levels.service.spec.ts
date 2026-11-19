@@ -100,5 +100,23 @@ describe('GradeLevelsService', () => {
     await expect(service.remove('gl-1')).rejects.toThrow(BadRequestException);
     expect(mockAudit.record).not.toHaveBeenCalled();
   });
+
+  it('auto-generates unique GRD code when omitted on create and cleared on update', async () => {
+    mockRepo.findByName.mockResolvedValue(null);
+    mockRepo.findAll.mockResolvedValue([
+      { id: 'gl-0', name: 'الصف الأول', code: 'GRD-01' },
+    ]);
+    mockRepo.create.mockImplementation(async (dto: any) => ({ id: 'gl-2', ...dto }));
+
+    const created = await service.create({ name: 'الصف الثاني' } as any);
+    expect(created.code).toBe('GRD-02');
+    expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ code: 'GRD-02' }));
+
+    mockRepo.findById.mockResolvedValue({ id: 'gl-3', name: 'الصف الثالث', code: null });
+    mockRepo.update.mockImplementation(async (_id: string, dto: any) => ({ id: 'gl-3', ...dto }));
+
+    const updated = await service.update('gl-3', { code: '' });
+    expect(updated.code).toBe('GRD-02');
+  });
 });
 

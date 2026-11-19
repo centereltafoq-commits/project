@@ -76,6 +76,8 @@ export function ClassroomFormModal({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classrooms'] });
+      queryClient.invalidateQueries({ queryKey: ['classrooms-available'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       notify(isEdit ? 'تم تحديث بيانات القاعة' : 'تمت إضافة القاعة بنجاح', 'success');
       onOpenChange(false);
     },

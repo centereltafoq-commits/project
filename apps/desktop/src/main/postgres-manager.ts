@@ -1,4 +1,4 @@
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as net from 'net';
 import * as path from 'path';
@@ -6,6 +6,26 @@ import { promisify } from 'util';
 import { resolveDesktopDataDir, resolvePortablePostgresDir } from './runtime-paths';
 
 const execFileAsync = promisify(execFile);
+
+async function runPostgresCommand(file: string, args: string[]): Promise<void> {
+  if (args[args.length - 1] !== 'start') {
+    await execFileAsync(file, args, { windowsHide: true });
+    return;
+  }
+
+  // The PostgreSQL server can inherit pg_ctl's pipes on Windows and keep them open after pg_ctl exits.
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(file, args, { windowsHide: true, stdio: 'ignore' });
+    child.once('error', reject);
+    child.once('exit', (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`pg_ctl start exited with ${code ?? signal}. See postgres.log for details.`));
+    });
+  });
+}
 
 export type DatabaseSource = 'external' | 'portable' | 'none';
 
@@ -57,10 +77,7 @@ export class PostgresManager {
   private readonly pgDataDir: string;
   private readonly portableDirOverride?: string | null;
   private readonly tcpProbeFn: (host: string, port: number) => Promise<boolean>;
-  private readonly execFileFn: (
-    file: string,
-    args: string[],
-  ) => Promise<{ stdout: string; stderr: string }>;
+  private readonly execFileFn: (file: string, args: string[]) => Promise<unknown>;
 
   private startedPortable = false;
   private status: DatabaseStatus;
@@ -71,12 +88,7 @@ export class PostgresManager {
     this.pgDataDir = path.join(baseDataDir, 'pgdata');
     this.portableDirOverride = options?.portableDir;
     this.tcpProbeFn = options?.tcpProbeFn ?? probeTcpPort;
-    this.execFileFn =
-      options?.execFileFn ??
-      (async (file, args) => {
-        const res = await execFileAsync(file, args, { windowsHide: true });
-        return { stdout: String(res.stdout ?? ''), stderr: String(res.stderr ?? '') };
-      });
+    this.execFileFn = options?.execFileFn ?? runPostgresCommand;
     this.status = {
       running: false,
       source: 'none',

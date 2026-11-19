@@ -390,7 +390,12 @@ export function StudentsPage() {
           { key: 'guardianPhone', label: 'هاتف ولي الأمر', dir: 'ltr' },
           { key: 'gradeLevel', label: 'الصف الدراسي' },
         ]}
-        invalidateQueryKeys={[['students']]}
+        invalidateQueryKeys={[
+          ['students'],
+          ['dashboard-summary'],
+          ['reports-filter-options'],
+          ['report-data', 'students'],
+        ]}
       />
     </div>
   );

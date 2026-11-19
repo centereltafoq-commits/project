@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { settingsApi, SystemSettings } from './settings-api';
 
 interface CenterSettingsContextValue {
@@ -30,18 +30,12 @@ const DEFAULT_VALUE: CenterSettingsContextValue = {
 const CenterSettingsContext = React.createContext<CenterSettingsContextValue>(DEFAULT_VALUE);
 
 export function CenterSettingsProvider({ children }: { children: React.ReactNode }) {
-  const queryClient = useQueryClient();
-
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsApi.getSettings(),
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
-
-  const refetch = React.useCallback(async () => {
-    return queryClient.invalidateQueries({ queryKey: ['settings'] });
-  }, [queryClient]);
 
   const value = React.useMemo<CenterSettingsContextValue>(
     () => ({

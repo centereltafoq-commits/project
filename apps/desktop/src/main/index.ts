@@ -471,16 +471,32 @@ export function setupApp(customContext?: AppContext) {
     }
   });
 
-  app.on('before-quit', async () => {
-    try {
-      if (context.discoveryResponder) {
-        await context.discoveryResponder.stop();
-      }
-      if (context.serverManager) {
-        await context.serverManager.stop();
-      }
-    } catch (err) {
-      console.error('[App] Failed to gracefully stop server on quit:', err);
+  let isQuitting = false;
+  app.on('before-quit', (event?: any) => {
+    if (isQuitting) return;
+    isQuitting = true;
+
+    const stopTasks: Promise<unknown>[] = [];
+    if (context.discoveryResponder) {
+      stopTasks.push(
+        Promise.resolve(context.discoveryResponder.stop()).catch((err) => {
+          console.error('[App] Failed to stop LAN discovery responder on quit:', err);
+        }),
+      );
+    }
+    if (context.serverManager) {
+      stopTasks.push(
+        Promise.resolve(context.serverManager.stop()).catch((err) => {
+          console.error('[App] Failed to gracefully stop server on quit:', err);
+        }),
+      );
+    }
+
+    if (event && typeof event.preventDefault === 'function' && stopTasks.length > 0) {
+      event.preventDefault();
+      Promise.all(stopTasks).finally(() => {
+        app.quit();
+      });
     }
   });
 }

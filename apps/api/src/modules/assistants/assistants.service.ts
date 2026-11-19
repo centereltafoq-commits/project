@@ -1,5 +1,6 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { AssistantCalculationMethod, PERMISSIONS, SystemRole } from '@edu-center/shared';
+import { CacheService } from '../../common/cache/cache.module';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -21,6 +22,7 @@ export class AssistantsService {
     private readonly repository: AssistantsRepository,
     private readonly profileRepository: AssistantsProfileRepository,
     private readonly audit: AuditLogsService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   private canSeeCompensation(actor?: AuthenticatedUser): boolean {
@@ -101,6 +103,7 @@ export class AssistantsService {
       afterData: created,
     });
 
+    await this.cache?.invalidateRosterViews();
     return created;
   }
 
@@ -130,6 +133,7 @@ export class AssistantsService {
       afterData: updated,
     });
 
+    await this.cache?.invalidateRosterViews();
     return updated;
   }
 

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { TeacherEmploymentStatus } from '@edu-center/shared';
+import { CacheService } from '../../common/cache/cache.module';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import type {
   DuplicateImportStrategy,
@@ -60,6 +61,7 @@ export class TeachersExcelService {
     private readonly excelService: ExcelWorkbookService,
     private readonly repository: TeachersRepository,
     private readonly audit: AuditLogsService,
+    private readonly cache: CacheService,
   ) {}
 
   async generateTemplate(): Promise<Buffer> {
@@ -190,6 +192,7 @@ export class TeachersExcelService {
       },
     });
 
+    await this.cache.invalidateRosterViews();
     return {
       importedCount: inserted.length,
       skippedCount: preview.skippedCount,

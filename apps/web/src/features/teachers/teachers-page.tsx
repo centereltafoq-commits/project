@@ -348,7 +348,11 @@ export function TeachersPage() {
           { key: 'phone', label: 'رقم الهاتف', dir: 'ltr' },
           { key: 'specialization', label: 'التخصص' },
         ]}
-        invalidateQueryKeys={[['teachers']]}
+        invalidateQueryKeys={[
+          ['teachers'],
+          ['dashboard-summary'],
+          ['reports-filter-options'],
+        ]}
       />
     </div>
   );

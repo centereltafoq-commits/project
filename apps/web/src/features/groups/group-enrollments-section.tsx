@@ -73,11 +73,16 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
     }: {
       enrollmentId: string;
       status: EnrollmentStatus;
-    }) => apiClient.patch(`/groups/enrollments/${enrollmentId}`, { status }),
-    onSuccess: () => {
+    }) => apiClient.patch<{ studentId: string }>(`/groups/enrollments/${enrollmentId}`, { status }),
+    onSuccess: ({ data }) => {
       queryClient.invalidateQueries({ queryKey: ['group-enrollments', group.id] });
       queryClient.invalidateQueries({ queryKey: ['group-detail', group.id] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['classroom-allocated-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['classroom-unallocated-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['student-profile', data.studentId] });
       notify('تم تحديث حالة اشتراك الطالب مع الاحتفاظ بالسجل التاريخي', 'success');
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),

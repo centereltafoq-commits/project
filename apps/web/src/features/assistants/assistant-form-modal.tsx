@@ -65,7 +65,7 @@ export function AssistantFormModal({
         phone: form.phone,
         calculationMethod: form.calculationMethod,
         rateValue: Number(form.rateValue || 0),
-        customFormulaNote: form.customFormulaNote || undefined,
+        customFormulaNote: form.customFormulaNote.trim() || null,
         status: form.status,
       };
       if (isEdit && assistant) {

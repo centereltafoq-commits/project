@@ -24,6 +24,7 @@ export function AuditLogsPage() {
 
   const { data, isLoading } = useQuery<PaginatedResult<AuditLogRow>>({
     queryKey: ['audit-logs', page, limit, debouncedSearch, entityType],
+    refetchOnMount: 'always',
     queryFn: async () => {
       const res = await apiClient.get('/audit-logs', {
         params: {

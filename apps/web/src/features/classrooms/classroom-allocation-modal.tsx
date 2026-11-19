@@ -219,6 +219,7 @@ export function ClassroomAllocationModal({
       queryClient.invalidateQueries({ queryKey: ['classroom-unallocated-groups'] });
       queryClient.invalidateQueries({ queryKey: ['classroom-schedule'] });
       queryClient.invalidateQueries({ queryKey: ['classrooms'] });
+      queryClient.invalidateQueries({ queryKey: ['classrooms-available'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['group-detail'] });
       queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
@@ -247,6 +248,7 @@ export function ClassroomAllocationModal({
       queryClient.invalidateQueries({ queryKey: ['classroom-unallocated-groups'] });
       queryClient.invalidateQueries({ queryKey: ['classroom-schedule'] });
       queryClient.invalidateQueries({ queryKey: ['classrooms'] });
+      queryClient.invalidateQueries({ queryKey: ['classrooms-available'] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['group-detail'] });
       queryClient.invalidateQueries({ queryKey: ['groups-lookups'] });

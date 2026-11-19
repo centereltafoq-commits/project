@@ -1,7 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StudentStatus } from '@edu-center/shared';
+import { CacheService } from '../../common/cache/cache.module';
 import { ExcelWorkbookService } from '../../common/excel/excel-workbook.service';
+import { AppLoggerService } from '../../common/logger/app-logger.service';
 import type { UploadedMulterFile } from '../../common/types/multer.types';
 import { StudentsExcelService } from './students-excel.service';
 
@@ -14,6 +17,7 @@ describe('StudentsExcelService', () => {
     createManyTx: ReturnType<typeof vi.fn>;
   };
   let mockAudit: { record: ReturnType<typeof vi.fn> };
+  let cache: CacheService;
   let service: StudentsExcelService;
 
   const actor = {
@@ -60,10 +64,12 @@ describe('StudentsExcelService', () => {
       record: vi.fn().mockResolvedValue(undefined),
     };
 
+    cache = new CacheService(new ConfigService(), new AppLoggerService());
     service = new StudentsExcelService(
       excelService,
       mockRepo as never,
       mockAudit as never,
+      cache,
     );
   });
 
@@ -253,6 +259,21 @@ describe('StudentsExcelService', () => {
         entityType: 'STUDENT',
       }),
     );
+  });
+
+  it('expires dashboard totals and report filters after importing students', async () => {
+    const dashboardKey = 'dashboard:summary:2026-11:2026-11-18:13:4';
+    const reportFiltersKey = 'reports:filter-options';
+    await cache.set(dashboardKey, { totalStudents: 32 });
+    await cache.set(reportFiltersKey, { students: [] });
+    const file = await buildXlsxUpload([
+      { fullName: 'طالب مستورد', gradeLevel: 'الأول الثانوي' },
+    ]);
+
+    await expect(service.commitImport(file, {}, actor)).resolves.toMatchObject({ importedCount: 1 });
+
+    expect(await cache.get(dashboardKey)).toBeNull();
+    expect(await cache.get(reportFiltersKey)).toBeNull();
   });
 
   it('exports filtered students to an xlsx workbook preserving leading-zero phone numbers', async () => {

@@ -4,8 +4,10 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PERMISSIONS, SystemRole, TeacherEmploymentStatus } from '@edu-center/shared';
+import { CacheService } from '../../common/cache/cache.module';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -29,6 +31,7 @@ export class TeachersService {
     private readonly repository: TeachersRepository,
     private readonly profileRepository: TeachersProfileRepository,
     private readonly audit: AuditLogsService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   async list(query: TeacherQueryDto) {
@@ -72,6 +75,7 @@ export class TeachersService {
       afterData: created,
     });
 
+    await this.cache?.invalidateRosterViews();
     return created;
   }
 
@@ -97,6 +101,7 @@ export class TeachersService {
       afterData: updated,
     });
 
+    await this.cache?.invalidateRosterViews();
     return updated;
   }
 

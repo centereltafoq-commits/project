@@ -7,6 +7,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   NotFoundException,
   Param,
   Put,
@@ -36,6 +37,7 @@ export class SettingsController {
 
   @Public()
   @Get()
+  @Header('Cache-Control', 'no-store')
   async getSettings() {
     return this.settingsService.getSettings();
   }

@@ -72,8 +72,13 @@ export function CalendarPage() {
 
   const handleSavedQuickSession = React.useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
-    queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['session-sheet'] });
     queryClient.invalidateQueries({ queryKey: ['groups'] });
+    queryClient.invalidateQueries({ queryKey: ['group-detail'] });
+    queryClient.invalidateQueries({ queryKey: ['classroom-schedule'] });
+    queryClient.invalidateQueries({ queryKey: ['classrooms-available'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     queryClient.invalidateQueries({ queryKey: ['finance'] });
   }, [queryClient]);
 

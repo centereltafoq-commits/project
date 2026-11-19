@@ -28,6 +28,26 @@ export class GradeLevelsService {
     return gradeLevel;
   }
 
+  private async generateUniqueCode(): Promise<string> {
+    const existingLevels = (await this.gradeLevelsRepository.findAll(false)) ?? [];
+    const usedCodes = new Set(
+      existingLevels
+        .map((level) => level.code?.trim().toUpperCase())
+        .filter((code): code is string => Boolean(code)),
+    );
+
+    let index = 1;
+    while (index < 10000) {
+      const candidate = `GRD-${String(index).padStart(2, '0')}`;
+      if (!usedCodes.has(candidate)) {
+        return candidate;
+      }
+      index += 1;
+    }
+
+    return `GRD-${Date.now().toString(36).toUpperCase()}`;
+  }
+
   async create(dto: CreateGradeLevelDto, actor?: AuthenticatedUser) {
     const existing = await this.gradeLevelsRepository.findByName(dto.name);
     if (existing) {
@@ -42,7 +62,11 @@ export class GradeLevelsService {
       }
     }
 
-    const created = await this.gradeLevelsRepository.create(dto);
+    const resolvedCode = normalizedCode || (await this.generateUniqueCode());
+    const created = await this.gradeLevelsRepository.create({
+      ...dto,
+      code: resolvedCode,
+    });
 
     await this.audit.record({
       actorUserId: actor?.id ?? null,
@@ -74,7 +98,12 @@ export class GradeLevelsService {
       }
     }
 
-    const updated = await this.gradeLevelsRepository.update(id, dto, gradeLevel.name);
+    const payload: UpdateGradeLevelDto = { ...dto };
+    if (dto.code !== undefined && !normalizedCode) {
+      payload.code = gradeLevel.code?.trim() || (await this.generateUniqueCode());
+    }
+
+    const updated = await this.gradeLevelsRepository.update(id, payload, gradeLevel.name);
 
     await this.audit.record({
       actorUserId: actor?.id ?? null,

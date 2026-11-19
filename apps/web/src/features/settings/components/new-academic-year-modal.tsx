@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Database, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { Button, Input, Modal, useToast } from '@/design-system';
 import { extractErrorMessage } from '@/lib/api-client';
@@ -18,6 +19,7 @@ export function NewAcademicYearModal({
 }: NewAcademicYearModalProps) {
   const { notify } = useToast();
   const { settings, refetch } = useCenterSettings();
+  const queryClient = useQueryClient();
 
   const [pin, setPin] = React.useState('');
   const [purgeStudents, setPurgeStudents] = React.useState(false);
@@ -98,6 +100,7 @@ export function NewAcademicYearModal({
 
       notify(result.message, 'success');
 
+      await queryClient.invalidateQueries({ refetchType: 'none' });
       await refetch();
       onOpenChange(false);
       onSuccess?.();

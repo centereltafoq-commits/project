@@ -92,6 +92,29 @@ export class BackupsRepository {
     return rows[0] || null;
   }
 
+  async getCatalog() {
+    return this.db.select().from(backupRecords);
+  }
+
+  async mergeCatalog(records: (typeof backupRecords.$inferSelect)[]) {
+    if (records.length === 0) return;
+
+    await this.db.insert(backupRecords).values(records).onConflictDoUpdate({
+      target: backupRecords.id,
+      set: {
+        fileName: sql`excluded.file_name`,
+        filePath: sql`excluded.file_path`,
+        fileSizeBytes: sql`excluded.file_size_bytes`,
+        triggerType: sql`excluded.trigger_type`,
+        destinations: sql`excluded.destinations`,
+        checksum: sql`excluded.checksum`,
+        status: sql`excluded.status`,
+        errorMessage: sql`excluded.error_message`,
+        createdAt: sql`excluded.created_at`,
+      },
+    });
+  }
+
   async createRecord(data: typeof backupRecords.$inferInsert) {
     const [record] = await this.db.insert(backupRecords).values(data).returning();
     return record;
@@ -134,10 +157,4 @@ export class BackupsRepository {
       .where(eq(backupRecords.status, 'IN_PROGRESS'));
   }
 
-  async fixRestoredInProgressRecords() {
-    await this.db
-      .update(backupRecords)
-      .set({ status: 'FAILED', errorMessage: 'النسخة غير مكتملة أثناء الاستعادة' })
-      .where(eq(backupRecords.status, 'IN_PROGRESS'));
-  }
 }

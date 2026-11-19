@@ -202,6 +202,9 @@ export function GroupFormModal({ open, onOpenChange, group }: GroupFormModalProp
       queryClient.invalidateQueries({ queryKey: ['classroom-allocated-groups'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['finance'] });
+      queryClient.invalidateQueries({ queryKey: ['student-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['assistant-profile'] });
       if (group) queryClient.invalidateQueries({ queryKey: ['group-detail', group.id] });
       notify(isEdit ? 'تم تحديث بيانات المجموعة والسياسة المالية' : 'تم إنشاء المجموعة بنجاح');
       onOpenChange(false);

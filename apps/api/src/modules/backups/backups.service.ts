@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -294,7 +295,7 @@ export class BackupsService {
     }
     const isValid = await argon2.verify(passwordHash, passwordPlain);
     if (!isValid) {
-      throw new UnauthorizedException('كلمة المرور غير صحيحة. تم إلغاء عملية الاستعادة لأسباب أمنية.');
+      throw new ForbiddenException('كلمة المرور غير صحيحة. تم إلغاء عملية الاستعادة لأسباب أمنية.');
     }
   }
 
@@ -473,10 +474,7 @@ export class BackupsService {
       record.fileName?.toLowerCase().endsWith('.gz') ?? true,
     );
 
-    await this.cacheService.invalidatePrefix('');
-    await this.executeRestore(record.filePath);
-    await this.reconcileInProgressRecordsAfterRestore();
-    await this.cacheService.invalidatePrefix('');
+    await this.restoreDatabase(record.filePath);
 
     await this.auditLogsService.record({
       actorUserId: actorId ?? null,
@@ -510,10 +508,7 @@ export class BackupsService {
     fs.writeFileSync(tempFile, normalizedBuffer);
 
     try {
-      await this.cacheService.invalidatePrefix('');
-      await this.executeRestore(tempFile);
-      await this.reconcileInProgressRecordsAfterRestore();
-      await this.cacheService.invalidatePrefix('');
+      await this.restoreDatabase(tempFile);
 
       await this.auditLogsService.record({
         actorUserId: actorId ?? null,
@@ -536,12 +531,16 @@ export class BackupsService {
     }
   }
 
-  private async reconcileInProgressRecordsAfterRestore(): Promise<void> {
-    if (typeof this.repository.findInProgressRecords !== 'function') {
-      await this.repository.fixRestoredInProgressRecords();
-      return;
-    }
+  private async restoreDatabase(filePath: string): Promise<void> {
+    const catalog = await this.repository.getCatalog();
+    await this.cacheService.invalidatePrefix('');
+    await this.executeRestore(filePath);
+    await this.repository.mergeCatalog(catalog);
+    await this.reconcileInProgressRecordsAfterRestore();
+    await this.cacheService.invalidatePrefix('');
+  }
 
+  private async reconcileInProgressRecordsAfterRestore(): Promise<void> {
     const pendingRecords = await this.repository.findInProgressRecords();
     for (const rec of pendingRecords) {
       if (rec.filePath && fs.existsSync(rec.filePath)) {

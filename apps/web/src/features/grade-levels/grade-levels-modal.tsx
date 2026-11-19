@@ -205,7 +205,8 @@ export function GradeLevelsModal({ open, onOpenChange }: GradeLevelsModalProps) 
               />
               <Input
                 label="الكود أو الاختصار"
-                placeholder="مثال: SEC-1"
+                placeholder="يُترك فارغاً للتوليد التلقائي"
+                hint="يتم توليده تلقائياً إذا تركته فارغاً"
                 value={formCode}
                 onChange={(e) => setFormCode(e.target.value)}
               />

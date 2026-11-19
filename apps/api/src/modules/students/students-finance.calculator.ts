@@ -76,7 +76,7 @@ export function computeStudentMonthlyBreakdown(
       breakdown.push({
         groupId,
         groupName: stored.groupName,
-        totalSessions: stored.eligibleSessions || stored.totalGroupSessions,
+        totalSessions: stored.eligibleSessions,
         presentCount: stored.presentCount,
         absentCount: stored.absentCount,
         excusedCount: stored.excusedCount,
