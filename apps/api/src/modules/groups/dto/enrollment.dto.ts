@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -17,6 +18,10 @@ export class EnrollmentQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(EnrollmentStatus, { message: 'حالة الاشتراك غير صالحة' })
   status?: EnrollmentStatus;
+
+  @IsOptional()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: 'صيغة الشهر يجب أن تكون YYYY-MM' })
+  yearMonth?: string;
 }
 
 export class CreateEnrollmentDto {

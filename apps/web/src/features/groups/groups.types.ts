@@ -73,6 +73,21 @@ export interface GroupDetailData extends GroupRow {
   }>;
 }
 
+export type EnrollmentMonthPaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'NO_DUES';
+
+export interface EnrollmentMonthSummary {
+  yearMonth: string;
+  paymentStatus: EnrollmentMonthPaymentStatus | null;
+  totalDue: number;
+  totalPaid: number;
+  remaining: number;
+  totalSessions: number;
+  presentCount: number;
+  absentCount: number;
+  excusedCount: number;
+  isClosed: boolean;
+}
+
 export interface EnrollmentRow {
   id: string;
   studentId: string;
@@ -89,6 +104,7 @@ export interface EnrollmentRow {
   agreedSessionPrice: string;
   status: EnrollmentStatus;
   notes: string | null;
+  monthSummary?: EnrollmentMonthSummary;
 }
 
 export const REVENUE_SPLIT_OPTIONS = [

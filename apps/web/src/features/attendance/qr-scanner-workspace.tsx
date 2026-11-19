@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   CheckCircle2,
+  FileDown,
   QrCode,
   Radio,
   Search,
@@ -15,6 +16,7 @@ import {
 import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Button, Card, Input, useToast } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
+import { StudentQrPdfModal } from '@/features/students/components/student-qr-pdf-modal';
 import { CollectPaymentModal } from '@/features/finance/modals/collect-payment-modal';
 import { ReceiptPrintModal } from '@/features/finance/modals/receipt-print-modal';
 import { PaymentRow } from '@/features/finance/finance.types';
@@ -59,6 +61,7 @@ export function QrScannerWorkspace() {
   const [soundEnabled, setSoundEnabled] = React.useState(true);
   const [autoCheckIn, setAutoCheckIn] = React.useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = React.useState(false);
+  const [qrPdfModalOpen, setQrPdfModalOpen] = React.useState(false);
   const [verifiedByTestCode, setVerifiedByTestCode] = React.useState(false);
   const [lookupData, setLookupData] = React.useState<QrLookupResponse | null>(null);
   const [lookupError, setLookupError] = React.useState<string | null>(null);
@@ -224,7 +227,7 @@ export function QrScannerWorkspace() {
     [lookupMutation, notify, soundEnabled],
   );
 
-  const listenerEnabled = !collectOpen && !activeReceipt;
+  const listenerEnabled = !collectOpen && !activeReceipt && !qrPdfModalOpen;
 
   // Hardware USB/Bluetooth QR scanner listener + live signal verification
   const listenerState = useQrScannerListener({
@@ -314,6 +317,15 @@ export function QrScannerWorkspace() {
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setQrPdfModalOpen(true)}
+              className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl border border-primary/35 bg-primary/10 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              طباعة كروت QR (PDF)
+            </button>
+
             <button
               type="button"
               onClick={() => setStatusDialogOpen(true)}
@@ -488,6 +500,10 @@ export function QrScannerWorkspace() {
         verifiedByTestCode={verifiedByTestCode}
         onTestCodeScanned={handleScanCode}
       />
+
+      {qrPdfModalOpen && (
+        <StudentQrPdfModal open={qrPdfModalOpen} onOpenChange={setQrPdfModalOpen} />
+      )}
     </div>
   );
 }

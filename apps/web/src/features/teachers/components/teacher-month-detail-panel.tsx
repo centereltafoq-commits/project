@@ -221,7 +221,6 @@ export function TeacherMonthDetailPanel({
                 <th className="px-4 py-3">تاريخ الحصة</th>
                 <th className="px-4 py-3">المجموعة</th>
                 <th className="px-4 py-3">الموعد</th>
-                <th className="px-4 py-3">موضوع الحصة</th>
                 <th className="px-4 py-3">عدد الحضور</th>
                 <th className="px-4 py-3">حالة الحصة</th>
               </tr>
@@ -229,7 +228,7 @@ export function TeacherMonthDetailPanel({
             <tbody className="divide-y divide-border">
               {monthSessions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                     لا توجد حصص مسجلة لهذا المدرس خلال شهر {formatYearMonthAr(data.yearMonth)}
                   </td>
                 </tr>
@@ -255,7 +254,6 @@ export function TeacherMonthDetailPanel({
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {formatTimeRangeAr(session.startTime, session.endTime)}
                       </td>
-                      <td className="px-4 py-3">{session.topic || '—'}</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600">
                           <Users className="h-3 w-3" />

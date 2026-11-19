@@ -1,5 +1,6 @@
 import {
   AttendanceStatus,
+  EnrollmentStatus,
   FullMonthAbsencePolicy,
   SessionStatus,
 } from '@edu-center/shared';
@@ -8,6 +9,7 @@ import { roundMoney } from '../utils/money.util';
 export interface StudentBillingEnrollmentInput {
   startDate: string; // YYYY-MM-DD
   endDate?: string | null; // YYYY-MM-DD
+  status?: EnrollmentStatus | string;
   agreedMonthlyPrice: number;
   agreedSessionsCount: number;
   agreedSessionPrice?: number;
@@ -43,6 +45,7 @@ export interface ExistingStudentMonthlySnapshot {
 }
 
 export interface CalculateStudentBillingParams {
+  yearMonth?: string;
   enrollment: StudentBillingEnrollmentInput;
   policy: StudentBillingPolicyInput;
   sessions: GroupSessionBillingInput[];
@@ -71,6 +74,7 @@ export function calculateStudentMonthlyBilling(
   params: CalculateStudentBillingParams,
 ): StudentMonthlyBillingResult {
   const {
+    yearMonth,
     enrollment,
     policy,
     sessions,
@@ -142,23 +146,36 @@ export function calculateStudentMonthlyBilling(
   // Academic attendance metrics stay independent from financial billing
   const attendedCount = presentCount;
 
-  // Group-level billing rule: every executed group session within enrollment window bills the student
-  const billableSessionsCount = eligibleSessions;
+  // Determine the month under evaluation (YYYY-MM)
+  const targetYm =
+    yearMonth ??
+    activeSessions[0]?.sessionDate?.slice(0, 7) ??
+    enrollment.startDate.slice(0, 7);
 
-  let baseDue = 0;
+  const startYm = enrollment.startDate.slice(0, 7);
+  const endYm = enrollment.endDate ? enrollment.endDate.slice(0, 7) : null;
+  const isInMonthWindow = startYm <= targetYm && (!endYm || endYm >= targetYm);
+
+  // If student exited/paused during `targetYm` (or has an exited status without endDate), waive `targetYm` fees.
+  // If they exited in a LATER month (endYm > targetYm), earlier months like month 11 remain due.
+  const isExitedStatus =
+    enrollment.status === EnrollmentStatus.CANCELLED ||
+    enrollment.status === EnrollmentStatus.PAUSED;
+  const isExitedInTargetMonth = isExitedStatus && (!endYm || endYm <= targetYm);
+
+  const isBillableForMonth = isInMonthWindow && !isExitedInTargetMonth;
+
+  const monthlyFee =
+    enrollment.agreedMonthlyPrice > 0
+      ? roundMoney(enrollment.agreedMonthlyPrice)
+      : roundMoney((enrollment.agreedSessionsCount || 0) * sessionPriceSnapshot);
+
+  // Automatic fixed monthly subscription fee: billed upon enrollment independently of attendance/sessions
+  const billableSessionsCount = isBillableForMonth
+    ? Math.max(eligibleSessions, enrollment.agreedSessionsCount || 0)
+    : 0;
   const isFullMonthAbsenceApplied = false;
-
-  if (billableSessionsCount === 0) {
-    baseDue = 0;
-  } else if (
-    billableSessionsCount === enrollment.agreedSessionsCount &&
-    enrollment.agreedMonthlyPrice > 0 &&
-    (enrollment.agreedSessionPrice === undefined || enrollment.agreedSessionPrice <= 0)
-  ) {
-    baseDue = roundMoney(enrollment.agreedMonthlyPrice);
-  } else {
-    baseDue = roundMoney(billableSessionsCount * sessionPriceSnapshot);
-  }
+  const baseDue = isBillableForMonth ? monthlyFee : 0;
 
   const totalDue = roundMoney(baseDue);
   const totalPaid = roundMoney(currentTotalPaid ?? existingRecord?.totalPaid ?? 0);

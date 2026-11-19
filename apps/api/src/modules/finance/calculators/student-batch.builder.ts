@@ -76,8 +76,12 @@ export function buildStudentSettlementBatch(
   for (const enr of snap.monthEnrollments) {
     const key = `${enr.studentId}:${enr.groupId}`;
     const prev = uniqueEnrollments.get(key);
-    // Prefer active/completed enrollment over a cancelled one for the same student & group
-    if (!prev || prev.status === EnrollmentStatus.CANCELLED) {
+    // Prefer active/completed enrollment over a cancelled/paused one for the same student & group
+    if (
+      !prev ||
+      prev.status === EnrollmentStatus.CANCELLED ||
+      prev.status === EnrollmentStatus.PAUSED
+    ) {
       uniqueEnrollments.set(key, enr);
     }
   }
@@ -96,9 +100,11 @@ export function buildStudentSettlementBatch(
     );
 
     const calc = calculateStudentMonthlyBilling({
+      yearMonth,
       enrollment: {
         startDate: enr.startDate,
         endDate: enr.endDate,
+        status: enr.status,
         agreedMonthlyPrice: parseMoney(enr.agreedMonthlyPrice),
         agreedSessionsCount: enr.agreedSessionsCount,
         agreedSessionPrice: parseMoney(enr.agreedSessionPrice),
@@ -127,37 +133,37 @@ export function buildStudentSettlementBatch(
         : null,
     });
 
-    if (enr.status === EnrollmentStatus.CANCELLED && !calc.isClosed) {
-      const hasBillableGroupActivity =
-        calc.billableSessionsCount > 0 || calc.attendedCount > 0;
+    const isExitedForMonth =
+      (enr.status === EnrollmentStatus.CANCELLED || enr.status === EnrollmentStatus.PAUSED) &&
+      !calc.isClosed &&
+      calc.totalDue <= 0;
 
-      if (!hasBillableGroupActivity) {
-        // Cancelled enrollment with zero eligible group sessions: no fee due
-        if (existing || currentPaid > 0) {
-          studentRows.push({
-            studentId: enr.studentId,
-            groupId: enr.groupId,
-            yearMonth,
-            totalGroupSessions: 0,
-            eligibleSessions: 0,
-            presentCount: 0,
-            absentCount: 0,
-            excusedCount: 0,
-            makeupAttendedCount: 0,
-            sessionPriceSnapshot: toMoneyString(calc.sessionPriceSnapshot),
-            extraMakeupFees: '0.00',
-            totalDue: '0.00',
-            totalPaid: toMoneyString(calc.totalPaid),
-            remainingBalance: '0.00',
-            isClosed: false,
-          });
-        }
-        continue;
+    if (isExitedForMonth) {
+      // Exited/paused in this month: monthly charge is removed; clear any existing open due row
+      if (existing || currentPaid > 0) {
+        studentRows.push({
+          studentId: enr.studentId,
+          groupId: enr.groupId,
+          yearMonth,
+          totalGroupSessions: calc.totalGroupSessions,
+          eligibleSessions: calc.eligibleSessions,
+          presentCount: calc.presentCount,
+          absentCount: calc.absentCount,
+          excusedCount: calc.excusedCount,
+          makeupAttendedCount: 0,
+          sessionPriceSnapshot: toMoneyString(calc.sessionPriceSnapshot),
+          extraMakeupFees: '0.00',
+          totalDue: '0.00',
+          totalPaid: toMoneyString(calc.totalPaid),
+          remainingBalance: '0.00',
+          isClosed: false,
+        });
       }
+      continue;
     }
 
     if (
-      enr.status !== EnrollmentStatus.CANCELLED ||
+      (enr.status !== EnrollmentStatus.CANCELLED && enr.status !== EnrollmentStatus.PAUSED) ||
       calc.attendedCount > 0 ||
       calc.totalDue > 0
     ) {

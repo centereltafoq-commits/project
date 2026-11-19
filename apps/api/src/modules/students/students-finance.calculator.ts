@@ -1,4 +1,5 @@
 import {
+  EnrollmentStatus,
   FullMonthAbsencePolicy,
   SessionStatus,
 } from '@edu-center/shared';
@@ -64,7 +65,14 @@ export function computeStudentMonthlyBreakdown(
 
   const uniqueGroups = new Map<string, (typeof bundle.studentEnrollments)[number]>();
   for (const enr of relevantEnrollments) {
-    if (!uniqueGroups.has(enr.groupId)) uniqueGroups.set(enr.groupId, enr);
+    const prev = uniqueGroups.get(enr.groupId);
+    if (
+      !prev ||
+      prev.status === EnrollmentStatus.CANCELLED ||
+      prev.status === EnrollmentStatus.PAUSED
+    ) {
+      uniqueGroups.set(enr.groupId, enr);
+    }
   }
 
   const sessionIdsWithAttendance = new Set(bundle.monthAttendance.map((a) => a.sessionId));
@@ -102,9 +110,11 @@ export function computeStudentMonthlyBreakdown(
     );
 
     const calc = calculateStudentMonthlyBilling({
+      yearMonth,
       enrollment: {
         startDate: enr.startDate,
         endDate: enr.endDate,
+        status: enr.status,
         agreedMonthlyPrice: Number(enr.agreedMonthlyPrice || 0),
         agreedSessionsCount: Number(enr.agreedSessionsCount || 0),
         agreedSessionPrice: Number(enr.agreedSessionPrice || 0),

@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, PauseCircle, PlayCircle, UserPlus } from 'lucide-react';
+import { Ban, CheckCircle2, Clock, PauseCircle, PlayCircle, UserPlus, XCircle } from 'lucide-react';
 import {
   DEFAULT_PAGE_SIZE,
   EnrollmentStatus,
@@ -11,6 +11,7 @@ import {
 import {
   Badge,
   Button,
+  MonthPicker,
   Select,
   ServerDataTable,
   TableColumn,
@@ -19,10 +20,17 @@ import {
 import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
-import { formatCurrency, formatDateAr } from '@/lib/formatters';
+import {
+  formatCurrency,
+  formatDateAr,
+  formatYearMonthAr,
+  getCurrentYearMonth,
+} from '@/lib/formatters';
 import { SubscribeStudentModal } from './subscribe-student-modal';
 import {
   ENROLLMENT_STATUS_OPTIONS,
+  EnrollmentMonthPaymentStatus,
+  EnrollmentMonthSummary,
   EnrollmentRow,
   GroupDetailData,
 } from './groups.types';
@@ -37,27 +45,113 @@ const STATUS_BADGE: Record<
   COMPLETED: { label: 'مكتمل', variant: 'neutral' },
 };
 
+const PAYMENT_STATUS_BADGE: Record<
+  EnrollmentMonthPaymentStatus,
+  { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' }
+> = {
+  PAID: { label: 'مدفوع', variant: 'success' },
+  PARTIAL: { label: 'سداد جزئي', variant: 'warning' },
+  UNPAID: { label: 'غير مسدد', variant: 'danger' },
+  NO_DUES: { label: 'لا توجد مستحقات', variant: 'neutral' },
+};
+
+function renderAttendanceSummaryCell(summary?: EnrollmentMonthSummary) {
+  if (!summary || summary.totalSessions === 0) {
+    return <span className="text-[11px] text-muted-foreground">لا توجد حصص منفذة</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+      <span
+        className="inline-flex items-center gap-0.5 rounded-md bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300"
+        title="حصص الحضور"
+      >
+        <CheckCircle2 className="h-3 w-3" />
+        {summary.presentCount} حاضر
+      </span>
+      <span
+        className="inline-flex items-center gap-0.5 rounded-md bg-rose-500/10 px-1.5 py-0.5 font-semibold text-rose-700 dark:text-rose-300"
+        title="حصص الغياب"
+      >
+        <XCircle className="h-3 w-3" />
+        {summary.absentCount} غائب
+      </span>
+      {summary.excusedCount > 0 && (
+        <span
+          className="inline-flex items-center gap-0.5 rounded-md bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300"
+          title="غياب بعذر"
+        >
+          <Clock className="h-3 w-3" />
+          {summary.excusedCount} عذر
+        </span>
+      )}
+      <span className="text-muted-foreground">/ {summary.totalSessions}</span>
+    </div>
+  );
+}
+
+function renderPaymentSummaryCell(summary?: EnrollmentMonthSummary) {
+  if (!summary || !summary.paymentStatus) {
+    return <span className="text-[11px] text-muted-foreground">—</span>;
+  }
+
+  const badgeMeta = PAYMENT_STATUS_BADGE[summary.paymentStatus];
+  return (
+    <div className="space-y-0.5">
+      <Badge variant={badgeMeta.variant} className="text-[11px]">
+        {badgeMeta.label}
+      </Badge>
+      {summary.paymentStatus === 'PAID' && (
+        <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
+          سُدد {formatCurrency(summary.totalPaid)}
+        </p>
+      )}
+      {summary.paymentStatus === 'PARTIAL' && (
+        <p className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+          دفع {formatCurrency(summary.totalPaid)} • متبقي {formatCurrency(summary.remaining)}
+        </p>
+      )}
+      {summary.paymentStatus === 'UNPAID' && (
+        <p className="text-[11px] text-rose-600 font-medium">
+          مطلوب {formatCurrency(summary.totalDue)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { notify } = useToast();
   const { hasPermission } = useAuth();
   const canManageEnrollments = hasPermission(PERMISSIONS.ENROLLMENTS_MANAGE);
+  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
+  const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth);
   const [search, setSearch] = React.useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = React.useState('');
   const [subscribeOpen, setSubscribeOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery<PaginatedResult<EnrollmentRow>>({
-    queryKey: ['group-enrollments', group.id, page, limit, debouncedSearch, statusFilter],
+    queryKey: [
+      'group-enrollments',
+      group.id,
+      page,
+      limit,
+      yearMonth,
+      debouncedSearch,
+      statusFilter,
+    ],
     queryFn: async () => {
       const res = await apiClient.get(`/groups/${group.id}/enrollments`, {
         params: {
           page,
           limit,
+          yearMonth,
           search: debouncedSearch || undefined,
           status: statusFilter || undefined,
         },
@@ -88,6 +182,8 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
     onError: (err) => notify(extractErrorMessage(err), 'error'),
   });
 
+  const monthLabel = formatYearMonthAr(yearMonth);
+
   const columns: TableColumn<EnrollmentRow>[] = [
     {
       key: 'student',
@@ -98,42 +194,56 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
           <span className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer text-xs">
             {row.studentName}
           </span>
-          <p className="font-mono text-[11px] text-muted-foreground">{row.studentCode}</p>
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="font-mono">{row.studentCode}</span>
+            {row.studentPhone && (
+              <>
+                <span>•</span>
+                <span className="font-mono" dir="ltr">
+                  {row.studentPhone}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       ),
     },
     {
-      key: 'phones',
-      header: 'هاتف الطالب / ولي الأمر',
-      className: 'whitespace-nowrap font-mono',
-      render: (row) => (
-        <div className="text-xs" dir="ltr">
-          <div className="font-mono text-xs">{row.studentPhone || '—'}</div>
-          <div className="text-[11px] text-muted-foreground">{row.guardianPhone || '—'}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'dates',
-      header: 'تاريخ البدء / التوقف',
+      key: 'attendanceSummary',
+      header: `الحضور والغياب (${monthLabel})`,
       className: 'whitespace-nowrap',
-      render: (row) => (
-        <div className="text-xs">
-          <div>البدء: {formatDateAr(row.startDate)}</div>
-          {row.endDate && <div className="text-rose-600 font-medium">التوقف: {formatDateAr(row.endDate)}</div>}
-        </div>
-      ),
+      render: (row) => renderAttendanceSummaryCell(row.monthSummary),
     },
+    ...(canViewFinance
+      ? [
+          {
+            key: 'paymentSummary',
+            header: `سداد (${monthLabel})`,
+            className: 'whitespace-nowrap',
+            render: (row: EnrollmentRow) => renderPaymentSummaryCell(row.monthSummary),
+          },
+        ]
+      : []),
     {
       key: 'pricing',
-      header: 'الاشتراك / سعر الحصة',
+      header: 'الاشتراك وتاريخ البدء',
       className: 'whitespace-nowrap',
       render: (row) => (
         <div className="text-xs">
-          <span className="font-bold text-foreground">{formatCurrency(row.agreedMonthlyPrice)}</span>
-          <span className="mr-1 text-[11px] text-emerald-600 font-medium">
-            ({formatCurrency(row.agreedSessionPrice)} / حصة)
-          </span>
+          <div>
+            <span className="font-bold text-foreground">{formatCurrency(row.agreedMonthlyPrice)}</span>
+            <span className="mr-1 text-[11px] text-emerald-600 font-medium">
+              ({formatCurrency(row.agreedSessionPrice)} / حصة)
+            </span>
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            بدء: {formatDateAr(row.startDate)}
+            {row.endDate && (
+              <span className="mr-1.5 text-rose-600 font-medium">
+                • توقف: {formatDateAr(row.endDate)}
+              </span>
+            )}
+          </div>
         </div>
       ),
     },
@@ -211,16 +321,55 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
       : []),
   ];
 
+  const visibleRows = data?.data ?? [];
+  const quickCounts = React.useMemo(() => {
+    let paid = 0;
+    let partial = 0;
+    let unpaid = 0;
+    for (const row of visibleRows) {
+      const st = row.monthSummary?.paymentStatus;
+      if (st === 'PAID') paid += 1;
+      else if (st === 'PARTIAL') partial += 1;
+      else if (st === 'UNPAID') unpaid += 1;
+    }
+    return { paid, partial, unpaid };
+  }, [visibleRows]);
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-extrabold">سجل اشتراكات الطلاب بالمجموعة</h3>
-        {canManageEnrollments && (
-          <Button onClick={() => setSubscribeOpen(true)} className="gap-1.5">
-            <UserPlus className="h-4 w-4" />
-            تسجيل اشتراك طالب
-          </Button>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-lg font-extrabold">سجل اشتراكات الطلاب بالمجموعة</h3>
+          {canViewFinance && visibleRows.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">
+                مدفوع: {quickCounts.paid}
+              </span>
+              <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300">
+                جزئي: {quickCounts.partial}
+              </span>
+              <span className="rounded-full bg-rose-500/10 px-2.5 py-0.5 font-semibold text-rose-700 dark:text-rose-300">
+                غير مسدد: {quickCounts.unpaid}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <MonthPicker
+            value={yearMonth}
+            onChange={(nextMonth) => {
+              setYearMonth(nextMonth);
+              setPage(1);
+            }}
+            className="w-44"
+          />
+          {canManageEnrollments && (
+            <Button onClick={() => setSubscribeOpen(true)} className="gap-1.5">
+              <UserPlus className="h-4 w-4" />
+              تسجيل اشتراك طالب
+            </Button>
+          )}
+        </div>
       </div>
 
       <ServerDataTable

@@ -134,8 +134,9 @@ export class GroupsController {
   async listEnrollments(
     @Param('groupId', ParseUUIDPipe) groupId: string,
     @Query() query: EnrollmentQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.enrollmentsService.listEnrollments(groupId, query);
+    return this.enrollmentsService.listEnrollments(groupId, query, actor);
   }
 
   @Post(':groupId/enrollments')

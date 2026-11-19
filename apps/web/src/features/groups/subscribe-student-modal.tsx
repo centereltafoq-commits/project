@@ -81,7 +81,7 @@ export function SubscribeStudentModal({
       onOpenChange={onOpenChange}
       size="lg"
       title={`تسجيل اشتراك طالب في: ${group.name}`}
-      description="يدعم النظام الاشتراك من منتصف الشهر وتُحتسب فقط الحصص اللاحقة لتاريخ بدء الاشتراك"
+      description="بمجرد تسجيل الطالب يُدرج عليه الاشتراك الشهري للمجموعة تلقائياً للشهر، ولا يرتبط بالحضور والغياب"
     >
       <form
         onSubmit={(e) => {

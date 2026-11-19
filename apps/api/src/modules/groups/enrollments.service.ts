@@ -5,7 +5,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { EnrollmentStatus } from '@edu-center/shared';
+import { EnrollmentStatus, PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
@@ -18,6 +18,10 @@ import {
 } from './dto/enrollment.dto';
 import { GroupsRepository } from './groups.repository';
 import { EnrollmentsRepository } from './enrollments.repository';
+import {
+  buildEnrollmentMonthSummary,
+  getDefaultYearMonth,
+} from './enrollments-month-summary.calculator';
 
 @Injectable()
 export class EnrollmentsService {
@@ -29,7 +33,15 @@ export class EnrollmentsService {
     @Optional() private readonly cache?: CacheService,
   ) {}
 
-  async listEnrollments(groupId: string, query: EnrollmentQueryDto) {
+  private canViewFinance(actor?: AuthenticatedUser): boolean {
+    if (!actor) return true;
+    return (
+      actor.roleCode === SystemRole.OWNER ||
+      (actor.permissions ?? []).includes(PERMISSIONS.FINANCE_VIEW)
+    );
+  }
+
+  async listEnrollments(groupId: string, query: EnrollmentQueryDto, actor?: AuthenticatedUser) {
     const group = await this.groupsRepository.findDetailById(groupId);
     if (!group) throw new NotFoundException('المجموعة غير موجودة');
 
@@ -37,7 +49,21 @@ export class EnrollmentsService {
       groupId,
       query,
     );
-    return createPaginatedResult(rows, total, page, limit);
+
+    const yearMonth = query.yearMonth ?? getDefaultYearMonth();
+    const canViewFinance = this.canViewFinance(actor);
+    const activityBundle = await this.enrollmentsRepository.findGroupMonthActivity(
+      groupId,
+      yearMonth,
+      rows.map((r) => r.studentId),
+    );
+
+    const enrichedRows = rows.map((row) => ({
+      ...row,
+      monthSummary: buildEnrollmentMonthSummary(row, yearMonth, activityBundle, canViewFinance),
+    }));
+
+    return createPaginatedResult(enrichedRows, total, page, limit);
   }
 
   async subscribeStudent(groupId: string, dto: CreateEnrollmentDto, actor: AuthenticatedUser) {
@@ -73,7 +99,8 @@ export class EnrollmentsService {
         ? dto.agreedSessionPrice
         : agreedMonthlyPrice / Math.max(1, agreedSessionsCount);
 
-    const startDate = dto.startDate || new Date().toISOString().slice(0, 10);
+    const today = this.getLocalIsoDate();
+    const startDate = dto.startDate || today;
     const created = await this.enrollmentsRepository.create({
       studentId: dto.studentId,
       groupId,
@@ -95,15 +122,7 @@ export class EnrollmentsService {
       afterData: created,
     });
 
-    if (this.settlementService) {
-      const now = new Date();
-      const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const startYm = startDate.slice(0, 7);
-      const months = Array.from(new Set([currentYm, startYm]));
-      for (const ym of months) {
-        await this.settlementService.recalculateMonth(ym);
-      }
-    }
+    await this.recalculateAffectedMonths([startDate, dto.endDate]);
     try {
       await Promise.all([
         this.cache?.invalidatePrefix('dashboard:summary:'),
@@ -112,6 +131,28 @@ export class EnrollmentsService {
     } catch {}
 
     return created;
+  }
+
+  private getLocalIsoDate(): string {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private async recalculateAffectedMonths(dates: Array<string | null | undefined>): Promise<void> {
+    if (!this.settlementService) return;
+    const currentYm = this.getLocalIsoDate().slice(0, 7);
+    const months = new Set<string>([currentYm]);
+    for (const dt of dates) {
+      if (dt && dt.length >= 7) {
+        months.add(dt.slice(0, 7));
+      }
+    }
+    for (const ym of months) {
+      await this.settlementService.recalculateMonth(ym);
+    }
   }
 
   async updateEnrollment(
@@ -142,7 +183,7 @@ export class EnrollmentsService {
       }
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = this.getLocalIsoDate();
     let resolvedEndDate: string | null | undefined = dto.endDate;
     if (dto.status === EnrollmentStatus.ACTIVE && dto.endDate === undefined) {
       resolvedEndDate = null;
@@ -180,16 +221,12 @@ export class EnrollmentsService {
       afterData: updated,
     });
 
-    if (this.settlementService) {
-      const now = new Date();
-      const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const months = new Set<string>([currentYm]);
-      if (existing.startDate) months.add(existing.startDate.slice(0, 7));
-      if (dto.startDate) months.add(dto.startDate.slice(0, 7));
-      for (const ym of months) {
-        await this.settlementService.recalculateMonth(ym);
-      }
-    }
+    await this.recalculateAffectedMonths([
+      existing.startDate,
+      existing.endDate,
+      dto.startDate,
+      updated?.endDate,
+    ]);
     try {
       await Promise.all([
         this.cache?.invalidatePrefix('dashboard:summary:'),

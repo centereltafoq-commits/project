@@ -1,10 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, ilike, ne, or, SQL } from 'drizzle-orm';
-import { EnrollmentStatus } from '@edu-center/shared';
+import { and, count, desc, eq, ilike, inArray, ne, or, SQL, sql } from 'drizzle-orm';
+import { EnrollmentStatus, SessionStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
-import { enrollments, students } from '../../database/schemas';
+import {
+  attendance,
+  enrollments,
+  financialPolicies,
+  paymentAllocations,
+  payments,
+  sessions,
+  studentMonthlyRecords,
+  students,
+} from '../../database/schemas';
 import { normalizePagination } from '../../common/utils/pagination.util';
 import { EnrollmentQueryDto } from './dto/enrollment.dto';
+import { GroupMonthActivityBundle } from './enrollments-month-summary.calculator';
 
 @Injectable()
 export class EnrollmentsRepository {
@@ -66,6 +76,131 @@ export class EnrollmentsRepository {
     ]);
 
     return { rows, total: Number(total), page, limit };
+  }
+
+  async findGroupMonthActivity(
+    groupId: string,
+    yearMonth: string,
+    studentIds: string[],
+  ): Promise<GroupMonthActivityBundle> {
+    const uniqueStudentIds = Array.from(new Set(studentIds));
+    if (uniqueStudentIds.length === 0) {
+      return {
+        policy: null,
+        monthSessions: [],
+        sessionIdsWithAttendance: new Set<string>(),
+        attendanceRows: [],
+        storedRecords: [],
+        allocatedByStudent: new Map<string, number>(),
+      };
+    }
+
+    const [policyRows, monthSessions, storedRecords, allocationRows] = await Promise.all([
+      this.db
+        .select({
+          fullMonthAbsencePolicy: financialPolicies.fullMonthAbsencePolicy,
+          fullAbsenceFixedFee: financialPolicies.fullAbsenceFixedFee,
+          chargeExcusedAbsence: financialPolicies.chargeExcusedAbsence,
+        })
+        .from(financialPolicies)
+        .where(eq(financialPolicies.groupId, groupId))
+        .limit(1),
+      this.db
+        .select({
+          id: sessions.id,
+          sessionDate: sessions.sessionDate,
+          status: sessions.status,
+        })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.groupId, groupId),
+            eq(sessions.yearMonth, yearMonth),
+            ne(sessions.status, SessionStatus.CANCELLED),
+          ),
+        ),
+      this.db
+        .select({
+          studentId: studentMonthlyRecords.studentId,
+          isClosed: studentMonthlyRecords.isClosed,
+          totalGroupSessions: studentMonthlyRecords.totalGroupSessions,
+          eligibleSessions: studentMonthlyRecords.eligibleSessions,
+          presentCount: studentMonthlyRecords.presentCount,
+          absentCount: studentMonthlyRecords.absentCount,
+          excusedCount: studentMonthlyRecords.excusedCount,
+          sessionPriceSnapshot: studentMonthlyRecords.sessionPriceSnapshot,
+          totalDue: studentMonthlyRecords.totalDue,
+          totalPaid: studentMonthlyRecords.totalPaid,
+        })
+        .from(studentMonthlyRecords)
+        .where(
+          and(
+            eq(studentMonthlyRecords.groupId, groupId),
+            eq(studentMonthlyRecords.yearMonth, yearMonth),
+            inArray(studentMonthlyRecords.studentId, uniqueStudentIds),
+          ),
+        ),
+      this.db
+        .select({
+          studentId: payments.studentId,
+          allocatedSum: sql<string>`COALESCE(SUM(${paymentAllocations.allocatedAmount}), 0)`,
+        })
+        .from(paymentAllocations)
+        .innerJoin(payments, eq(paymentAllocations.paymentId, payments.id))
+        .where(
+          and(
+            eq(paymentAllocations.groupId, groupId),
+            eq(paymentAllocations.yearMonth, yearMonth),
+            inArray(payments.studentId, uniqueStudentIds),
+          ),
+        )
+        .groupBy(payments.studentId),
+    ]);
+
+    const sessionIds = monthSessions.map((s) => s.id);
+    const [recordedSessionRows, attendanceRows] =
+      sessionIds.length > 0
+        ? await Promise.all([
+            this.db
+              .selectDistinct({ sessionId: attendance.sessionId })
+              .from(attendance)
+              .where(inArray(attendance.sessionId, sessionIds)),
+            this.db
+              .select({
+                sessionId: attendance.sessionId,
+                studentId: attendance.studentId,
+                status: attendance.status,
+              })
+              .from(attendance)
+              .where(
+                and(
+                  inArray(attendance.sessionId, sessionIds),
+                  inArray(attendance.studentId, uniqueStudentIds),
+                ),
+              ),
+          ])
+        : [[], []];
+
+    const allocatedByStudent = new Map<string, number>();
+    for (const alloc of allocationRows) {
+      allocatedByStudent.set(alloc.studentId, Number(alloc.allocatedSum || 0));
+    }
+
+    const policyRow = policyRows[0];
+    return {
+      policy: policyRow
+        ? {
+            fullMonthAbsencePolicy: policyRow.fullMonthAbsencePolicy,
+            fullAbsenceFixedFee: Number(policyRow.fullAbsenceFixedFee || 0),
+            chargeExcusedAbsence: Boolean(policyRow.chargeExcusedAbsence),
+          }
+        : null,
+      monthSessions,
+      sessionIdsWithAttendance: new Set(recordedSessionRows.map((r) => r.sessionId)),
+      attendanceRows,
+      storedRecords,
+      allocatedByStudent,
+    };
   }
 
   async findById(enrollmentId: string) {

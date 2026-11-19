@@ -275,7 +275,6 @@ export function StudentSelectedMonthDetails({
                   <th className="px-4 py-3">تاريخ الحصة</th>
                   <th className="px-4 py-3">المجموعة</th>
                   <th className="px-4 py-3">وقت الحصة</th>
-                  <th className="px-4 py-3">موضوع الحصة</th>
                   <th className="px-4 py-3">حالة الحضور</th>
                   <th className="px-4 py-3">ملاحظات</th>
                 </tr>
@@ -283,7 +282,7 @@ export function StudentSelectedMonthDetails({
               <tbody className="divide-y divide-border">
                 {data.attendanceRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                       لا توجد سجلات حضور أو غياب مسجلة لهذا الشهر
                     </td>
                   </tr>
@@ -300,7 +299,6 @@ export function StudentSelectedMonthDetails({
                         <td className="px-4 py-3">
                           {formatTimeRangeAr(rec.startTime, rec.endTime)}
                         </td>
-                        <td className="px-4 py-3">{rec.topic || '—'}</td>
                         <td className="px-4 py-3">
                           <Badge variant={st.variant}>{st.label}</Badge>
                         </td>

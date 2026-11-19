@@ -31,27 +31,27 @@ function createBaseSnapshot(
   };
 }
 
-describe('buildStudentSettlementBatch — cancelled enrollment & settlement preservation', () => {
-  it('bills a cancelled mid-month enrollment for sessions attended before cancellation', () => {
+describe('buildStudentSettlementBatch — automatic monthly billing & exit rules', () => {
+  it('immediately generates full monthly due row for an active enrollment even with zero executed sessions', () => {
     const snap = createBaseSnapshot({
       allGroups: [
         {
           id: 'grp-1',
-          groupCode: 'GRP-9882',
-          name: 'مجموعة QA 1211',
-          subject: 'رياضيات',
-          gradeLevel: 'الثاني الثانوي',
+          groupCode: 'GRP-1001',
+          name: 'فيزياء 3ث',
+          subject: 'فيزياء',
+          gradeLevel: 'الثالث الثانوي',
           primaryTeacherId: 'tch-1',
           defaultClassroomId: null,
-          monthlyPrice: '320.00',
-          monthlySessionsCount: 8,
-          calculatedSessionPrice: '40.00',
+          monthlyPrice: '100.00',
+          monthlySessionsCount: 4,
+          calculatedSessionPrice: '25.00',
           maxStudents: 30,
           scheduleSlots: [],
           isActive: true,
           notes: null,
-          createdAt: new Date('2026-11-12T00:00:00Z'),
-          updatedAt: new Date('2026-11-12T00:00:00Z'),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ],
       monthEnrollments: [
@@ -59,15 +59,72 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
           id: 'enr-1',
           studentId: 'stu-1',
           groupId: 'grp-1',
-          startDate: '2026-11-12',
-          endDate: '2026-11-12',
-          agreedMonthlyPrice: '320.00',
-          agreedSessionsCount: 8,
-          agreedSessionPrice: '40.00',
+          startDate: '2026-11-19',
+          endDate: null,
+          agreedMonthlyPrice: '100.00',
+          agreedSessionsCount: 4,
+          agreedSessionPrice: '25.00',
+          status: EnrollmentStatus.ACTIVE,
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+    });
+
+    const batch = buildStudentSettlementBatch('2026-11', snap);
+    expect(batch.studentRows).toHaveLength(1);
+    expect(batch.studentRows[0]).toMatchObject({
+      studentId: 'stu-1',
+      groupId: 'grp-1',
+      yearMonth: '2026-11',
+      totalDue: '100.00',
+      totalPaid: '0.00',
+      remainingBalance: '100.00',
+      isClosed: false,
+    });
+    expect(batch.groupRevenueMap.get('grp-1')).toBe(100);
+    expect(batch.groupEnrolledStudentsMap.get('grp-1')).toBe(1);
+  });
+
+  it('clears the current month fee when a student exits (CANCELLED) during that same month', () => {
+    const snap = createBaseSnapshot({
+      monthEnrollments: [
+        {
+          id: 'enr-1',
+          studentId: 'stu-1',
+          groupId: 'grp-1',
+          startDate: '2026-11-01',
+          endDate: '2026-11-19',
+          agreedMonthlyPrice: '100.00',
+          agreedSessionsCount: 4,
+          agreedSessionPrice: '25.00',
           status: EnrollmentStatus.CANCELLED,
           notes: null,
-          createdAt: new Date('2026-11-12T00:00:00Z'),
-          updatedAt: new Date('2026-11-12T14:26:34Z'),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      existingStudentRecords: [
+        {
+          id: 'rec-1',
+          studentId: 'stu-1',
+          groupId: 'grp-1',
+          yearMonth: '2026-11',
+          totalGroupSessions: 0,
+          eligibleSessions: 0,
+          presentCount: 0,
+          absentCount: 0,
+          excusedCount: 0,
+          makeupAttendedCount: 0,
+          sessionPriceSnapshot: '25.00',
+          extraMakeupFees: '0.00',
+          totalDue: '100.00',
+          totalPaid: '0.00',
+          remainingBalance: '100.00',
+          isClosed: false,
+          closedAt: null,
+          updatedAt: new Date(),
         },
       ],
       monthSessions: [
@@ -76,15 +133,15 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
           groupId: 'grp-1',
           teacherId: 'tch-1',
           classroomId: null,
-          sessionDate: '2026-11-12',
+          sessionDate: '2026-11-05',
           yearMonth: '2026-11',
           startTime: '14:00',
           endTime: '16:00',
           status: SessionStatus.COMPLETED,
           topic: null,
           notes: null,
-          createdAt: new Date('2026-11-12T00:00:00Z'),
-          updatedAt: new Date('2026-11-12T00:00:00Z'),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ],
       sessionAttendances: [
@@ -95,96 +152,6 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
           status: AttendanceStatus.PRESENT,
           notes: null,
           recordedByUserId: 'usr-1',
-          updatedByUserId: 'usr-1',
-          recordedAt: new Date('2026-11-12T14:20:00Z'),
-          updatedAt: new Date('2026-11-12T14:20:00Z'),
-        },
-      ],
-      allocationsAgg: [
-        {
-          studentId: 'stu-1',
-          groupId: 'grp-1',
-          paidSum: '15.00',
-        },
-      ],
-    });
-
-    const batch = buildStudentSettlementBatch('2026-11', snap);
-    expect(batch.studentRows).toHaveLength(1);
-    expect(batch.studentRows[0]).toMatchObject({
-      studentId: 'stu-1',
-      groupId: 'grp-1',
-      totalGroupSessions: 1,
-      eligibleSessions: 1,
-      presentCount: 1,
-      sessionPriceSnapshot: '40.00',
-      totalDue: '40.00',
-      totalPaid: '15.00',
-      remainingBalance: '25.00',
-      isClosed: false,
-    });
-    expect(batch.groupRevenueMap.get('grp-1')).toBe(40);
-    expect(batch.groupBilledStudentsMap.get('grp-1')).toBe(1);
-    expect(batch.groupEnrolledStudentsMap.get('grp-1')).toBe(1);
-  });
-
-  it('does not charge a cancelled enrollment that ended before any executed group session ran', () => {
-    const snap = createBaseSnapshot({
-      allPolicies: [
-        {
-          id: 'pol-1',
-          groupId: 'grp-1',
-          revenueSplitMethod: 'ACTUAL_ATTENDANCE_RATIO' as any,
-          teacherSharePerStudent: '0.00',
-          centerSharePerStudent: '0.00',
-          teacherPercentage: '75.00',
-          fullMonthAbsencePolicy: FullMonthAbsencePolicy.CHARGE_FULL_SUBSCRIPTION,
-          fullAbsenceFixedFee: '50.00',
-          chargeExcusedAbsence: false,
-          updatedAt: new Date(),
-        },
-      ],
-      monthEnrollments: [
-        {
-          id: 'enr-1',
-          studentId: 'stu-2',
-          groupId: 'grp-1',
-          startDate: '2026-11-01',
-          endDate: '2026-11-01',
-          agreedMonthlyPrice: '320.00',
-          agreedSessionsCount: 8,
-          agreedSessionPrice: '40.00',
-          status: EnrollmentStatus.CANCELLED,
-          notes: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-      monthSessions: [
-        {
-          id: 'ses-1',
-          groupId: 'grp-1',
-          teacherId: 'tch-1',
-          classroomId: null,
-          sessionDate: '2026-11-02',
-          yearMonth: '2026-11',
-          startTime: '14:00',
-          endTime: '16:00',
-          status: SessionStatus.COMPLETED,
-          topic: null,
-          notes: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-      sessionAttendances: [
-        {
-          id: 'att-1',
-          sessionId: 'ses-1',
-          studentId: 'stu-2',
-          status: AttendanceStatus.ABSENT,
-          notes: null,
-          recordedByUserId: 'usr-1',
           updatedByUserId: null,
           recordedAt: new Date(),
           updatedAt: new Date(),
@@ -193,12 +160,53 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
     });
 
     const batch = buildStudentSettlementBatch('2026-11', snap);
-    expect(batch.studentRows).toHaveLength(0);
+    expect(batch.studentRows).toHaveLength(1);
+    expect(batch.studentRows[0]).toMatchObject({
+      studentId: 'stu-1',
+      totalDue: '0.00',
+      totalPaid: '0.00',
+      remainingBalance: '0.00',
+      presentCount: 1,
+    });
     expect(batch.groupRevenueMap.get('grp-1') ?? 0).toBe(0);
-    expect(batch.groupEnrolledStudentsMap.get('grp-1') ?? 0).toBe(0);
   });
 
-  it('preserves paid balance for zero-session cancelled enrollment when prior payment exists', () => {
+  it('preserves month 11 due when student leaves in month 12, while clearing month 12 fee', () => {
+    const enrollment = {
+      id: 'enr-1',
+      studentId: 'stu-2',
+      groupId: 'grp-1',
+      startDate: '2026-11-01',
+      endDate: '2026-12-04',
+      agreedMonthlyPrice: '100.00',
+      agreedSessionsCount: 4,
+      agreedSessionPrice: '25.00',
+      status: EnrollmentStatus.CANCELLED,
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const novBatch = buildStudentSettlementBatch(
+      '2026-11',
+      createBaseSnapshot({ monthEnrollments: [enrollment] }),
+    );
+    expect(novBatch.studentRows).toHaveLength(1);
+    expect(novBatch.studentRows[0]).toMatchObject({
+      yearMonth: '2026-11',
+      totalDue: '100.00',
+      remainingBalance: '100.00',
+    });
+
+    const decBatch = buildStudentSettlementBatch(
+      '2026-12',
+      createBaseSnapshot({ monthEnrollments: [enrollment] }),
+    );
+    expect(decBatch.studentRows).toHaveLength(0);
+    expect(decBatch.groupRevenueMap.get('grp-1') ?? 0).toBe(0);
+  });
+
+  it('preserves paid balance for cancelled enrollment when prior payment exists', () => {
     const snap = createBaseSnapshot({
       monthEnrollments: [
         {
@@ -206,28 +214,11 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
           studentId: 'stu-3',
           groupId: 'grp-1',
           startDate: '2026-11-01',
-          endDate: '2026-11-01',
+          endDate: '2026-11-10',
           agreedMonthlyPrice: '320.00',
           agreedSessionsCount: 8,
           agreedSessionPrice: '40.00',
           status: EnrollmentStatus.CANCELLED,
-          notes: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-      monthSessions: [
-        {
-          id: 'ses-1',
-          groupId: 'grp-1',
-          teacherId: 'tch-1',
-          classroomId: null,
-          sessionDate: '2026-11-02',
-          yearMonth: '2026-11',
-          startTime: '14:00',
-          endTime: '16:00',
-          status: SessionStatus.COMPLETED,
-          topic: null,
           notes: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -248,11 +239,10 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
       totalDue: '0.00',
       totalPaid: '10.00',
       remainingBalance: '0.00',
-      presentCount: 0,
     });
   });
 
-  it('prefers non-cancelled enrollment when both cancelled and active enrollments exist in same month', () => {
+  it('prefers active enrollment when both cancelled and active enrollments exist in same month', () => {
     const snap = createBaseSnapshot({
       monthEnrollments: [
         {
@@ -319,7 +309,7 @@ describe('buildStudentSettlementBatch — cancelled enrollment & settlement pres
     const batch = buildStudentSettlementBatch('2026-11', snap);
     expect(batch.studentRows[0]).toMatchObject({
       sessionPriceSnapshot: '40.00',
-      totalDue: '40.00',
+      totalDue: '320.00',
       presentCount: 1,
     });
   });

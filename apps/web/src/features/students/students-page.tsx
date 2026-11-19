@@ -37,6 +37,7 @@ import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { StudentFormModal } from './student-form-modal';
 import { StudentQuickViewModal } from './components/student-quick-view-modal';
+import { StudentQrPdfModal } from './components/student-qr-pdf-modal';
 import {
   STUDENT_STATUS_META,
   STUDENT_STATUS_OPTIONS,
@@ -69,6 +70,7 @@ export function StudentsPage() {
   const [quickViewStudent, setQuickViewStudent] = React.useState<StudentRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const [gradeLevelsModalOpen, setGradeLevelsModalOpen] = React.useState(false);
+  const [qrPdfModalOpen, setQrPdfModalOpen] = React.useState(false);
   const { options: dynamicGradeOptions } = useGradeLevels(false);
   const baseGradeOptions = dynamicGradeOptions;
 
@@ -303,6 +305,15 @@ export function StudentsPage() {
         description="متابعة بيانات الطلاب، الاشتراكات، السجل الشهري المالي، وسجل الحضور التراكمي"
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setQrPdfModalOpen(true)}
+              className="h-9 gap-1.5 px-3 border-primary/35 text-primary hover:bg-primary/5"
+            >
+              <QrCode className="h-3.5 w-3.5" />
+              كروت QR للطلاب (PDF)
+            </Button>
             {canExport && (
               <Button
                 size="sm"
@@ -475,6 +486,14 @@ export function StudentsPage() {
         open={gradeLevelsModalOpen}
         onOpenChange={setGradeLevelsModalOpen}
       />
+
+      {qrPdfModalOpen && (
+        <StudentQrPdfModal
+          open={qrPdfModalOpen}
+          onOpenChange={setQrPdfModalOpen}
+          initialGradeFilter={gradeFilter}
+        />
+      )}
 
       <ExcelImportModal
         open={importModalOpen}
