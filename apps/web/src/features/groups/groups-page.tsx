@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Calendar,
+  CheckCircle2,
   Download,
   Edit3,
   Eye,
   GraduationCap,
+  Layers,
+  PauseCircle,
   Plus,
   RotateCcw,
   Upload,
@@ -20,6 +23,7 @@ import {
 import {
   Badge,
   Button,
+  Card,
   PageHeader,
   Select,
   ServerDataTable,
@@ -36,7 +40,7 @@ import { GradeLevelsModal } from '../grade-levels/grade-levels-modal';
 import { useGradeLevels } from '../grade-levels/use-grade-levels';
 import { GroupFormModal } from './group-form-modal';
 import { GroupQuickViewModal } from './components/group-quick-view-modal';
-import { GroupDetailData, GroupRow } from './groups.types';
+import { GroupDetailData, GroupRow, GroupsSummary } from './groups.types';
 
 export function GroupsPage() {
   const navigate = useNavigate();
@@ -64,7 +68,7 @@ export function GroupsPage() {
   const { options: dynamicGradeOptions } = useGradeLevels(false);
   const baseGradeOptions = dynamicGradeOptions;
 
-  const { data, isLoading } = useQuery<PaginatedResult<GroupRow>>({
+  const { data, isLoading } = useQuery<PaginatedResult<GroupRow> & { summary?: GroupsSummary }>({
     queryKey: ['groups', page, limit, debouncedSearch, gradeFilter, activeFilter],
     queryFn: async () => {
       const res = await apiClient.get('/groups', {
@@ -348,6 +352,97 @@ export function GroupsPage() {
           ) : undefined
         }
       />
+
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {(
+          [
+            {
+              key: 'total',
+              label: 'إجمالي المجموعات',
+              value: data?.summary?.totalGroups ?? data?.meta?.totalItems ?? 0,
+              subtitle: 'كافة المجموعات المسجلة بالسنتر',
+              Icon: Layers,
+              iconClass: 'bg-primary/10 text-primary',
+              activeClass: activeFilter === '' ? 'border-primary/40 shadow-sm' : '',
+              onClick: () => {
+                setActiveFilter('');
+                setPage(1);
+              },
+            },
+            {
+              key: 'active',
+              label: 'المجموعات النشطة',
+              value: data?.summary?.activeGroups ?? 0,
+              subtitle: 'مجموعات تعمل حالياً',
+              Icon: CheckCircle2,
+              iconClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+              activeClass: activeFilter === 'true' ? 'border-emerald-500/50 shadow-sm' : '',
+              onClick: () => {
+                setActiveFilter(activeFilter === 'true' ? '' : 'true');
+                setPage(1);
+              },
+            },
+            {
+              key: 'inactive',
+              label: 'المجموعات المتوقفة',
+              value: data?.summary?.inactiveGroups ?? 0,
+              subtitle: 'موقوفة أو مجمدة مؤقتاً',
+              Icon: PauseCircle,
+              iconClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+              activeClass: activeFilter === 'false' ? 'border-amber-500/50 shadow-sm' : '',
+              onClick: () => {
+                setActiveFilter(activeFilter === 'false' ? '' : 'false');
+                setPage(1);
+              },
+            },
+            {
+              key: 'enrollments',
+              label: 'الاشتراكات النشطة',
+              value: data?.summary?.totalActiveEnrollments ?? 0,
+              subtitle: 'إجمالي مقاعد الطلاب المفعّلة',
+              Icon: Users,
+              iconClass: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
+              activeClass: '',
+              onClick: () => {
+                setActiveFilter('true');
+                setPage(1);
+              },
+            },
+          ] as const
+        ).map((card) => {
+          const Icon = card.Icon;
+          return (
+            <Card
+              key={card.key}
+              role="button"
+              tabIndex={0}
+              onClick={card.onClick}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  card.onClick();
+                }
+              }}
+              className={`cursor-pointer p-4 transition-all hover:border-primary/40 ${card.activeClass}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground">{card.label}</p>
+                  <p className="text-2xl font-extrabold text-foreground">
+                    {card.value.toLocaleString('en-US')}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{card.subtitle}</p>
+                </div>
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${card.iconClass}`}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
 
       <ServerDataTable
         tableClassName="w-full table-fixed border-collapse text-right text-xs"

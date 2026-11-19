@@ -2,10 +2,11 @@ import * as React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { PERMISSIONS } from '@edu-center/shared';
 import { ToastProvider } from '@/design-system';
 import * as authContextModule from '@/features/auth/auth-context';
+import { apiClient } from '@/lib/api-client';
 import { downloadBlobFile } from '@/lib/file-download';
 import { TeachersPage } from './teachers-page';
 
@@ -88,6 +89,30 @@ describe('TeachersPage Excel Import & Export Integration', () => {
     fireEvent.click(importBtn);
 
     expect(await screen.findByText('استيراد بيانات المدرسين من Excel')).toBeInTheDocument();
+  });
+
+  it('renders total, active, and inactive teacher summary KPI cards', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: {
+        data: [],
+        meta: { page: 1, limit: 25, totalItems: 18, totalPages: 1 },
+        summary: {
+          totalCount: 18,
+          activeCount: 15,
+          inactiveCount: 3,
+        },
+      },
+    } as any);
+
+    renderPage([PERMISSIONS.TEACHERS_VIEW]);
+
+    const totalCard = screen.getByRole('button', { name: /إجمالي المدرسين/i });
+    const activeCard = screen.getByRole('button', { name: /المدرسين النشطين/i });
+    const inactiveCard = screen.getByRole('button', { name: /المدرسين غير النشطين/i });
+
+    expect(await within(totalCard).findByText('18')).toBeInTheDocument();
+    expect(within(activeCard).getByText('15')).toBeInTheDocument();
+    expect(within(inactiveCard).getByText('3')).toBeInTheDocument();
   });
 });
 

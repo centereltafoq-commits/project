@@ -2,10 +2,11 @@ import * as React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { PERMISSIONS } from '@edu-center/shared';
 import { ToastProvider } from '@/design-system';
 import * as authContextModule from '@/features/auth/auth-context';
+import { apiClient } from '@/lib/api-client';
 import { downloadBlobFile } from '@/lib/file-download';
 import { GroupsPage } from './groups-page';
 
@@ -97,6 +98,33 @@ describe('GroupsPage Excel Import & Export Integration', () => {
     fireEvent.click(importBtn);
 
     expect(await screen.findByText('استيراد المجموعات الدراسية من Excel')).toBeInTheDocument();
+  });
+
+  it('renders total, active, inactive groups and active enrollments KPI cards', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: {
+        data: [],
+        meta: { page: 1, limit: 25, totalItems: 12, totalPages: 1 },
+        summary: {
+          totalGroups: 12,
+          activeGroups: 9,
+          inactiveGroups: 3,
+          totalActiveEnrollments: 145,
+        },
+      },
+    } as any);
+
+    renderPage([PERMISSIONS.GROUPS_VIEW]);
+
+    const totalCard = screen.getByRole('button', { name: /إجمالي المجموعات/i });
+    const activeCard = screen.getByRole('button', { name: /المجموعات النشطة/i });
+    const inactiveCard = screen.getByRole('button', { name: /المجموعات المتوقفة/i });
+    const enrollmentsCard = screen.getByRole('button', { name: /الاشتراكات النشطة/i });
+
+    expect(await within(totalCard).findByText('12')).toBeInTheDocument();
+    expect(within(activeCard).getByText('9')).toBeInTheDocument();
+    expect(within(inactiveCard).getByText('3')).toBeInTheDocument();
+    expect(within(enrollmentsCard).getByText('145')).toBeInTheDocument();
   });
 });
 

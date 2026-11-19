@@ -51,6 +51,12 @@ describe('GroupsService - Classroom Unassigned Rule, Conflict Validation & RBAC 
         total: 1,
         page: 1,
         limit: 25,
+        summary: {
+          totalGroups: 10,
+          activeGroups: 8,
+          inactiveGroups: 2,
+          totalActiveEnrollments: 120,
+        },
       }),
       findDetailById: vi.fn().mockResolvedValue({
         id: 'grp-1',
@@ -260,5 +266,15 @@ describe('GroupsService - Classroom Unassigned Rule, Conflict Validation & RBAC 
         ownerActor,
       ),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('includes group and enrollment counts summary in list response', async () => {
+    const res = await service.list({ page: 1, limit: 25 }, ownerActor);
+    expect(res.summary).toEqual({
+      totalGroups: 10,
+      activeGroups: 8,
+      inactiveGroups: 2,
+      totalActiveEnrollments: 120,
+    });
   });
 });

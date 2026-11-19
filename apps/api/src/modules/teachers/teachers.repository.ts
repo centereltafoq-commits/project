@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { TeacherEmploymentStatus } from '@edu-center/shared';
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import { groups, groupTeachers, teacherAvailability, teachers } from '../../database/schemas';
@@ -51,7 +52,7 @@ export class TeachersRepository {
     const whereClause = this.buildWhereClause(query);
     const assignedGroupsCountSq = this.getAssignedGroupsCountSubquery();
 
-    const [rows, [{ total }]] = await Promise.all([
+    const [rows, [{ total }], [statusCounts]] = await Promise.all([
       this.db
         .select({
           id: teachers.id,
@@ -73,6 +74,13 @@ export class TeachersRepository {
         .limit(limit)
         .offset(offset),
       this.db.select({ total: count() }).from(teachers).where(whereClause),
+      this.db
+        .select({
+          totalCount: sql<number>`COUNT(*)::int`,
+          activeCount: sql<number>`COUNT(*) FILTER (WHERE ${teachers.employmentStatus} = ${TeacherEmploymentStatus.ACTIVE})::int`,
+          inactiveCount: sql<number>`COUNT(*) FILTER (WHERE ${teachers.employmentStatus} <> ${TeacherEmploymentStatus.ACTIVE})::int`,
+        })
+        .from(teachers),
     ]);
 
     return {
@@ -80,6 +88,11 @@ export class TeachersRepository {
       total: Number(total),
       page,
       limit,
+      summary: {
+        totalCount: Number(statusCounts?.totalCount ?? 0),
+        activeCount: Number(statusCounts?.activeCount ?? 0),
+        inactiveCount: Number(statusCounts?.inactiveCount ?? 0),
+      },
     };
   }
 

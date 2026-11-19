@@ -63,7 +63,7 @@ export class GroupsRepository {
     const whereClause = this.buildWhereClause(query);
     const activeStudentsSq = this.getActiveStudentsCountSubquery();
 
-    const [rows, [{ total }]] = await Promise.all([
+    const [rows, [{ total }], [groupCounts], [enrollmentCounts]] = await Promise.all([
       this.db
         .select({
           id: groups.id,
@@ -100,9 +100,33 @@ export class GroupsRepository {
         .limit(limit)
         .offset(offset),
       this.db.select({ total: count() }).from(groups).where(whereClause),
+      this.db
+        .select({
+          totalGroups: sql<number>`COUNT(*)::int`,
+          activeGroups: sql<number>`COUNT(*) FILTER (WHERE ${groups.isActive} = true)::int`,
+          inactiveGroups: sql<number>`COUNT(*) FILTER (WHERE ${groups.isActive} = false)::int`,
+        })
+        .from(groups),
+      this.db
+        .select({
+          totalActiveEnrollments: sql<number>`COUNT(*)::int`,
+        })
+        .from(enrollments)
+        .where(eq(enrollments.status, 'ACTIVE')),
     ]);
 
-    return { rows, total: Number(total), page, limit };
+    return {
+      rows,
+      total: Number(total),
+      page,
+      limit,
+      summary: {
+        totalGroups: Number(groupCounts?.totalGroups ?? 0),
+        activeGroups: Number(groupCounts?.activeGroups ?? 0),
+        inactiveGroups: Number(groupCounts?.inactiveGroups ?? 0),
+        totalActiveEnrollments: Number(enrollmentCounts?.totalActiveEnrollments ?? 0),
+      },
+    };
   }
 
   async findByCode(groupCode: string) {

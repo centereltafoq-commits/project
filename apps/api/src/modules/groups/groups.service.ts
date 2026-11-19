@@ -88,7 +88,7 @@ export class GroupsService {
   }
 
   async list(query: GroupQueryDto, actor?: AuthenticatedUser) {
-    const { rows, total, page, limit } = await this.repository.findPaginated(query);
+    const { rows, total, page, limit, summary } = await this.repository.findPaginated(query);
     const showFinance = this.canViewSplitFinance(actor);
     const safeRows = showFinance
       ? rows
@@ -98,7 +98,10 @@ export class GroupsService {
           centerSharePerStudent: null,
           teacherPercentage: null,
         }));
-    return createPaginatedResult(safeRows, total, page, limit);
+    return {
+      ...createPaginatedResult(safeRows, total, page, limit),
+      summary,
+    };
   }
 
   async getById(id: string, actor?: AuthenticatedUser) {

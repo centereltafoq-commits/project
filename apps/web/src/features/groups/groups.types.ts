@@ -5,6 +5,13 @@ import {
   GroupRevenueSplitMethod,
 } from '@edu-center/shared';
 
+export interface GroupsSummary {
+  totalGroups: number;
+  activeGroups: number;
+  inactiveGroups: number;
+  totalActiveEnrollments: number;
+}
+
 export interface GroupScheduleSlotItem {
   dayOfWeek: number;
   startTime: string;

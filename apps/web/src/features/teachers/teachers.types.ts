@@ -1,5 +1,11 @@
 import { TeacherEmploymentStatus } from '@edu-center/shared';
 
+export interface TeachersSummary {
+  totalCount: number;
+  activeCount: number;
+  inactiveCount: number;
+}
+
 export interface TeacherRow {
   id: string;
   teacherCode: string;

@@ -1,11 +1,28 @@
 import * as React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Edit3, ExternalLink, Eye, Plus, RotateCcw, Upload } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
+import {
+  Download,
+  Edit3,
+  ExternalLink,
+  Eye,
+  Plus,
+  RotateCcw,
+  Upload,
+  UserCheck,
+  Users,
+  UserX,
+} from 'lucide-react';
+import {
+  DEFAULT_PAGE_SIZE,
+  PaginatedResult,
+  PERMISSIONS,
+  TeacherEmploymentStatus,
+} from '@edu-center/shared';
 import {
   Badge,
   Button,
+  Card,
   Input,
   PageHeader,
   Select,
@@ -25,6 +42,7 @@ import {
   TEACHER_STATUS_META,
   TEACHER_STATUS_OPTIONS,
   TeacherRow,
+  TeachersSummary,
 } from './teachers.types';
 
 export function TeachersPage() {
@@ -58,7 +76,7 @@ export function TeachersPage() {
     queryFn: async () => (await apiClient.get('/teachers/me/profile')).data,
   });
 
-  const { data, isLoading } = useQuery<PaginatedResult<TeacherRow>>({
+  const { data, isLoading } = useQuery<PaginatedResult<TeacherRow> & { summary?: TeachersSummary }>({
     queryKey: ['teachers', page, limit, debouncedSearch, statusFilter, debouncedSpec],
     enabled: canViewAllTeachers,
     queryFn: async () => {
@@ -255,6 +273,99 @@ export function TeachersPage() {
           </div>
         }
       />
+
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {(
+          [
+            {
+              key: 'total',
+              label: 'إجمالي المدرسين',
+              value: data?.summary?.totalCount ?? data?.meta?.totalItems ?? 0,
+              subtitle: 'كافة المدرسين المسجلين بالسنتر',
+              Icon: Users,
+              iconClass: 'bg-primary/10 text-primary',
+              activeClass: statusFilter === '' ? 'border-primary/40 shadow-sm' : '',
+              onClick: () => {
+                setStatusFilter('');
+                setPage(1);
+              },
+            },
+            {
+              key: 'active',
+              label: 'المدرسين النشطين',
+              value: data?.summary?.activeCount ?? 0,
+              subtitle: 'على رأس العمل حالياً',
+              Icon: UserCheck,
+              iconClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+              activeClass:
+                statusFilter === TeacherEmploymentStatus.ACTIVE
+                  ? 'border-emerald-500/50 shadow-sm'
+                  : '',
+              onClick: () => {
+                setStatusFilter(
+                  statusFilter === TeacherEmploymentStatus.ACTIVE
+                    ? ''
+                    : TeacherEmploymentStatus.ACTIVE,
+                );
+                setPage(1);
+              },
+            },
+            {
+              key: 'inactive',
+              label: 'المدرسين غير النشطين',
+              value: data?.summary?.inactiveCount ?? 0,
+              subtitle: 'في إجازة أو متوقف',
+              Icon: UserX,
+              iconClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+              activeClass:
+                statusFilter === TeacherEmploymentStatus.ON_LEAVE ||
+                statusFilter === TeacherEmploymentStatus.INACTIVE
+                  ? 'border-amber-500/50 shadow-sm'
+                  : '',
+              onClick: () => {
+                setStatusFilter(
+                  statusFilter === TeacherEmploymentStatus.INACTIVE
+                    ? TeacherEmploymentStatus.ON_LEAVE
+                    : TeacherEmploymentStatus.INACTIVE,
+                );
+                setPage(1);
+              },
+            },
+          ] as const
+        ).map((card) => {
+          const Icon = card.Icon;
+          return (
+            <Card
+              key={card.key}
+              role="button"
+              tabIndex={0}
+              onClick={card.onClick}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  card.onClick();
+                }
+              }}
+              className={`cursor-pointer p-4 transition-all hover:border-primary/40 ${card.activeClass}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground">{card.label}</p>
+                  <p className="text-2xl font-extrabold text-foreground">
+                    {card.value.toLocaleString('en-US')}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{card.subtitle}</p>
+                </div>
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${card.iconClass}`}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
 
       <ServerDataTable
         columns={columns}
