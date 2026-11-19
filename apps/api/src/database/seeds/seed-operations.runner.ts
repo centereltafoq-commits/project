@@ -7,7 +7,7 @@ export interface SeedGroupRef {
   id: string;
   groupCode: string;
   teacherId: string;
-  classroomId: string;
+  classroomId: string | null;
   monthlySessionsCount: number;
   monthlyPrice: number;
   sessionPrice: number;
@@ -34,6 +34,7 @@ export interface EnrollmentSeedSpec {
   startDate: string;
   isMidMonth?: boolean;
   isFullAbsent?: boolean;
+  forcedPaidRatio?: number;
 }
 
 export async function seedEnrollmentsAndSessions(
@@ -48,31 +49,70 @@ export async function seedEnrollmentsAndSessions(
   const monthStart = d(1);
   const midMonthDate = d(12);
 
-  const mathGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-MATH-3S')!;
-  const physGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-PHYS-3S')!;
-  const chemGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-CHEM-2S')!;
-  const engGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-ENG-1S')!;
+  const mathGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-4101')!;
+  const physGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-4102')!;
+  const chemGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-4103')!;
+  const engGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-4104')!;
+  const prepMathGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-4105')!;
 
   const enrollmentSpecs: EnrollmentSeedSpec[] = [];
   let eSeq = 1;
-  for (let i = 0; i <= 13; i++) {
+
+  // Students 0..9 in 3rd Secondary Math (GRP-4101)
+  for (let i = 0; i <= 9; i++) {
     enrollmentSpecs.push({
       idx: eSeq++,
       studentIdx: i,
       group: mathGroup,
-      startDate: i === 11 ? midMonthDate : monthStart,
-      isMidMonth: i === 11,
-      isFullAbsent: i === 13,
+      startDate: monthStart,
+      isFullAbsent: i === 9,
+      forcedPaidRatio: i === 0 || i === 1 ? 1 : i === 2 ? 0 : undefined,
     });
   }
-  for (let i = 0; i <= 7; i++) {
-    enrollmentSpecs.push({ idx: eSeq++, studentIdx: i, group: physGroup, startDate: monthStart });
+
+  // Students 0..4 also enrolled in 3rd Secondary Physics (GRP-4102) -> Multi-group examples!
+  for (let i = 0; i <= 4; i++) {
+    enrollmentSpecs.push({
+      idx: eSeq++,
+      studentIdx: i,
+      group: physGroup,
+      startDate: monthStart,
+      // Student 0 paid both groups (PAID); Student 1 paid only math (PARTIAL); Student 2 unpaid (UNPAID)
+      forcedPaidRatio: i === 0 ? 1 : i === 1 || i === 2 ? 0 : undefined,
+    });
   }
-  for (let i = 14; i <= 21; i++) {
-    enrollmentSpecs.push({ idx: eSeq++, studentIdx: i, group: chemGroup, startDate: monthStart });
+
+  // Students 10..13 in 2nd Secondary Chemistry (GRP-4103)
+  for (let i = 10; i <= 13; i++) {
+    enrollmentSpecs.push({
+      idx: eSeq++,
+      studentIdx: i,
+      group: chemGroup,
+      startDate: i === 10 ? midMonthDate : monthStart,
+      isMidMonth: i === 10,
+    });
   }
-  for (let i = 22; i <= 29; i++) {
-    enrollmentSpecs.push({ idx: eSeq++, studentIdx: i, group: engGroup, startDate: monthStart });
+
+  // Students 14..18 in 1st Prep English (GRP-4104)
+  for (let i = 14; i <= 18; i++) {
+    enrollmentSpecs.push({
+      idx: eSeq++,
+      studentIdx: i,
+      group: engGroup,
+      startDate: monthStart,
+      forcedPaidRatio: i === 14 ? 1 : i === 15 ? 0.5 : undefined,
+    });
+  }
+
+  // Students 14..16 also enrolled in unassigned Prep Math (GRP-4105)
+  for (let i = 14; i <= 16; i++) {
+    enrollmentSpecs.push({
+      idx: eSeq++,
+      studentIdx: i,
+      group: prepMathGroup,
+      startDate: monthStart,
+      forcedPaidRatio: 0,
+    });
   }
 
   for (const spec of enrollmentSpecs) {
@@ -105,8 +145,8 @@ export async function seedEnrollmentsAndSessions(
         { date: d(5), start: '16:00', end: '18:00', status: SessionStatus.COMPLETED, topic: 'المعدلات الزمنية المرتبطة' },
         { date: d(9), start: '16:00', end: '18:00', status: SessionStatus.COMPLETED, topic: 'تطبيقات القيم العظمى والصغرى' },
         { date: d(14), start: '16:00', end: '18:00', status: SessionStatus.COMPLETED, topic: 'التكامل غير المحدد وطرق التعويض' },
-        { date: ctx.todayDate, start: '13:00', end: '15:00', status: SessionStatus.COMPLETED, topic: 'مراجعة شاملة واختبار شهري' },
-        { date: ctx.todayDate, start: '19:00', end: '21:00', status: SessionStatus.SCHEDULED, topic: 'الهندسة الفراغية والمتجهات' },
+        { date: ctx.todayDate, start: '16:00', end: '18:00', status: SessionStatus.SCHEDULED, topic: 'مراجعة شاملة وحصة اليوم' },
+        { date: d(23), start: '16:00', end: '18:00', status: SessionStatus.SCHEDULED, topic: 'الهندسة الفراغية والمتجهات' },
       ],
     },
     {
@@ -115,8 +155,8 @@ export async function seedEnrollmentsAndSessions(
         { date: d(3), start: '17:00', end: '19:00', status: SessionStatus.COMPLETED, topic: 'قانون أوم للدائرة المغلقة' },
         { date: d(7), start: '17:00', end: '19:00', status: SessionStatus.COMPLETED, topic: 'قانونا كيرشوف وتطبيقاتهما' },
         { date: d(13), start: '17:00', end: '19:00', status: SessionStatus.COMPLETED, topic: 'التأثير المغناطيسي للتيار الكهربي' },
-        { date: d(18), start: '17:00', end: '19:00', status: SessionStatus.COMPLETED, topic: 'أجهزة القياس الكهربي' },
-        { date: ctx.todayDate, start: '16:30', end: '18:30', status: SessionStatus.SCHEDULED, topic: 'الحث الكهرومغناطيسي وقانون فاراداي' },
+        { date: d(17), start: '17:00', end: '19:00', status: SessionStatus.COMPLETED, topic: 'أجهزة القياس الكهربي' },
+        { date: ctx.todayDate, start: '18:30', end: '20:30', status: SessionStatus.SCHEDULED, topic: 'الحث الكهرومغناطيسي وقانون فاراداي' },
       ],
     },
     {
@@ -125,16 +165,16 @@ export async function seedEnrollmentsAndSessions(
         { date: d(4), start: '19:00', end: '21:00', status: SessionStatus.COMPLETED, topic: 'أعداد الكم والتوزيع الإلكتروني' },
         { date: d(8), start: '19:00', end: '21:00', status: SessionStatus.COMPLETED, topic: 'الجدول الدوري وتدرج الخواص' },
         { date: d(15), start: '19:00', end: '21:00', status: SessionStatus.COMPLETED, topic: 'الروابط الكيميائية والتهجين' },
-        { date: d(20), start: '19:00', end: '21:00', status: SessionStatus.COMPLETED, topic: 'مراجعة الباب الأول والثاني' },
+        { date: d(18), start: '19:00', end: '21:00', status: SessionStatus.COMPLETED, topic: 'مراجعة الباب الأول والثاني' },
       ],
     },
     {
       group: engGroup,
       dates: [
-        { date: d(3), start: '18:00', end: '20:00', status: SessionStatus.COMPLETED, topic: 'Unit 1 Grammar & Vocabulary' },
-        { date: d(10), start: '18:00', end: '20:00', status: SessionStatus.COMPLETED, topic: 'Past Tenses & Reading Skills' },
-        { date: d(16), start: '18:00', end: '20:00', status: SessionStatus.COMPLETED, topic: 'Unit 2 Essay Writing Workshop' },
-        { date: d(21), start: '18:00', end: '20:00', status: SessionStatus.COMPLETED, topic: 'Monthly Assessment & Translation' },
+        { date: d(3), start: '15:00', end: '17:00', status: SessionStatus.COMPLETED, topic: 'Unit 1 Grammar & Vocabulary' },
+        { date: d(10), start: '15:00', end: '17:00', status: SessionStatus.COMPLETED, topic: 'Past Tenses & Reading Skills' },
+        { date: d(16), start: '15:00', end: '17:00', status: SessionStatus.COMPLETED, topic: 'Unit 2 Reading Comprehension' },
+        { date: ctx.todayDate, start: '15:00', end: '17:00', status: SessionStatus.SCHEDULED, topic: 'Unit 2 Revision & Quiz' },
       ],
     },
   ];

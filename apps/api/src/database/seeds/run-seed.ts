@@ -40,8 +40,43 @@ async function runSeed(): Promise<void> {
   const pool = new Pool({ connectionString: databaseUrl });
   const db = drizzle(pool, { schema });
 
+  const shouldReset = process.argv.includes('--reset');
+
   try {
     console.info('[Seed] Starting idempotent Educational Center ERP database seed...');
+
+    if (shouldReset) {
+      console.info('[Seed] --reset flag detected: clearing existing catalog & operational data...');
+      await pool.query(`
+        TRUNCATE TABLE
+          audit_logs,
+          classroom_maintenances,
+          teacher_availability,
+          assistant_payouts,
+          assistant_monthly_records,
+          assistant_dues,
+          teacher_payouts,
+          teacher_monthly_records,
+          teacher_dues,
+          expenses,
+          payment_allocations,
+          payments,
+          student_monthly_records,
+          attendance,
+          sessions,
+          enrollments,
+          financial_policies,
+          group_assistants,
+          group_teachers,
+          groups,
+          classrooms,
+          assistants,
+          teachers,
+          students,
+          grade_levels
+        RESTART IDENTITY CASCADE
+      `);
+    }
 
     const permList = buildSeedPermissionsList();
     const permIdByCode = new Map<string, string>();
@@ -143,7 +178,7 @@ async function runSeed(): Promise<void> {
     await seedMaintenanceAndAvailability(db, ctx);
 
     console.info(
-      `[Seed] Completed successfully! Seeded ${permList.length} permissions, 5 roles, 5 users, 5 classrooms, 4 teachers, 3 assistants, ${catalog.studentIds.length} students, and 4 groups for ${yearMonth}.`,
+      `[Seed] Completed successfully! Seeded ${permList.length} permissions, 5 roles, 5 users, 5 classrooms, 6 teachers, 4 assistants, ${catalog.studentIds.length} students, and ${catalog.groupsList.length} groups for ${yearMonth}.`,
     );
   } finally {
     await pool.end();

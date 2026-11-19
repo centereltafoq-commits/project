@@ -8,9 +8,9 @@ export async function seedMaintenanceAndAvailability(
   ctx: SeededCatalogContext,
 ): Promise<void> {
   const maintRoomId = ctx.classroomsByCode.get('R-105')!;
-  const t1 = ctx.teachersByCode.get('TCH-001')!;
-  const t2 = ctx.teachersByCode.get('TCH-002')!;
-  const t3 = ctx.teachersByCode.get('TCH-003')!;
+  const t1 = ctx.teachersByCode.get('TCH-2026')!;
+  const t2 = ctx.teachersByCode.get('TCH-2041')!;
+  const t3 = ctx.teachersByCode.get('TCH-2058')!;
 
   await db
     .insert(classroomMaintenances)

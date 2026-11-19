@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { DrizzleDatabase } from '../database.module';
 import {
   assistants,
@@ -11,9 +12,10 @@ import {
   teachers,
 } from '../schemas';
 import {
-  buildSeedStudents32,
+  buildSeedStudents24,
   SEED_ASSISTANTS,
   SEED_CLASSROOMS,
+  SEED_GRADE_LEVELS,
   SEED_TEACHERS,
 } from './seed-catalog.data';
 import { SEED_GROUPS } from './seed-groups.data';
@@ -39,38 +41,47 @@ export async function seedCatalogEntities(
         set: {
           name: c.name,
           maxCapacity: c.maxCapacity,
+          seatsCount: c.seatsCount,
           status: c.status,
           equipment: c.equipment,
+          notes: c.notes,
         },
       })
       .returning({ id: classrooms.id });
     classroomsByCode.set(c.roomNumber, row.id);
   }
 
-  const defaultGrades = [
-    { name: 'الصف الأول الثانوي', code: 'SEC-1', orderIndex: 1 },
-    { name: 'الصف الثاني الثانوي', code: 'SEC-2', orderIndex: 2 },
-    { name: 'الصف الثالث الثانوي', code: 'SEC-3', orderIndex: 3 },
-  ];
-  for (const g of defaultGrades) {
-    await db
-      .insert(gradeLevels)
-      .values(g)
-      .onConflictDoUpdate({
-        target: gradeLevels.name,
-        set: { code: g.code, orderIndex: g.orderIndex, isActive: true },
-      });
+  for (const g of SEED_GRADE_LEVELS) {
+    const [existingGrade] = await db
+      .select({ id: gradeLevels.id })
+      .from(gradeLevels)
+      .where(eq(gradeLevels.name, g.name))
+      .limit(1);
+
+    if (existingGrade) {
+      await db
+        .update(gradeLevels)
+        .set({ code: g.code, orderIndex: g.orderIndex, isActive: true })
+        .where(eq(gradeLevels.id, existingGrade.id));
+    } else {
+      await db.insert(gradeLevels).values(g);
+    }
   }
 
   const teachersByCode = new Map<string, string>();
   for (const t of SEED_TEACHERS) {
-    const linkedUserId = t.teacherCode === 'TCH-001' ? teacherUserId : null;
+    const linkedUserId = t.teacherCode === 'TCH-2026' ? teacherUserId : null;
     const [row] = await db
       .insert(teachers)
       .values({ ...t, userId: linkedUserId })
       .onConflictDoUpdate({
         target: teachers.teacherCode,
-        set: { fullName: t.fullName, specialization: t.specialization, userId: linkedUserId },
+        set: {
+          fullName: t.fullName,
+          specialization: t.specialization,
+          employmentStatus: t.employmentStatus,
+          userId: linkedUserId,
+        },
       })
       .returning({ id: teachers.id });
     teachersByCode.set(t.teacherCode, row.id);
@@ -87,6 +98,7 @@ export async function seedCatalogEntities(
           fullName: a.fullName,
           calculationMethod: a.calculationMethod,
           rateValue: a.rateValue,
+          status: a.status,
         },
       })
       .returning({ id: assistants.id });
@@ -94,13 +106,20 @@ export async function seedCatalogEntities(
   }
 
   const studentIds: string[] = [];
-  for (const s of buildSeedStudents32()) {
+  for (const s of buildSeedStudents24()) {
     const [row] = await db
       .insert(students)
       .values(s)
       .onConflictDoUpdate({
         target: students.studentCode,
-        set: { fullName: s.fullName, gradeLevel: s.gradeLevel, status: s.status },
+        set: {
+          fullName: s.fullName,
+          phone: s.phone,
+          guardianPhone: s.guardianPhone,
+          gradeLevel: s.gradeLevel,
+          status: s.status,
+          notes: s.notes,
+        },
       })
       .returning({ id: students.id });
     studentIds.push(row.id);
@@ -109,8 +128,14 @@ export async function seedCatalogEntities(
   const groupsList: SeedGroupRef[] = [];
   for (const g of SEED_GROUPS) {
     const primaryTeacherId = teachersByCode.get(g.teacherCode)!;
-    const defaultClassroomId = classroomsByCode.get(g.roomNumber)!;
-    const assistantId = assistantsByCode.get(g.assistantCode)!;
+    const defaultClassroomId = g.roomNumber ? classroomsByCode.get(g.roomNumber) ?? null : null;
+    const assistantId = g.assistantCode ? assistantsByCode.get(g.assistantCode) ?? null : null;
+
+    // Populate classroomId inside each schedule slot when the group is allocated to a classroom
+    const resolvedSlots = g.scheduleSlots.map((slot) => ({
+      ...slot,
+      classroomId: defaultClassroomId,
+    }));
 
     const [grpRow] = await db
       .insert(groups)
@@ -124,19 +149,24 @@ export async function seedCatalogEntities(
         monthlySessionsCount: g.monthlySessionsCount,
         monthlyPrice: g.monthlyPrice,
         calculatedSessionPrice: g.calculatedSessionPrice,
-        scheduleSlots: g.scheduleSlots,
+        scheduleSlots: resolvedSlots,
         maxStudents: g.maxStudents,
-        isActive: true,
+        isActive: g.isActive,
+        notes: g.notes ?? null,
       })
       .onConflictDoUpdate({
         target: groups.groupCode,
         set: {
           name: g.name,
+          gradeLevel: g.gradeLevel,
           primaryTeacherId,
           defaultClassroomId,
           monthlySessionsCount: g.monthlySessionsCount,
           monthlyPrice: g.monthlyPrice,
           calculatedSessionPrice: g.calculatedSessionPrice,
+          scheduleSlots: resolvedSlots,
+          isActive: g.isActive,
+          notes: g.notes ?? null,
         },
       })
       .returning({ id: groups.id });
@@ -163,10 +193,12 @@ export async function seedCatalogEntities(
       .values({ groupId: grpRow.id, teacherId: primaryTeacherId, isPrimary: true })
       .onConflictDoNothing({ target: [groupTeachers.groupId, groupTeachers.teacherId] });
 
-    await db
-      .insert(groupAssistants)
-      .values({ groupId: grpRow.id, assistantId })
-      .onConflictDoNothing({ target: [groupAssistants.groupId, groupAssistants.assistantId] });
+    if (assistantId) {
+      await db
+        .insert(groupAssistants)
+        .values({ groupId: grpRow.id, assistantId })
+        .onConflictDoNothing({ target: [groupAssistants.groupId, groupAssistants.assistantId] });
+    }
 
     groupsList.push({
       id: grpRow.id,

@@ -90,7 +90,14 @@ export async function seedAttendanceAndStudentPayments(
 
     const chargeableSessions = spec.isFullAbsent ? 0 : present;
     const totalDue = Number((chargeableSessions * spec.group.sessionPrice).toFixed(2));
-    const paidRatio = spec.idx % 4 === 0 ? 0.5 : spec.idx % 7 === 0 ? 0 : 1;
+    const paidRatio =
+      spec.forcedPaidRatio !== undefined
+        ? spec.forcedPaidRatio
+        : spec.idx % 4 === 0
+          ? 0.5
+          : spec.idx % 7 === 0
+            ? 0
+            : 1;
     const totalPaid = Number((totalDue * paidRatio).toFixed(2));
     const remaining = Number((totalDue - totalPaid).toFixed(2));
 

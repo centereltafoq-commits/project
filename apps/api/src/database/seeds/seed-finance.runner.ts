@@ -97,16 +97,16 @@ export async function seedStaffSettlementsAndExpenses(
     }
   }
 
-  const mathGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-MATH-3S')!;
-  const physGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-PHYS-3S')!;
-  const engGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-ENG-1S')!;
+  const mathGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-4101')!;
+  const physGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-4102')!;
+  const engGroup = ctx.groupsList.find((g) => g.groupCode === 'GRP-4104')!;
   const mathAcc = groupAccs.get(mathGroup.id)!;
   const physAcc = groupAccs.get(physGroup.id)!;
 
   const astEntries = [
     {
       idx: 1,
-      code: 'AST-001',
+      code: 'AST-3101',
       groupId: mathGroup.id,
       method: AssistantCalculationMethod.SESSION_COMMISSION_PERCENT,
       sessionsCount: mathAcc.executedSessions,
@@ -116,7 +116,7 @@ export async function seedStaffSettlementsAndExpenses(
     },
     {
       idx: 2,
-      code: 'AST-002',
+      code: 'AST-3102',
       groupId: physGroup.id,
       method: AssistantCalculationMethod.FIXED_PER_SESSION,
       sessionsCount: physAcc.executedSessions,
@@ -126,11 +126,11 @@ export async function seedStaffSettlementsAndExpenses(
     },
     {
       idx: 3,
-      code: 'AST-003',
+      code: 'AST-3103',
       groupId: engGroup.id,
       method: AssistantCalculationMethod.FIXED_MONTHLY,
-      sessionsCount: 4,
-      studentsCount: 8,
+      sessionsCount: 3,
+      studentsCount: 5,
       amount: 450,
       note: 'مكافأة إشراف ومتابعة امتحانات شهرية',
     },
