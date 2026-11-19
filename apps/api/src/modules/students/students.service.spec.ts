@@ -104,5 +104,22 @@ describe('StudentsService & Student DTOs (optional student phone)', () => {
     await service.update('stu-1', { phone: null }, actor);
     expect(mockRepo.update).toHaveBeenCalledWith('stu-1', { phone: null });
   });
+
+  it('includes total, active, and inactive student counts in list summary', async () => {
+    (mockRepo as any).findPaginated = vi.fn().mockResolvedValue({
+      rows: [],
+      total: 10,
+      page: 1,
+      limit: 25,
+      summary: { totalCount: 10, activeCount: 8, inactiveCount: 2 },
+    });
+
+    const result = await service.list({ page: 1, limit: 25 });
+    expect(result.summary).toEqual({
+      totalCount: 10,
+      activeCount: 8,
+      inactiveCount: 2,
+    });
+  });
 });
 

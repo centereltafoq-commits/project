@@ -1,11 +1,24 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Edit3, Eye, GraduationCap, Plus, QrCode, RotateCcw, Upload } from 'lucide-react';
-import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
+import {
+  Download,
+  Edit3,
+  Eye,
+  GraduationCap,
+  Plus,
+  QrCode,
+  RotateCcw,
+  Upload,
+  UserCheck,
+  Users,
+  UserX,
+} from 'lucide-react';
+import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS, StudentStatus } from '@edu-center/shared';
 import {
   Badge,
   Button,
+  Card,
   PageHeader,
   Select,
   ServerDataTable,
@@ -28,6 +41,7 @@ import {
   STUDENT_STATUS_META,
   STUDENT_STATUS_OPTIONS,
   StudentRow,
+  StudentsSummary,
 } from './students.types';
 
 export function StudentsPage() {
@@ -58,7 +72,7 @@ export function StudentsPage() {
   const { options: dynamicGradeOptions } = useGradeLevels(false);
   const baseGradeOptions = dynamicGradeOptions;
 
-  const { data, isLoading } = useQuery<PaginatedResult<StudentRow>>({
+  const { data, isLoading } = useQuery<PaginatedResult<StudentRow> & { summary?: StudentsSummary }>({
     queryKey: ['students', page, limit, debouncedSearch, statusFilter, gradeFilter],
     queryFn: async () => {
       const res = await apiClient.get('/students', {
@@ -229,6 +243,59 @@ export function StudentsPage() {
     }
   };
 
+  const summary: StudentsSummary = data?.summary ?? {
+    totalCount: data?.meta?.totalItems ?? 0,
+    activeCount: 0,
+    inactiveCount: 0,
+  };
+
+  const studentSummaryCards = [
+    {
+      key: 'total',
+      label: 'إجمالي الطلاب',
+      value: summary.totalCount,
+      subtitle: 'جميع ملفات الطلاب المسجلة',
+      icon: Users,
+      iconClass: 'bg-primary/10 text-primary',
+      activeRing: statusFilter === '' ? 'border-primary/40 shadow-sm' : '',
+      onClick: () => {
+        setStatusFilter('');
+        setPage(1);
+      },
+    },
+    {
+      key: 'active',
+      label: 'الطلاب النشطين',
+      value: summary.activeCount,
+      subtitle: 'الملفات المفعّلة حالياً',
+      icon: UserCheck,
+      iconClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+      activeRing: statusFilter === StudentStatus.ACTIVE ? 'border-emerald-500/50 shadow-sm' : '',
+      onClick: () => {
+        setStatusFilter(statusFilter === StudentStatus.ACTIVE ? '' : StudentStatus.ACTIVE);
+        setPage(1);
+      },
+    },
+    {
+      key: 'inactive',
+      label: 'الطلاب غير النشطين',
+      value: summary.inactiveCount,
+      subtitle: 'موقوف مؤقتاً أو مؤرشف',
+      icon: UserX,
+      iconClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+      activeRing:
+        statusFilter === StudentStatus.SUSPENDED || statusFilter === StudentStatus.ARCHIVED
+          ? 'border-amber-500/50 shadow-sm'
+          : '',
+      onClick: () => {
+        setStatusFilter(
+          statusFilter === StudentStatus.SUSPENDED ? StudentStatus.ARCHIVED : StudentStatus.SUSPENDED,
+        );
+        setPage(1);
+      },
+    },
+  ] as const;
+
   return (
     <div>
       <PageHeader
@@ -286,6 +353,40 @@ export function StudentsPage() {
           </div>
         }
       />
+
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {studentSummaryCards.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card
+              key={item.key}
+              role="button"
+              tabIndex={0}
+              onClick={item.onClick}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  item.onClick();
+                }
+              }}
+              className={`cursor-pointer p-4 transition-all hover:border-primary/40 ${item.activeRing}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground">{item.label}</p>
+                  <p className="text-2xl font-extrabold text-foreground">
+                    {item.value.toLocaleString('en-US')}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{item.subtitle}</p>
+                </div>
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${item.iconClass}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
 
       <ServerDataTable
         columns={columns}

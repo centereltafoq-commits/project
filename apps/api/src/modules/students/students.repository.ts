@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { StudentStatus } from '@edu-center/shared';
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import { enrollments, gradeLevels, students } from '../../database/schemas';
@@ -47,7 +48,7 @@ export class StudentsRepository {
     const whereClause = this.buildWhereClause(query);
     const activeGroupsCountSq = this.getActiveGroupsCountSubquery();
 
-    const [rows, [{ total }]] = await Promise.all([
+    const [rows, [{ total }], [statusCounts]] = await Promise.all([
       this.db
         .select({
           id: students.id,
@@ -69,9 +70,26 @@ export class StudentsRepository {
         .limit(limit)
         .offset(offset),
       this.db.select({ total: count() }).from(students).where(whereClause),
+      this.db
+        .select({
+          totalCount: sql<number>`COUNT(*)::int`,
+          activeCount: sql<number>`COUNT(*) FILTER (WHERE ${students.status} = ${StudentStatus.ACTIVE})::int`,
+          inactiveCount: sql<number>`COUNT(*) FILTER (WHERE ${students.status} <> ${StudentStatus.ACTIVE})::int`,
+        })
+        .from(students),
     ]);
 
-    return { rows, total: Number(total), page, limit };
+    return {
+      rows,
+      total: Number(total),
+      page,
+      limit,
+      summary: {
+        totalCount: Number(statusCounts?.totalCount ?? 0),
+        activeCount: Number(statusCounts?.activeCount ?? 0),
+        inactiveCount: Number(statusCounts?.inactiveCount ?? 0),
+      },
+    };
   }
 
   async findAllForExport(query: StudentExportQueryDto) {

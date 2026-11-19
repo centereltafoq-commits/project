@@ -20,8 +20,11 @@ export class StudentsService {
   ) {}
 
   async list(query: StudentQueryDto) {
-    const { rows, total, page, limit } = await this.repository.findPaginated(query);
-    return createPaginatedResult(rows, total, page, limit);
+    const { rows, total, page, limit, summary } = await this.repository.findPaginated(query);
+    return {
+      ...createPaginatedResult(rows, total, page, limit),
+      summary,
+    };
   }
 
   async getById(id: string) {

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { PERMISSIONS } from '@edu-center/shared';
 import { ToastProvider } from '@/design-system';
 import * as authContextModule from '@/features/auth/auth-context';
@@ -149,5 +149,25 @@ describe('StudentsPage Excel Import & Export Integration', () => {
     } finally {
       MOCK_GRADE_LEVELS = prev;
     }
+  });
+
+  it('renders total, active, and inactive student summary KPI cards', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: {
+        data: [],
+        meta: { page: 1, limit: 25, totalItems: 24, totalPages: 1 },
+        summary: { totalCount: 24, activeCount: 19, inactiveCount: 5 },
+      },
+    } as any);
+
+    renderPage([PERMISSIONS.STUDENTS_VIEW]);
+
+    const totalCard = screen.getByRole('button', { name: /إجمالي الطلاب/i });
+    const activeCard = screen.getByRole('button', { name: /الطلاب النشطين/i });
+    const inactiveCard = screen.getByRole('button', { name: /الطلاب غير النشطين/i });
+
+    expect(await within(totalCard).findByText('24')).toBeInTheDocument();
+    expect(within(activeCard).getByText('19')).toBeInTheDocument();
+    expect(within(inactiveCard).getByText('5')).toBeInTheDocument();
   });
 });

@@ -164,5 +164,17 @@ describe('ExcelImportModal', () => {
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
   });
+
+  it('provides descriptive tooltips explaining both duplicate policy options', () => {
+    renderModal();
+
+    const skipBtn = screen.getByRole('button', { name: 'تخطي الأكواد الموجودة' });
+    const errBtn = screen.getByRole('button', { name: 'اعتبار المكرر خطأ' });
+
+    expect(skipBtn).toHaveAttribute('title', expect.stringContaining('تجاهل هذا الصف'));
+    expect(errBtn).toHaveAttribute('title', expect.stringContaining('يُحسب الصف كخطأ'));
+    expect(screen.getByText(/إدخال باقي الصفوف الجديدة فقط/i)).toBeInTheDocument();
+    expect(screen.getByText(/يُطلب مراجعته قبل الحفظ النهائي/i)).toBeInTheDocument();
+  });
 });
 

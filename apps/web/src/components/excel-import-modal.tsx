@@ -269,28 +269,49 @@ export function ExcelImportModal({
               2. رفع الملف وتحديد سياسة الأكواد المكررة
             </span>
             <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => handleStrategyChange('skip')}
-                className={`rounded-md px-3 py-1 font-semibold transition-colors ${
-                  duplicateStrategy === 'skip'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                تخطي الأكواد الموجودة
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStrategyChange('error')}
-                className={`rounded-md px-3 py-1 font-semibold transition-colors ${
-                  duplicateStrategy === 'error'
-                    ? 'bg-destructive text-destructive-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                اعتبار المكرر خطأ
-              </button>
+              {(
+                [
+                  {
+                    value: 'skip',
+                    label: 'تخطي الأكواد الموجودة',
+                    tipId: 'excel-dup-skip-tip',
+                    activeClass: 'bg-primary text-primary-foreground shadow-sm',
+                    tooltip:
+                      'عند وجود كود مسجل مسبقاً في النظام، يتم تجاهل هذا الصف تلقائياً وإدخال باقي الصفوف الجديدة فقط دون خطأ.',
+                  },
+                  {
+                    value: 'error',
+                    label: 'اعتبار المكرر خطأ',
+                    tipId: 'excel-dup-error-tip',
+                    activeClass: 'bg-destructive text-destructive-foreground shadow-sm',
+                    tooltip:
+                      'عند وجود كود مسجل مسبقاً في النظام، يُحسب الصف كخطأ ويُطلب مراجعته قبل الحفظ النهائي.',
+                  },
+                ] as const
+              ).map((option) => (
+                <div key={option.value} className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => handleStrategyChange(option.value)}
+                    aria-describedby={option.tipId}
+                    title={option.tooltip}
+                    className={`rounded-md px-3 py-1 font-semibold transition-colors ${
+                      duplicateStrategy === option.value
+                        ? option.activeClass
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                  <div
+                    id={option.tipId}
+                    role="tooltip"
+                    className="pointer-events-none invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150 absolute left-0 top-full z-50 mt-2 w-64 rounded-lg border border-border bg-slate-900 px-3 py-2 text-right text-[11px] font-normal leading-relaxed text-white shadow-xl"
+                  >
+                    {option.tooltip}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

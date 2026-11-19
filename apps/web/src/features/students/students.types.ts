@@ -4,6 +4,12 @@ import {
   StudentStatus,
 } from '@edu-center/shared';
 
+export interface StudentsSummary {
+  totalCount: number;
+  activeCount: number;
+  inactiveCount: number;
+}
+
 export interface StudentRow {
   id: string;
   studentCode: string;
