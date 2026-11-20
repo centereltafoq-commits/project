@@ -49,7 +49,13 @@ describe('Finance Closed-Month Lock Enforcement', () => {
     readRepo = { fetchMonthSettlementSnapshot: vi.fn() };
     studentRecordsRepo = {};
     staffRecordsRepo = {};
-    writeRepo = { persistRecalculationBatch: vi.fn(), lockMonthRecords: vi.fn() };
+    writeRepo = {
+      withMonthLock: vi.fn(async (_month: string, action: (tx: any) => Promise<unknown>) =>
+        action({}),
+      ),
+      persistRecalculationBatch: vi.fn(),
+      lockMonthRecords: vi.fn(),
+    };
     auditLogsService = { record: vi.fn().mockResolvedValue(undefined) };
     cache = { invalidatePrefix: vi.fn().mockResolvedValue(undefined) };
 

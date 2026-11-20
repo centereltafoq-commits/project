@@ -182,6 +182,7 @@ export const payments = pgTable(
   (t) => [
     uniqueIndex('uq_payments_receipt').on(t.receiptNumber),
     index('idx_payments_student_month').on(t.studentId, t.yearMonth),
+    index('idx_payments_year_month').on(t.yearMonth),
     index('idx_payments_date').on(t.paymentDate),
   ],
 );
@@ -207,6 +208,7 @@ export const paymentAllocations = pgTable(
   (t) => [
     index('idx_payment_alloc_payment').on(t.paymentId),
     index('idx_payment_alloc_group_month').on(t.groupId, t.yearMonth),
+    index('idx_payment_allocations_year_month').on(t.yearMonth),
   ],
 );
 

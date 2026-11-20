@@ -28,6 +28,7 @@ import {
   roundMoney,
   toMoneyString,
 } from '../utils/money.util';
+import { lockFinanceMonths } from './finance-month-lock.util';
 
 export interface CreateTeacherPayoutTxInput {
   referenceNumber: string;
@@ -111,6 +112,8 @@ export class TeacherPayoutsRepository {
     const now = new Date();
 
     return this.db.transaction(async (tx) => {
+      await lockFinanceMonths(tx, [input.yearMonth]);
+
       const [teacher] = await tx
         .select()
         .from(teachers)

@@ -1,4 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, count, desc, eq, ilike, inArray, ne, or, SQL, sql } from 'drizzle-orm';
 import { EnrollmentStatus, SessionStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
@@ -8,6 +14,7 @@ import {
   financialPolicies,
   paymentAllocations,
   payments,
+  groups,
   sessions,
   studentMonthlyRecords,
   students,
@@ -261,6 +268,47 @@ export class EnrollmentsRepository {
     return created;
   }
 
+  async createActive(data: {
+    studentId: string;
+    groupId: string;
+    startDate: string;
+    endDate: string | null;
+    agreedMonthlyPrice: string;
+    agreedSessionsCount: number;
+    agreedSessionPrice: string;
+    status: string;
+    notes: string | null;
+  }) {
+    try {
+      return await this.db.transaction(async (tx) => {
+        const [group] = await tx
+          .select({ id: groups.id, isActive: groups.isActive, maxStudents: groups.maxStudents })
+          .from(groups)
+          .where(eq(groups.id, data.groupId))
+          .for('update')
+          .limit(1);
+        if (!group) throw new NotFoundException('المجموعة غير موجودة');
+        if (!group.isActive) {
+          throw new BadRequestException('لا يمكن تسجيل اشتراك جديد في مجموعة متوقفة');
+        }
+
+        const [student] = await tx
+          .select({ id: students.id })
+          .from(students)
+          .where(eq(students.id, data.studentId))
+          .limit(1);
+        if (!student) throw new NotFoundException('الطالب غير موجود');
+
+        await this.assertStudentCanBeActivated(tx, data.groupId, data.studentId, group.maxStudents);
+        const [created] = await tx.insert(enrollments).values(data).returning();
+        return created;
+      });
+    } catch (error) {
+      this.rethrowActiveEnrollmentConflict(error);
+      throw error;
+    }
+  }
+
   async update(
     id: string,
     updates: Partial<{
@@ -272,11 +320,101 @@ export class EnrollmentsRepository {
       notes: string | null;
     }>,
   ) {
-    const [updated] = await this.db
-      .update(enrollments)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(enrollments.id, id))
-      .returning();
-    return updated ?? null;
+    try {
+      return await this.db.transaction(async (tx) => {
+        const [initial] = await tx
+          .select({ groupId: enrollments.groupId })
+          .from(enrollments)
+          .where(eq(enrollments.id, id))
+          .limit(1);
+        if (!initial) return null;
+
+        const shouldActivate = updates.status === EnrollmentStatus.ACTIVE;
+        let maxStudents: number | undefined;
+        if (shouldActivate) {
+          const [group] = await tx
+            .select({ id: groups.id, maxStudents: groups.maxStudents })
+            .from(groups)
+            .where(eq(groups.id, initial.groupId))
+            .for('update')
+            .limit(1);
+          if (!group) throw new NotFoundException('المجموعة غير موجودة');
+          maxStudents = group.maxStudents;
+        }
+
+        const [existing] = await tx
+          .select()
+          .from(enrollments)
+          .where(eq(enrollments.id, id))
+          .for('update')
+          .limit(1);
+        if (!existing) return null;
+
+        if (shouldActivate && existing.status !== EnrollmentStatus.ACTIVE) {
+          await this.assertStudentCanBeActivated(
+            tx,
+            existing.groupId,
+            existing.studentId,
+            maxStudents!,
+            id,
+          );
+        }
+
+        const [updated] = await tx
+          .update(enrollments)
+          .set({ ...updates, updatedAt: new Date() })
+          .where(eq(enrollments.id, id))
+          .returning();
+        return updated ?? null;
+      });
+    } catch (error) {
+      this.rethrowActiveEnrollmentConflict(error);
+      throw error;
+    }
+  }
+
+  private async assertStudentCanBeActivated(
+    tx: Parameters<Parameters<DrizzleDatabase['transaction']>[0]>[0],
+    groupId: string,
+    studentId: string,
+    maxStudents: number,
+    excludeEnrollmentId?: string,
+  ): Promise<void> {
+    const duplicateConditions = [
+      eq(enrollments.groupId, groupId),
+      eq(enrollments.studentId, studentId),
+      eq(enrollments.status, EnrollmentStatus.ACTIVE),
+    ];
+    if (excludeEnrollmentId) duplicateConditions.push(ne(enrollments.id, excludeEnrollmentId));
+
+    const [duplicate] = await tx
+      .select({ id: enrollments.id })
+      .from(enrollments)
+      .where(and(...duplicateConditions))
+      .limit(1);
+    if (duplicate) {
+      throw new ConflictException('الطالب مشترك بالفعل باشتراك نشط في هذه المجموعة');
+    }
+
+    const [{ total }] = await tx
+      .select({ total: count() })
+      .from(enrollments)
+      .where(and(eq(enrollments.groupId, groupId), eq(enrollments.status, EnrollmentStatus.ACTIVE)));
+    if (Number(total) >= maxStudents) {
+      throw new BadRequestException(`اكتملت السعة القصوى للمجموعة (${maxStudents} طالباً)`);
+    }
+  }
+
+  private rethrowActiveEnrollmentConflict(error: unknown): void {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === '23505' &&
+      'constraint' in error &&
+      error.constraint === 'uq_enrollments_group_student_active'
+    ) {
+      throw new ConflictException('الطالب مشترك بالفعل باشتراك نشط في هذه المجموعة');
+    }
   }
 }

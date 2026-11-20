@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { PaginatedResult } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import { backupRecords, backupSettings } from '../../database/schemas';
@@ -155,6 +155,21 @@ export class BackupsRepository {
       .select()
       .from(backupRecords)
       .where(eq(backupRecords.status, 'IN_PROGRESS'));
+  }
+
+  async hasSuccessfulScheduledBackupSince(since: Date): Promise<boolean> {
+    const [record] = await this.db
+      .select({ id: backupRecords.id })
+      .from(backupRecords)
+      .where(
+        and(
+          eq(backupRecords.triggerType, 'SCHEDULED'),
+          eq(backupRecords.status, 'SUCCESS'),
+          gte(backupRecords.createdAt, since),
+        ),
+      )
+      .limit(1);
+    return Boolean(record);
   }
 
 }

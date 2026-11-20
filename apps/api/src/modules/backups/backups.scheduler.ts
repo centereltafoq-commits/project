@@ -5,7 +5,7 @@ import { BackupsService } from './backups.service';
 export class BackupsScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BackupsScheduler.name);
   private timer: NodeJS.Timeout | null = null;
-  private lastScheduledDate: string | null = null;
+  private isScheduledBackupRunning = false;
 
   constructor(private readonly backupsService: BackupsService) {}
 
@@ -22,6 +22,9 @@ export class BackupsScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   async checkSchedule() {
+    if (this.isScheduledBackupRunning) return;
+    this.isScheduledBackupRunning = true;
+
     try {
       const settings = await this.backupsService.getSettings();
       if (!settings.autoBackupEnabled) return;
@@ -30,16 +33,20 @@ export class BackupsScheduler implements OnModuleInit, OnModuleDestroy {
       const currentHours = String(now.getHours()).padStart(2, '0');
       const currentMinutes = String(now.getMinutes()).padStart(2, '0');
       const currentTime = `${currentHours}:${currentMinutes}`;
-      const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const scheduleTime = settings.scheduleTime.slice(0, 5);
+      if (!/^\d{2}:\d{2}$/.test(scheduleTime) || currentTime < scheduleTime) return;
 
-      if (currentTime === settings.scheduleTime && this.lastScheduledDate !== todayDate) {
-        this.lastScheduledDate = todayDate;
-        this.logger.log(`Starting automated daily backup for ${todayDate} at ${currentTime}...`);
-        await this.backupsService.createBackup('SCHEDULED');
-        this.logger.log(`Automated daily backup for ${todayDate} completed successfully.`);
-      }
+      const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (await this.backupsService.hasSuccessfulScheduledBackupSince(todayStart)) return;
+
+      this.logger.log(`Starting automated daily backup for ${todayDate} at ${currentTime}...`);
+      await this.backupsService.createBackup('SCHEDULED');
+      this.logger.log(`Automated daily backup for ${todayDate} completed successfully.`);
     } catch (err: any) {
       this.logger.error(`Automated backup schedule error: ${err.message}`);
+    } finally {
+      this.isScheduledBackupRunning = false;
     }
   }
 }

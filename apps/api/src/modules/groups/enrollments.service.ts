@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
   Optional,
@@ -73,23 +72,6 @@ export class EnrollmentsService {
       throw new BadRequestException('لا يمكن تسجيل اشتراك جديد في مجموعة متوقفة');
     }
 
-    const studentExists = await this.enrollmentsRepository.findStudentExists(dto.studentId);
-    if (!studentExists) {
-      throw new NotFoundException('الطالب غير موجود');
-    }
-
-    const duplicate = await this.enrollmentsRepository.findActiveDuplicate(groupId, dto.studentId);
-    if (duplicate) {
-      throw new ConflictException('الطالب مشترك بالفعل باشتراك نشط في هذه المجموعة');
-    }
-
-    const activeCount = await this.enrollmentsRepository.countActiveInGroup(groupId);
-    if (activeCount >= group.maxStudents) {
-      throw new BadRequestException(
-        `اكتملت السعة القصوى للمجموعة (${group.maxStudents} طالباً)`,
-      );
-    }
-
     const agreedMonthlyPrice =
       dto.agreedMonthlyPrice !== undefined ? dto.agreedMonthlyPrice : Number(group.monthlyPrice);
     const agreedSessionsCount =
@@ -101,7 +83,7 @@ export class EnrollmentsService {
 
     const today = this.getLocalIsoDate();
     const startDate = dto.startDate || today;
-    const created = await this.enrollmentsRepository.create({
+    const created = await this.enrollmentsRepository.createActive({
       studentId: dto.studentId,
       groupId,
       startDate,
@@ -163,24 +145,6 @@ export class EnrollmentsService {
     const existing = await this.enrollmentsRepository.findById(enrollmentId);
     if (!existing) {
       throw new NotFoundException('الاشتراك غير موجود');
-    }
-
-    if (dto.status === EnrollmentStatus.ACTIVE && existing.status !== EnrollmentStatus.ACTIVE) {
-      const group = await this.groupsRepository.findDetailById(existing.groupId);
-      if (!group) throw new NotFoundException('المجموعة غير موجودة');
-
-      const dup = await this.enrollmentsRepository.findActiveDuplicate(
-        existing.groupId,
-        existing.studentId,
-        enrollmentId,
-      );
-      if (dup) {
-        throw new ConflictException('يوجد اشتراك نشط آخر لهذا الطالب في نفس المجموعة');
-      }
-      const activeCount = await this.enrollmentsRepository.countActiveInGroup(existing.groupId);
-      if (activeCount >= group.maxStudents) {
-        throw new BadRequestException('اكتملت السعة القصوى للمجموعة');
-      }
     }
 
     const today = this.getLocalIsoDate();

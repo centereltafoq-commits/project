@@ -1,8 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import { FullMonthAbsencePolicy } from '@edu-center/shared';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, count, eq } from 'drizzle-orm';
+import { EnrollmentStatus, FullMonthAbsencePolicy } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
+  enrollments,
   financialPolicies,
   groupAssistants,
   groups,
@@ -106,6 +107,32 @@ export class GroupsMutationRepository {
     assistantLinks?: GroupAssistantAssignmentDto[],
   ) {
     return this.db.transaction(async (tx) => {
+      const [lockedGroup] = await tx
+        .select({ maxStudents: groups.maxStudents })
+        .from(groups)
+        .where(eq(groups.id, id))
+        .for('update')
+        .limit(1);
+      if (!lockedGroup) throw new NotFoundException('المجموعة غير موجودة');
+
+      const requestedCapacity = groupUpdates.maxStudents;
+      if (typeof requestedCapacity === 'number') {
+        const [{ activeCount }] = await tx
+          .select({ activeCount: count() })
+          .from(enrollments)
+          .where(
+            and(
+              eq(enrollments.groupId, id),
+              eq(enrollments.status, EnrollmentStatus.ACTIVE),
+            ),
+          );
+        if (Number(activeCount) > requestedCapacity) {
+          throw new BadRequestException(
+            `لا يمكن تقليل السعة إلى ${requestedCapacity}؛ يوجد ${activeCount} اشتراكاً نشطاً في المجموعة`,
+          );
+        }
+      }
+
       if (Object.keys(groupUpdates).length > 0) {
         await tx
           .update(groups)

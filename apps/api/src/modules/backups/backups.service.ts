@@ -109,6 +109,10 @@ export class BackupsService {
     return this.repository.listRecords(query);
   }
 
+  async hasSuccessfulScheduledBackupSince(since: Date): Promise<boolean> {
+    return this.repository.hasSuccessfulScheduledBackupSince(since);
+  }
+
   async getRecordById(id: string) {
     const record = await this.repository.findRecordById(id);
     if (!record) {
@@ -617,9 +621,22 @@ export class BackupsService {
         }
       };
 
-      const psql = spawn(this.psqlPath, ['-d', dbUrl, '-v', 'ON_ERROR_STOP=0'], {
-        env: { ...process.env, ...(password ? { PGPASSWORD: password } : {}) },
-      });
+      const psql = spawn(
+        this.psqlPath,
+        [
+          '-X',
+          '--single-transaction',
+          '-v',
+          'ON_ERROR_STOP=1',
+          '-f',
+          '-',
+          '-d',
+          dbUrl,
+        ],
+        {
+          env: { ...process.env, ...(password ? { PGPASSWORD: password } : {}) },
+        },
+      );
 
       psql.stdin.on('error', (err: any) => {
         if (err.code !== 'EPIPE') safeReject(err);
@@ -645,19 +662,17 @@ export class BackupsService {
           return;
         }
 
-        const criticalErrors = this.filterCriticalRestoreErrors(errOutput);
-        if (criticalErrors.length > 0) {
-          this.logger.error(`Restore SQL errors (code ${code}): ${criticalErrors.join(' | ')}`);
+        if (code !== 0) {
+          const criticalErrors = this.filterCriticalRestoreErrors(errOutput);
+          const details =
+            criticalErrors[0] || errOutput.trim() || `psql exited with code ${code}`;
+          this.logger.error(`Restore SQL errors (code ${code}): ${details}`);
           safeReject(
             new BadRequestException(
-              `تعذر استعادة قاعدة البيانات بالكامل: ${criticalErrors[0].slice(0, 250)}`,
+              `تعذر استعادة قاعدة البيانات بالكامل: ${details.slice(0, 250)}`,
             ),
           );
           return;
-        }
-
-        if (code !== 0) {
-          this.logger.warn(`psql exited with code ${code}: ${errOutput}`);
         }
         safeResolve();
       });

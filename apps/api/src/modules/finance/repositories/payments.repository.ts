@@ -17,6 +17,7 @@ import {
   students,
 } from '../../../database/schemas';
 import { parseMoney, roundMoney, toMoneyString } from '../utils/money.util';
+import { lockFinanceMonths } from './finance-month-lock.util';
 
 export interface CreatePaymentTxInput {
   receiptNumber: string;
@@ -38,6 +39,8 @@ export class PaymentsRepository {
     const now = new Date();
 
     return this.db.transaction(async (tx) => {
+      await lockFinanceMonths(tx, [input.yearMonth]);
+
       const [student] = await tx
         .select()
         .from(students)

@@ -36,6 +36,7 @@ export const sessions = pgTable(
   },
   (t) => [
     index('idx_sessions_group_month').on(t.groupId, t.yearMonth),
+    index('idx_sessions_year_month').on(t.yearMonth),
     index('idx_sessions_date').on(t.sessionDate),
     index('idx_sessions_teacher_date').on(t.teacherId, t.sessionDate),
     index('idx_sessions_classroom_date').on(t.classroomId, t.sessionDate),

@@ -9,11 +9,17 @@ import {
   sql,
   SQL,
 } from 'drizzle-orm';
+import { ConflictException } from '@nestjs/common';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../../database/database.module';
 import { expenses, users } from '../../../database/schemas';
 import { normalizePagination } from '../../../common/utils/pagination.util';
 import { ExpensesQueryDto } from '../dto/expenses.dto';
 import { parseMoney, roundMoney } from '../utils/money.util';
+import {
+  FinanceTransaction,
+  isFinanceMonthClosed,
+  lockFinanceMonths,
+} from './finance-month-lock.util';
 
 export type NewExpenseRow = typeof expenses.$inferInsert;
 
@@ -117,20 +123,61 @@ export class ExpensesRepository {
   }
 
   async create(values: NewExpenseRow) {
-    const [created] = await this.db.insert(expenses).values(values).returning();
-    return { ...created!, amount: parseMoney(created!.amount) };
+    return this.db.transaction(async (tx) => {
+      await lockFinanceMonths(tx, [values.yearMonth]);
+      await this.assertMonthOpenInTransaction(tx, values.yearMonth);
+      const [created] = await tx.insert(expenses).values(values).returning();
+      return { ...created!, amount: parseMoney(created!.amount) };
+    });
   }
 
   async update(id: string, patch: Partial<NewExpenseRow>) {
-    const [updated] = await this.db
-      .update(expenses)
-      .set(patch)
-      .where(eq(expenses.id, id))
-      .returning();
-    return updated ? { ...updated, amount: parseMoney(updated.amount) } : null;
+    return this.db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(expenses)
+        .where(eq(expenses.id, id))
+        .for('update')
+        .limit(1);
+      if (!existing) return null;
+
+      const targetMonth = patch.yearMonth ?? existing.yearMonth;
+      await lockFinanceMonths(tx, [existing.yearMonth, targetMonth]);
+      await this.assertMonthOpenInTransaction(tx, existing.yearMonth);
+      await this.assertMonthOpenInTransaction(tx, targetMonth);
+
+      const [updated] = await tx
+        .update(expenses)
+        .set(patch)
+        .where(eq(expenses.id, id))
+        .returning();
+      return updated ? { ...updated, amount: parseMoney(updated.amount) } : null;
+    });
   }
 
   async delete(id: string): Promise<void> {
-    await this.db.delete(expenses).where(eq(expenses.id, id));
+    await this.db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(expenses)
+        .where(eq(expenses.id, id))
+        .for('update')
+        .limit(1);
+      if (!existing) return;
+      await lockFinanceMonths(tx, [existing.yearMonth]);
+      await this.assertMonthOpenInTransaction(tx, existing.yearMonth);
+      await tx.delete(expenses).where(eq(expenses.id, id));
+    });
+  }
+
+  private async assertMonthOpenInTransaction(
+    tx: FinanceTransaction,
+    yearMonth: string,
+  ): Promise<void> {
+    if (await isFinanceMonthClosed(tx, yearMonth)) {
+      throw new ConflictException(
+        `الشهر المالي (${yearMonth}) مغلق نهائياً ولا يمكن إضافة أو تعديل معاملات مالية عليه`,
+      );
+    }
   }
 }

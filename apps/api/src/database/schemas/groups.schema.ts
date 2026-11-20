@@ -12,6 +12,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { students, teachers, assistants } from './profiles.schema';
 import { classrooms } from './classrooms.schema';
 
@@ -152,6 +153,9 @@ export const enrollments = pgTable(
     index('idx_enrollments_student_status').on(t.studentId, t.status),
     index('idx_enrollments_group_status').on(t.groupId, t.status),
     index('idx_enrollments_dates').on(t.startDate, t.endDate),
+    uniqueIndex('uq_enrollments_group_student_active')
+      .on(t.groupId, t.studentId)
+      .where(sql`${t.status} = 'ACTIVE'`),
   ],
 );
 

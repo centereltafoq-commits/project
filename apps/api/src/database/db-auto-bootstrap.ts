@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as argon2 from 'argon2';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { DEFAULT_ROLE_PERMISSIONS, SystemRole } from '@edu-center/shared';
 import * as schema from './schemas';
 import { permissions, rolePermissions, roles, systemSettings, users } from './schemas';
@@ -104,55 +106,21 @@ export async function ensureDatabaseReady(
     }
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    connectionTimeoutMillis: 5000,
-  });
+  const drizzleDir = resolveDrizzleDir(options?.drizzleDir);
+  if (!drizzleDir) {
+    throw new Error('Could not locate Drizzle SQL migration files to initialize the database');
+  }
+  schemaInitialized = await migrateDatabaseSchema(databaseUrl, { drizzleDir });
 
+  const pool = new Pool({ connectionString: databaseUrl, connectionTimeoutMillis: 5000 });
   try {
-    const tblRes = await pool.query<{ tbl: string | null }>(
-      "SELECT to_regclass('public.users') AS tbl",
-    );
-    const hasUsersTable = Boolean(tblRes.rows[0]?.tbl);
-
-    if (!hasUsersTable) {
-      const drizzleDir = resolveDrizzleDir(options?.drizzleDir);
-      if (!drizzleDir) {
-        throw new Error('Could not locate Drizzle SQL migration files to initialize empty database');
-      }
-
-      const sqlFiles = fs
-        .readdirSync(drizzleDir)
-        .filter((f) => f.endsWith('.sql'))
-        .sort();
-
-      const client = await pool.connect();
+    const trigramPath = resolveTrigramSqlPath();
+    if (trigramPath && schemaInitialized) {
       try {
-        await client.query('BEGIN');
-        for (const file of sqlFiles) {
-          const content = fs.readFileSync(path.join(drizzleDir, file), 'utf8');
-          const statements = splitDrizzleSqlStatements(content);
-          for (const stmt of statements) {
-            await client.query(stmt);
-          }
-        }
-        await client.query('COMMIT');
-        schemaInitialized = true;
-      } catch (err) {
-        await client.query('ROLLBACK').catch(() => undefined);
-        throw err;
-      } finally {
-        client.release();
-      }
-
-      const trigramPath = resolveTrigramSqlPath();
-      if (trigramPath) {
-        try {
-          const trigramSql = fs.readFileSync(trigramPath, 'utf8');
-          await pool.query(trigramSql);
-        } catch {
-          // Non-fatal: pg_trgm extension might require elevated privileges on some hosts
-        }
+        const trigramSql = fs.readFileSync(trigramPath, 'utf8');
+        await pool.query(trigramSql);
+      } catch {
+        // Non-fatal: pg_trgm extension might require elevated privileges on some hosts
       }
     }
 
@@ -243,4 +211,136 @@ export async function ensureDatabaseReady(
     schemaInitialized,
     identitySeeded,
   };
+}
+
+const MIGRATION_LOCK_KEY = 'edu-center:database-migrations';
+const MIGRATION_HISTORY_SCHEMA = 'drizzle';
+const MIGRATION_HISTORY_TABLE = '__drizzle_migrations';
+
+/** Apply Drizzle's numbered migrations under one PostgreSQL session lock. */
+export async function migrateDatabaseSchema(
+  databaseUrl: string,
+  options?: { drizzleDir?: string },
+): Promise<boolean> {
+  if (!databaseUrl || !databaseUrl.trim()) {
+    throw new Error('DATABASE_URL is required before applying database migrations');
+  }
+  const drizzleDir = resolveDrizzleDir(options?.drizzleDir);
+  if (!drizzleDir) {
+    throw new Error('Could not locate Drizzle SQL migration files');
+  }
+
+  const migrations = readMigrationFiles({ migrationsFolder: drizzleDir });
+  if (migrations.length === 0) throw new Error('No numbered Drizzle migrations were found');
+
+  const pool = new Pool({ connectionString: databaseUrl, connectionTimeoutMillis: 5000 });
+  const client = await pool.connect();
+  let lockAcquired = false;
+  let schemaInitialized = false;
+  try {
+    await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [MIGRATION_LOCK_KEY]);
+    lockAcquired = true;
+
+    const migrationHistory = await client.query<{ tbl: string | null }>(
+      "SELECT to_regclass('drizzle.__drizzle_migrations') AS tbl",
+    );
+    let appliedHashes: string[] = [];
+    if (migrationHistory.rows[0]?.tbl) {
+      const result = await client.query<{ hash: string }>(
+        'SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at',
+      );
+      appliedHashes = result.rows.map((row) => row.hash);
+    }
+
+    if (appliedHashes.length === 0) {
+      const tableCount = await client.query<{ count: number }>(
+        `SELECT count(*)::int AS count FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
+      );
+      const isEmptyDatabase = Number(tableCount.rows[0]?.count ?? 0) === 0;
+
+      if (!isEmptyDatabase) {
+        await assertBaselineSchemaPresent(client, drizzleDir);
+        const baseline = migrations[0]!;
+        await client.query('BEGIN');
+        try {
+          await client.query('CREATE SCHEMA IF NOT EXISTS drizzle');
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
+              id SERIAL PRIMARY KEY,
+              hash text NOT NULL,
+              created_at bigint
+            )
+          `);
+          await client.query(
+            'INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)',
+            [baseline.hash, baseline.folderMillis],
+          );
+          await client.query('COMMIT');
+        } catch (error) {
+          await client.query('ROLLBACK').catch(() => undefined);
+          throw error;
+        }
+      } else {
+        schemaInitialized = true;
+      }
+    } else {
+      const firstMigration = migrations[0]!;
+      if (!appliedHashes.includes(firstMigration.hash)) {
+        throw new Error(
+          'Migration history does not contain the baseline migration hash; refusing to apply the baseline over an existing schema.',
+        );
+      }
+    }
+
+    const db = drizzle(client, { schema });
+    await migrate(db, {
+      migrationsFolder: drizzleDir,
+      migrationsSchema: MIGRATION_HISTORY_SCHEMA,
+      migrationsTable: MIGRATION_HISTORY_TABLE,
+    });
+    return schemaInitialized;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Database migration failed: ${message}`, { cause: error });
+  } finally {
+    if (lockAcquired) {
+      await client
+        .query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [MIGRATION_LOCK_KEY])
+        .catch(() => undefined);
+    }
+    client.release();
+    await pool.end();
+  }
+}
+
+async function assertBaselineSchemaPresent(
+  client: import('pg').PoolClient,
+  drizzleDir: string,
+): Promise<void> {
+  const snapshotPath = path.join(drizzleDir, 'meta', '0000_snapshot.json');
+  if (!fs.existsSync(snapshotPath)) {
+    throw new Error(`Cannot verify an existing database: baseline snapshot is missing at ${snapshotPath}`);
+  }
+
+  const snapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf8')) as {
+    tables?: Record<string, { name: string; columns?: Record<string, unknown> }>;
+  };
+  const expected = Object.values(snapshot.tables ?? {});
+  const actualResult = await client.query<{ table_name: string; column_name: string }>(
+    `SELECT table_name, column_name FROM information_schema.columns
+     WHERE table_schema = 'public'`,
+  );
+  const actual = new Set(actualResult.rows.map((row) => `${row.table_name}.${row.column_name}`));
+  const missing = expected.flatMap((table) =>
+    Object.keys(table.columns ?? {})
+      .filter((column) => !actual.has(`${table.name}.${column}`))
+      .map((column) => `${table.name}.${column}`),
+  );
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Existing database is missing ${missing.length} required baseline column(s): ${missing.slice(0, 20).join(', ')}${missing.length > 20 ? ', …' : ''}. Restore the missing schema items or restore a valid database backup before migrating.`,
+    );
+  }
 }

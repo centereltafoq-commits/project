@@ -15,6 +15,8 @@ import {
   teachers,
 } from '../../../database/schemas';
 import { parseMoney, roundMoney } from '../utils/money.util';
+import { FinanceTransaction } from './finance-month-lock.util';
+import { runQueriesInParallel, runQueriesSequentially } from './finance-month-lock.util';
 
 @Injectable()
 export class FinanceOverviewRepository {
@@ -77,17 +79,10 @@ export class FinanceOverviewRepository {
     };
   }
 
-  async fetchMonthExecutiveSummary(yearMonth: string) {
-    const [
-      [studentAgg],
-      [paymentsAgg],
-      [teacherAgg],
-      [teacherPayoutAgg],
-      [assistantAgg],
-      [assistantPayoutAgg],
-      [expenseAgg],
-    ] = await Promise.all([
-      this.db
+  async fetchMonthExecutiveSummary(yearMonth: string, tx?: FinanceTransaction) {
+    const executor = tx ?? this.db;
+    const summaryQueries = [
+      () => executor
         .select({
           totalDue: sql<string>`COALESCE(SUM(${studentMonthlyRecords.totalDue}), 0)`,
           totalPaid: sql<string>`COALESCE(SUM(${studentMonthlyRecords.totalPaid}), 0)`,
@@ -97,13 +92,13 @@ export class FinanceOverviewRepository {
         })
         .from(studentMonthlyRecords)
         .where(eq(studentMonthlyRecords.yearMonth, yearMonth)),
-      this.db
+      () => executor
         .select({
           totalCollected: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
         })
         .from(payments)
         .where(eq(payments.yearMonth, yearMonth)),
-      this.db
+      () => executor
         .select({
           totalDues: sql<string>`COALESCE(SUM(${teacherMonthlyRecords.totalDues}), 0)`,
           totalPaidOut: sql<string>`COALESCE(SUM(${teacherMonthlyRecords.totalPaidOut}), 0)`,
@@ -113,13 +108,13 @@ export class FinanceOverviewRepository {
         })
         .from(teacherMonthlyRecords)
         .where(eq(teacherMonthlyRecords.yearMonth, yearMonth)),
-      this.db
+      () => executor
         .select({
           totalPaidOut: sql<string>`COALESCE(SUM(${teacherPayouts.amount}), 0)`,
         })
         .from(teacherPayouts)
         .where(eq(teacherPayouts.yearMonth, yearMonth)),
-      this.db
+      () => executor
         .select({
           totalDues: sql<string>`COALESCE(SUM(${assistantMonthlyRecords.totalDues}), 0)`,
           totalPaidOut: sql<string>`COALESCE(SUM(${assistantMonthlyRecords.totalPaidOut}), 0)`,
@@ -129,19 +124,30 @@ export class FinanceOverviewRepository {
         })
         .from(assistantMonthlyRecords)
         .where(eq(assistantMonthlyRecords.yearMonth, yearMonth)),
-      this.db
+      () => executor
         .select({
           totalPaidOut: sql<string>`COALESCE(SUM(${assistantPayouts.amount}), 0)`,
         })
         .from(assistantPayouts)
         .where(eq(assistantPayouts.yearMonth, yearMonth)),
-      this.db
+      () => executor
         .select({
           totalExpenses: sql<string>`COALESCE(SUM(${expenses.amount}), 0)`,
         })
         .from(expenses)
         .where(eq(expenses.yearMonth, yearMonth)),
-    ]);
+    ] as const;
+    const [
+      [studentAgg],
+      [paymentsAgg],
+      [teacherAgg],
+      [teacherPayoutAgg],
+      [assistantAgg],
+      [assistantPayoutAgg],
+      [expenseAgg],
+    ] = tx
+      ? await runQueriesSequentially(summaryQueries)
+      : await runQueriesInParallel(summaryQueries);
 
     const closedTotal =
       Number(studentAgg?.closedCount ?? 0) +

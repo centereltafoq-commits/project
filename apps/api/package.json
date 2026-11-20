@@ -8,6 +8,7 @@
     "start:prod": "node dist/main.js",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/database/run-migrations.ts",
     "db:seed": "tsx src/database/seeds/run-seed.ts",
     "test": "vitest run"
   },

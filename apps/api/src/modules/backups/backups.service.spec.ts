@@ -1,9 +1,32 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
+import { EventEmitter } from 'events';
+import { spawn } from 'child_process';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { BackupsService } from './backups.service';
+
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  return { ...actual, spawn: vi.fn() };
+});
+
+function mockPsqlProcess(exitCode: number, stderrMessage = '') {
+  const child = new EventEmitter() as any;
+  child.stdin = {
+    on: vi.fn().mockReturnThis(),
+    end: vi.fn(() =>
+      queueMicrotask(() => {
+        if (stderrMessage) child.stderr.emit('data', Buffer.from(stderrMessage));
+        child.emit('close', exitCode);
+      })),
+  };
+  child.stderr = new EventEmitter();
+
+  vi.mocked(spawn).mockReturnValue(child);
+  return child;
+}
 
 describe('BackupsService - Upload & Integrity', () => {
   let service: BackupsService;
@@ -193,6 +216,37 @@ describe('BackupsService - Upload & Integrity', () => {
     const sql = 'DROP TABLE IF EXISTS public.system_settings;\nCREATE TABLE public.system_settings ();';
     const prepared = (service as any).prepareRestoreSql(sql);
     expect(prepared).toContain('DROP TABLE IF EXISTS public.system_settings CASCADE;');
+  });
+
+  it('runs SQL restore in a single transaction and stops on the first SQL error', async () => {
+    const testFile = path.join(tempTestDir, 'restore-atomic.sql.gz');
+    fs.writeFileSync(testFile, zlib.gzipSync(Buffer.from('SELECT 42;')));
+    mockPsqlProcess(0);
+
+    await (service as any).executeRestore(testFile);
+
+    const [command, args] = vi.mocked(spawn).mock.calls[0]!;
+    expect(command).toBe((service as any).psqlPath);
+    expect(args).toEqual([
+      '-X',
+      '--single-transaction',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-f',
+      '-',
+      '-d',
+      'postgres://user:pass@localhost:5432/edu_center',
+    ]);
+  });
+
+  it('rejects an unsuccessful psql exit even without a parsed SQL error line', async () => {
+    const testFile = path.join(tempTestDir, 'restore-failed-exit.sql.gz');
+    fs.writeFileSync(testFile, zlib.gzipSync(Buffer.from('SELECT 42;')));
+    mockPsqlProcess(3, 'psql: error: restore stopped');
+
+    await expect((service as any).executeRestore(testFile)).rejects.toThrow(
+      /restore stopped/,
+    );
   });
 
   it('rejects restoreBackup when checksum does not match', async () => {

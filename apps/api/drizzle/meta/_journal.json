@@ -8,6 +8,20 @@
       "when": 1794746151842,
       "tag": "0000_famous_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795121581407,
+      "tag": "0001_active_enrollment_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795122657455,
+      "tag": "0002_finance_year_month_indexes",
+      "breakpoints": true
     }
   ]
 }
