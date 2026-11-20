@@ -1,10 +1,19 @@
 import * as React from 'react';
 
+export interface DesktopUpdateSettings {
+  autoCheck: boolean;
+  githubOwner: string;
+  githubRepo: string;
+}
+
 export interface DesktopConfig {
   serverMode: 'server' | 'client';
   serverUrl: string;
   defaultThermalPrinter?: string;
   directPrintEnabled: boolean;
+  keepRunningInTray?: boolean;
+  launchOnStartup?: boolean;
+  updateSettings?: DesktopUpdateSettings;
   isFirstLaunch: boolean;
   windowBounds?: {
     width: number;
@@ -12,6 +21,28 @@ export interface DesktopConfig {
     x?: number;
     y?: number;
   };
+}
+
+export type DesktopUpdateState =
+  | 'IDLE'
+  | 'UNCONFIGURED'
+  | 'CHECKING'
+  | 'AVAILABLE'
+  | 'DOWNLOADING'
+  | 'DOWNLOADED'
+  | 'UP_TO_DATE'
+  | 'ERROR';
+
+export interface DesktopUpdateStatus {
+  state: DesktopUpdateState;
+  currentVersion: string;
+  availableVersion?: string;
+  downloadPercent?: number;
+  error?: string;
+  lastCheckedAt?: string;
+  isConfigured: boolean;
+  githubOwner: string;
+  githubRepo: string;
 }
 
 export interface DatabaseStatus {
@@ -74,6 +105,10 @@ export interface DesktopApi {
   printReceipt: (options: SilentPrintOptions) => Promise<{ success: boolean; error?: string }>;
   discoverServers?: () => Promise<DiscoveredServer[]>;
   configureFirewall?: () => Promise<FirewallConfigResult>;
+  getUpdateStatus?: () => Promise<DesktopUpdateStatus>;
+  checkForUpdates?: () => Promise<DesktopUpdateStatus>;
+  installUpdate?: () => Promise<{ success: boolean; error?: string }>;
+  onUpdateStatusChange?: (callback: (status: DesktopUpdateStatus) => void) => () => void;
 }
 
 declare global {
@@ -90,6 +125,7 @@ export function useDesktop() {
   const [serverStatus, setServerStatus] = React.useState<ServerStatus | null>(null);
   const [localIps, setLocalIps] = React.useState<string[]>([]);
   const [printers, setPrinters] = React.useState<PrinterInfo[]>([]);
+  const [updateStatus, setUpdateStatus] = React.useState<DesktopUpdateStatus | null>(null);
   const [isLoading, setIsLoading] = React.useState<boolean>(isDesktop);
 
   const reloadPrinters = React.useCallback(async () => {
@@ -126,13 +162,17 @@ export function useDesktop() {
       window.desktopApi.getServerStatus(),
       window.desktopApi.getLocalIps(),
       window.desktopApi.getPrinters(),
+      typeof window.desktopApi.getUpdateStatus === 'function'
+        ? window.desktopApi.getUpdateStatus()
+        : Promise.resolve(null),
     ])
-      .then(([cfg, status, ips, printerList]) => {
+      .then(([cfg, status, ips, printerList, updStatus]) => {
         if (!isMounted) return;
         setConfig(cfg);
         setServerStatus(status);
         setLocalIps(ips);
         setPrinters(printerList);
+        if (updStatus) setUpdateStatus(updStatus);
       })
       .catch((err) => {
         console.error('Error initializing desktop integration:', err);
@@ -141,8 +181,16 @@ export function useDesktop() {
         if (isMounted) setIsLoading(false);
       });
 
+    const unsubscribeUpdate =
+      typeof window.desktopApi.onUpdateStatusChange === 'function'
+        ? window.desktopApi.onUpdateStatusChange((nextStatus) => {
+            if (isMounted) setUpdateStatus(nextStatus);
+          })
+        : undefined;
+
     return () => {
       isMounted = false;
+      unsubscribeUpdate?.();
     };
   }, [isDesktop]);
 
@@ -215,6 +263,22 @@ export function useDesktop() {
     return window.desktopApi.configureFirewall();
   }, [isDesktop]);
 
+  const checkForUpdates = React.useCallback(async (): Promise<DesktopUpdateStatus | null> => {
+    if (!isDesktop || !window.desktopApi || typeof window.desktopApi.checkForUpdates !== 'function') {
+      return null;
+    }
+    const status = await window.desktopApi.checkForUpdates();
+    setUpdateStatus(status);
+    return status;
+  }, [isDesktop]);
+
+  const installUpdate = React.useCallback(async () => {
+    if (!isDesktop || !window.desktopApi || typeof window.desktopApi.installUpdate !== 'function') {
+      return { success: false, error: 'التحديث التلقائي متاح في تطبيق سطح المكتب فقط' };
+    }
+    return window.desktopApi.installUpdate();
+  }, [isDesktop]);
+
   return {
     isDesktop,
     platform,
@@ -222,6 +286,7 @@ export function useDesktop() {
     serverStatus,
     localIps,
     printers,
+    updateStatus,
     isLoading,
     saveConfig,
     testConnection,
@@ -230,6 +295,8 @@ export function useDesktop() {
     printReceipt,
     discoverServers,
     configureFirewall,
+    checkForUpdates,
+    installUpdate,
     reloadPrinters,
     reloadServerStatus,
   };

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { DESKTOP_CHANNELS, DesktopApi } from './desktop-api.types';
+import { DESKTOP_CHANNELS, DESKTOP_EVENTS, DesktopApi } from './desktop-api.types';
 
 /**
  * Creates the DesktopApi object mapping each API method to its corresponding IPC invoke call.
@@ -20,6 +20,18 @@ export function createDesktopApi(customIpcRenderer = ipcRenderer): DesktopApi {
     printReceipt: (options) => customIpcRenderer.invoke(DESKTOP_CHANNELS.PRINT_RECEIPT, options),
     discoverServers: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.DISCOVER_SERVERS),
     configureFirewall: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.CONFIGURE_FIREWALL),
+    getUpdateStatus: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.GET_UPDATE_STATUS),
+    checkForUpdates: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.CHECK_FOR_UPDATES),
+    installUpdate: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.INSTALL_UPDATE),
+    onUpdateStatusChange: (callback) => {
+      const listener = (_event: any, status: any) => callback(status);
+      customIpcRenderer.on(DESKTOP_EVENTS.UPDATE_STATUS_CHANGED, listener);
+      return () => {
+        if (typeof customIpcRenderer.removeListener === 'function') {
+          customIpcRenderer.removeListener(DESKTOP_EVENTS.UPDATE_STATUS_CHANGED, listener);
+        }
+      };
+    },
   };
 }
 

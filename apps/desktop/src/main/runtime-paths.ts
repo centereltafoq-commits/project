@@ -56,6 +56,22 @@ export function resolveApiDistPath(explicitPath?: string): string {
 }
 
 /**
+ * Resolves the desktop app icon PNG path across packaged resources and development mode.
+ */
+export function resolveDesktopIconPath(): string | null {
+  const resPath = getPackagedResourcesPath();
+  const candidates = [
+    resPath ? path.join(resPath, 'app.asar', 'resources', 'icon.png') : null,
+    resPath ? path.join(resPath, 'icon.png') : null,
+    path.resolve(process.cwd(), 'apps/desktop/resources/icon.png'),
+    path.resolve(process.cwd(), 'resources/icon.png'),
+    path.resolve(__dirname, '../../resources/icon.png'),
+  ].filter((p): p is string => Boolean(p));
+
+  return candidates.find((p) => fs.existsSync(p)) ?? null;
+}
+
+/**
  * Resolves built React SPA files (`web/dist`) so the unified API serves frontend pages.
  */
 export function resolveWebDistPath(): string | null {

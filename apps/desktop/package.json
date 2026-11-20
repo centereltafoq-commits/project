@@ -15,7 +15,8 @@
     "prepare:postgres": "powershell -ExecutionPolicy Bypass -File scripts/prepare-portable-postgres.ps1"
   },
   "dependencies": {
-    "@edu-center/shared": "*"
+    "@edu-center/shared": "*",
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
     "electron": "33.4.11",

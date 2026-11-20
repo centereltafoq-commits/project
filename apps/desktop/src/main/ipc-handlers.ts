@@ -5,12 +5,14 @@ import { PrinterManager } from './printer-manager';
 import { getLocalNetworkIps, testServerConnection } from './network-utils';
 import { discoverLanServers, type DiscoveredServer } from './lan-discovery';
 import { configureLanFirewallRules, type FirewallConfigResult } from './firewall-utils';
+import type { UpdateManager } from './update-manager';
 
 export interface RegisterIpcHandlersOptions {
   ipcMain: any;
   storeManager: StoreManager;
   serverManager: ServerManager;
   printerManager: PrinterManager;
+  updateManager?: UpdateManager;
   webContentsGetter: () => any;
   onConfigSaved?: (config: DesktopConfig) => Promise<void> | void;
   networkUtils?: {
@@ -43,6 +45,23 @@ function sanitizeConfigUpdates(raw: any): Partial<DesktopConfig> {
 
   if (typeof raw.directPrintEnabled === 'boolean') {
     updates.directPrintEnabled = raw.directPrintEnabled;
+  }
+
+  if (typeof raw.keepRunningInTray === 'boolean') {
+    updates.keepRunningInTray = raw.keepRunningInTray;
+  }
+
+  if (typeof raw.launchOnStartup === 'boolean') {
+    updates.launchOnStartup = raw.launchOnStartup;
+  }
+
+  if (raw.updateSettings && typeof raw.updateSettings === 'object') {
+    const { autoCheck, githubOwner, githubRepo } = raw.updateSettings;
+    updates.updateSettings = {
+      autoCheck: typeof autoCheck === 'boolean' ? autoCheck : true,
+      githubOwner: typeof githubOwner === 'string' ? githubOwner.trim().slice(0, 100) : '',
+      githubRepo: typeof githubRepo === 'string' ? githubRepo.trim().slice(0, 100) : '',
+    };
   }
 
   if (typeof raw.defaultThermalPrinter === 'string') {
@@ -94,6 +113,7 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
     storeManager,
     serverManager,
     printerManager,
+    updateManager,
     webContentsGetter,
     onConfigSaved,
     networkUtils,
@@ -209,6 +229,39 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
       htmlContent,
       width: typeof rawOptions.width === 'string' ? rawOptions.width : '80mm',
     });
+  });
+
+  // 5. GitHub Releases Auto-Update Channels
+  registerHandler(DESKTOP_CHANNELS.GET_UPDATE_STATUS, async () => {
+    return (
+      updateManager?.getStatus() ?? {
+        state: 'UNCONFIGURED',
+        currentVersion: '1.0.0',
+        isConfigured: false,
+        githubOwner: '',
+        githubRepo: '',
+      }
+    );
+  });
+
+  registerHandler(DESKTOP_CHANNELS.CHECK_FOR_UPDATES, async () => {
+    if (!updateManager) {
+      return {
+        state: 'UNCONFIGURED',
+        currentVersion: '1.0.0',
+        isConfigured: false,
+        githubOwner: '',
+        githubRepo: '',
+      };
+    }
+    return updateManager.checkForUpdates();
+  });
+
+  registerHandler(DESKTOP_CHANNELS.INSTALL_UPDATE, async () => {
+    if (!updateManager) {
+      return { success: false, error: 'وحدة التحديث غير مفعلة' };
+    }
+    return updateManager.installDownloadedUpdate();
   });
 
   return () => {

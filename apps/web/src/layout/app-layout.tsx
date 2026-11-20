@@ -2,13 +2,16 @@ import * as React from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   BookOpen,
+  CloudDownload,
   GraduationCap,
   Laptop,
+  Loader2,
   LogOut,
   Menu,
   Moon,
   PanelRightClose,
   PanelRightOpen,
+  RotateCw,
   Server,
   Sun,
   X,
@@ -20,6 +23,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { useDesktop } from '@/hooks/use-desktop';
 import { DesktopConnectionModal } from '@/components/desktop-connection-modal';
+import { DesktopUpdateModal } from '@/components/desktop-update-panel';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { SIDEBAR_NAV_ITEMS } from './nav-items';
 
@@ -27,8 +31,9 @@ export function AppLayout() {
   const location = useLocation();
   const { user, isLoading, logout, hasPermission } = useAuth();
   const { settings } = useCenterSettings();
-  const { isDesktop, config: desktopConfig, serverStatus } = useDesktop();
+  const { isDesktop, config: desktopConfig, serverStatus, updateStatus } = useDesktop();
   const [desktopModalOpen, setDesktopModalOpen] = React.useState(false);
+  const [updateModalOpen, setUpdateModalOpen] = React.useState(false);
   const [logoError, setLogoError] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(() => {
@@ -287,7 +292,45 @@ export function AppLayout() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Desktop / LAN Mode Pill (visible only inside Electron desktop app) */}
+            {/* Desktop Auto-Update Button (always accessible in desktop mode) */}
+            {isDesktop && (
+              <button
+                type="button"
+                onClick={() => setUpdateModalOpen(true)}
+                data-testid="header-desktop-update-btn"
+                title="التحقق من تحديثات البرنامج عبر GitHub Releases"
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold shadow-sm transition-colors',
+                  updateStatus?.state === 'DOWNLOADED'
+                    ? 'border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300'
+                    : updateStatus?.state === 'DOWNLOADING' || updateStatus?.state === 'CHECKING'
+                      ? 'border-primary/40 bg-primary/10 text-primary'
+                      : 'border-border bg-card hover:bg-accent hover:text-accent-foreground text-foreground font-semibold',
+                )}
+              >
+                {updateStatus?.state === 'DOWNLOADED' ? (
+                  <>
+                    <RotateCw className="h-3.5 w-3.5 shrink-0" />
+                    <span>تثبيت التحديث v{updateStatus.availableVersion}</span>
+                  </>
+                ) : updateStatus?.state === 'DOWNLOADING' || updateStatus?.state === 'CHECKING' ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                    <span>
+                      {updateStatus.state === 'DOWNLOADING'
+                        ? `جاري التحديث ${updateStatus.downloadPercent ?? 0}%`
+                        : 'جاري فحص التحديث...'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <CloudDownload className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="hidden md:inline">تحديث البرنامج</span>
+                  </>
+                )}
+              </button>
+            )}
+
             {isDesktop && (
               <button
                 type="button"
@@ -354,6 +397,13 @@ export function AppLayout() {
         <DesktopConnectionModal
           open={desktopModalOpen}
           onOpenChange={setDesktopModalOpen}
+        />
+      )}
+
+      {isDesktop && updateModalOpen && (
+        <DesktopUpdateModal
+          open={updateModalOpen}
+          onOpenChange={setUpdateModalOpen}
         />
       )}
     </div>

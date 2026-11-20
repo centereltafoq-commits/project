@@ -7,12 +7,18 @@ import { PostgresManager } from './postgres-manager';
 import { LanDiscoveryResponder } from './lan-discovery';
 import { registerIpcHandlers } from './ipc-handlers';
 import { testServerConnection } from './network-utils';
+import { TrayManager } from './tray-manager';
+import { UpdateManager } from './update-manager';
+import { DESKTOP_EVENTS } from '../preload/desktop-api.types';
 
 export interface AppContext {
   storeManager: StoreManager;
   serverManager: ServerManager;
   printerManager: PrinterManager;
   discoveryResponder?: LanDiscoveryResponder;
+  trayManager?: TrayManager;
+  updateManager?: UpdateManager;
+  isForceQuitting?: () => boolean;
   mainWindow: BrowserWindow | null;
 }
 
@@ -375,7 +381,7 @@ export async function createMainWindow(
 
   context.mainWindow = mainWindow;
 
-  // Persist window geometry on user adjustments
+  // Persist window geometry & hide to System Tray in Server Mode unless force-quitting
   const saveBounds = () => {
     if (!mainWindow.isDestroyed()) {
       const currentBounds = mainWindow.getBounds();
@@ -385,7 +391,23 @@ export async function createMainWindow(
 
   mainWindow.on('resize', saveBounds);
   mainWindow.on('move', saveBounds);
-  mainWindow.on('close', saveBounds);
+  mainWindow.on('close', (event?: any) => {
+    saveBounds();
+
+    const latestConfig = storeManager.getConfig();
+    const shouldHideToTray =
+      !context.isForceQuitting?.() &&
+      latestConfig.serverMode === 'server' &&
+      latestConfig.keepRunningInTray !== false &&
+      Boolean(context.trayManager) &&
+      typeof mainWindow.hide === 'function';
+
+    if (shouldHideToTray && event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+      mainWindow.hide();
+      context.trayManager?.notifyHiddenToTray();
+    }
+  });
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -397,6 +419,7 @@ export async function createMainWindow(
     storeManager,
     serverManager,
     printerManager,
+    updateManager: context.updateManager,
     webContentsGetter: () => (mainWindow.isDestroyed() ? null : mainWindow.webContents),
     onConfigSaved: async (saved) => {
       if (saved.serverMode === 'server') {
@@ -404,6 +427,9 @@ export async function createMainWindow(
       } else {
         await context.discoveryResponder?.stop();
       }
+      context.trayManager?.refreshMenu();
+      context.trayManager?.syncStartupPreference(Boolean(saved.launchOnStartup));
+      context.updateManager?.syncConfiguration();
     },
   });
 
@@ -417,65 +443,9 @@ export async function createMainWindow(
  */
 export function setupApp(customContext?: AppContext) {
   let context: AppContext;
+  let forceQuitting = false;
 
-  if (customContext) {
-    context = customContext;
-  } else {
-    const postgresManager = new PostgresManager();
-    const discoveryResponder = new LanDiscoveryResponder(4000);
-    const serverManager = new ServerManager({
-      postgresManager,
-      onRunningChange: (running) => {
-        if (!running) {
-          void discoveryResponder.stop();
-        }
-      },
-    });
-    context = {
-      storeManager: new StoreManager(),
-      serverManager,
-      printerManager: new PrinterManager(),
-      discoveryResponder,
-      mainWindow: null,
-    };
-  }
-
-  const gotTheLock = app.requestSingleInstanceLock();
-  if (!gotTheLock) {
-    app.quit();
-    return;
-  }
-
-  app.on('second-instance', () => {
-    if (context.mainWindow) {
-      if (context.mainWindow.isMinimized()) {
-        context.mainWindow.restore();
-      }
-      context.mainWindow.focus();
-    }
-  });
-
-  app.whenReady().then(async () => {
-    await createMainWindow(context);
-  });
-
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
-  });
-
-  app.on('activate', async () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      await createMainWindow(context);
-    }
-  });
-
-  let isQuitting = false;
-  app.on('before-quit', (event?: any) => {
-    if (isQuitting) return;
-    isQuitting = true;
-
+  const stopDesktopServices = async (): Promise<void> => {
     const stopTasks: Promise<unknown>[] = [];
     if (context.discoveryResponder) {
       stopTasks.push(
@@ -491,12 +461,122 @@ export function setupApp(customContext?: AppContext) {
         }),
       );
     }
+    await Promise.all(stopTasks);
+  };
 
-    if (event && typeof event.preventDefault === 'function' && stopTasks.length > 0) {
+  if (customContext) {
+    context = customContext;
+  } else {
+    const storeManager = new StoreManager();
+    const postgresManager = new PostgresManager();
+    const discoveryResponder = new LanDiscoveryResponder(4000);
+    const serverManager = new ServerManager({
+      postgresManager,
+      onRunningChange: (running) => {
+        if (!running) {
+          void discoveryResponder.stop();
+        }
+        context?.trayManager?.refreshMenu();
+      },
+    });
+    const updateManager = new UpdateManager({
+      storeManager,
+      onStatusChange: (status) => {
+        if (context?.mainWindow && !context.mainWindow.isDestroyed()) {
+          context.mainWindow.webContents.send(DESKTOP_EVENTS.UPDATE_STATUS_CHANGED, status);
+        }
+      },
+      onBeforeInstallQuit: async () => {
+        forceQuitting = true;
+        await stopDesktopServices();
+      },
+    });
+    const trayManager = new TrayManager({
+      storeManager,
+      getWindow: () => context.mainWindow,
+      onCheckForUpdates: () => {
+        void updateManager.checkForUpdates();
+      },
+      onRequestQuit: () => {
+        forceQuitting = true;
+        app.quit();
+      },
+    });
+
+    context = {
+      storeManager,
+      serverManager,
+      printerManager: new PrinterManager(),
+      discoveryResponder,
+      trayManager,
+      updateManager,
+      isForceQuitting: () => forceQuitting,
+      mainWindow: null,
+    };
+  }
+
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    app.quit();
+    return;
+  }
+
+  app.on('second-instance', () => {
+    if (context.mainWindow) {
+      if (context.mainWindow.isMinimized()) {
+        context.mainWindow.restore();
+      }
+      if (typeof context.mainWindow.show === 'function') {
+        context.mainWindow.show();
+      }
+      context.mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(async () => {
+    context.trayManager?.init();
+    const cfg = context.storeManager.getConfig();
+    context.trayManager?.syncStartupPreference(Boolean(cfg.launchOnStartup));
+    await createMainWindow(context);
+
+    if (cfg.updateSettings?.autoCheck && context.updateManager?.getStatus().isConfigured) {
+      void context.updateManager.checkForUpdates();
+    }
+  });
+
+  app.on('window-all-closed', () => {
+    const cfg = context.storeManager.getConfig();
+    if (!forceQuitting && cfg.serverMode === 'server' && cfg.keepRunningInTray !== false) {
+      return;
+    }
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('activate', async () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      await createMainWindow(context);
+    } else if (context.mainWindow && typeof context.mainWindow.show === 'function') {
+      context.mainWindow.show();
+      context.mainWindow.focus();
+    }
+  });
+
+  let isQuitting = false;
+  app.on('before-quit', (event?: any) => {
+    forceQuitting = true;
+    if (isQuitting) return;
+    isQuitting = true;
+    context.trayManager?.destroy();
+
+    if (event && typeof event.preventDefault === 'function') {
       event.preventDefault();
-      Promise.all(stopTasks).finally(() => {
+      void stopDesktopServices().finally(() => {
         app.quit();
       });
+    } else {
+      void stopDesktopServices();
     }
   });
 }

@@ -1,8 +1,9 @@
-import type { DesktopConfig } from '../main/store-manager';
+import type { DesktopConfig, DesktopUpdateSettings } from '../main/store-manager';
 import type { ServerStatus } from '../main/server-manager';
 import type { PrinterInfo, SilentPrintOptions } from '../main/printer-manager';
 import type { DiscoveredServer } from '../main/lan-discovery';
 import type { FirewallConfigResult } from '../main/firewall-utils';
+import type { DesktopUpdateStatus } from '../main/update-manager';
 
 /**
  * Whitelist of all IPC channels exposed between Electron Main process and Preload script.
@@ -19,6 +20,13 @@ export const DESKTOP_CHANNELS = {
   PRINT_RECEIPT: 'desktop:print-receipt',
   DISCOVER_SERVERS: 'desktop:discover-servers',
   CONFIGURE_FIREWALL: 'desktop:configure-firewall',
+  GET_UPDATE_STATUS: 'desktop:get-update-status',
+  CHECK_FOR_UPDATES: 'desktop:check-for-updates',
+  INSTALL_UPDATE: 'desktop:install-update',
+} as const;
+
+export const DESKTOP_EVENTS = {
+  UPDATE_STATUS_CHANGED: 'desktop:update-status-changed',
 } as const;
 
 export type DesktopChannels = typeof DESKTOP_CHANNELS;
@@ -42,10 +50,16 @@ export interface DesktopApi {
   printReceipt: (options: SilentPrintOptions) => Promise<{ success: boolean; error?: string }>;
   discoverServers: () => Promise<DiscoveredServer[]>;
   configureFirewall: () => Promise<FirewallConfigResult>;
+  getUpdateStatus?: () => Promise<DesktopUpdateStatus>;
+  checkForUpdates?: () => Promise<DesktopUpdateStatus>;
+  installUpdate?: () => Promise<{ success: boolean; error?: string }>;
+  onUpdateStatusChange?: (callback: (status: DesktopUpdateStatus) => void) => () => void;
 }
 
 export type {
   DesktopConfig,
+  DesktopUpdateSettings,
+  DesktopUpdateStatus,
   ServerStatus,
   PrinterInfo,
   SilentPrintOptions,

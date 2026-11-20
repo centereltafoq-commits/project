@@ -1,6 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+export interface DesktopUpdateSettings {
+  autoCheck: boolean;
+  githubOwner: string;
+  githubRepo: string;
+}
+
 /**
  * Persistent configuration schema for the desktop application.
  */
@@ -9,6 +15,9 @@ export interface DesktopConfig {
   serverUrl: string;
   defaultThermalPrinter?: string;
   directPrintEnabled: boolean;
+  keepRunningInTray: boolean;
+  launchOnStartup: boolean;
+  updateSettings: DesktopUpdateSettings;
   isFirstLaunch: boolean;
   windowBounds: {
     width: number;
@@ -25,6 +34,13 @@ export const DEFAULT_CONFIG: DesktopConfig = {
   serverMode: 'client',
   serverUrl: 'http://localhost:4000',
   directPrintEnabled: true,
+  keepRunningInTray: true,
+  launchOnStartup: false,
+  updateSettings: {
+    autoCheck: true,
+    githubOwner: 'centereltafoq-commits',
+    githubRepo: 'system-erp-',
+  },
   isFirstLaunch: true,
   windowBounds: {
     width: 1280,
@@ -77,6 +93,10 @@ export class StoreManager {
         return {
           ...DEFAULT_CONFIG,
           ...parsed,
+          updateSettings: {
+            ...DEFAULT_CONFIG.updateSettings,
+            ...(parsed.updateSettings || {}),
+          },
           windowBounds: {
             ...DEFAULT_CONFIG.windowBounds,
             ...(parsed.windowBounds || {}),
@@ -89,6 +109,7 @@ export class StoreManager {
 
     return {
       ...DEFAULT_CONFIG,
+      updateSettings: { ...DEFAULT_CONFIG.updateSettings },
       windowBounds: { ...DEFAULT_CONFIG.windowBounds },
     };
   }
@@ -99,6 +120,7 @@ export class StoreManager {
   public getConfig(): DesktopConfig {
     return {
       ...this.config,
+      updateSettings: { ...(this.config.updateSettings || DEFAULT_CONFIG.updateSettings) },
       windowBounds: { ...this.config.windowBounds },
     };
   }
@@ -114,10 +136,17 @@ export class StoreManager {
     const updatedWindowBounds = updates.windowBounds
       ? { ...this.config.windowBounds, ...updates.windowBounds }
       : { ...this.config.windowBounds };
+    const updatedUpdateSettings = updates.updateSettings
+      ? {
+          ...(this.config.updateSettings || DEFAULT_CONFIG.updateSettings),
+          ...updates.updateSettings,
+        }
+      : { ...(this.config.updateSettings || DEFAULT_CONFIG.updateSettings) };
 
     this.config = {
       ...this.config,
       ...updates,
+      updateSettings: updatedUpdateSettings,
       windowBounds: updatedWindowBounds,
       isFirstLaunch: false,
     };
@@ -144,6 +173,7 @@ export class StoreManager {
   public resetConfig(): DesktopConfig {
     this.config = {
       ...DEFAULT_CONFIG,
+      updateSettings: { ...DEFAULT_CONFIG.updateSettings },
       windowBounds: { ...DEFAULT_CONFIG.windowBounds },
       isFirstLaunch: true,
     };

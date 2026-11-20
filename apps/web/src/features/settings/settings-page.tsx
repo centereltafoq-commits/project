@@ -36,6 +36,7 @@ import { cn } from '@/lib/cn';
 import { extractErrorMessage } from '@/lib/api-client';
 import { useDesktop } from '@/hooks/use-desktop';
 import { DesktopConnectionModal } from '@/components/desktop-connection-modal';
+import { DesktopUpdatePanel } from '@/components/desktop-update-panel';
 import { settingsApi } from './settings-api';
 import { useCenterSettings } from './center-settings-context';
 import { NewAcademicYearModal } from './components/new-academic-year-modal';
@@ -700,6 +701,9 @@ export function SettingsPage() {
                     </div>
                   </div>
                 )}
+
+                {/* System Tray, Auto-Start & GitHub Releases Auto-Update */}
+                <DesktopUpdatePanel />
               </CardContent>
             </Card>
           )}
