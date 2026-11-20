@@ -8,6 +8,7 @@ import {
   Radio,
   Search,
   ShieldAlert,
+  SlidersHorizontal,
   Usb,
   Volume2,
   VolumeX,
@@ -37,6 +38,12 @@ import {
   QrLookupResponse,
   QrTodaySessionCandidate,
 } from './qr-attendance.types';
+import { QrAlarmSettingsModal } from './components/qr-alarm-settings-modal';
+import {
+  loadQrAlarmPreferences,
+  saveQrAlarmPreferences,
+} from './qr-alarm-settings.storage';
+import { QrAlarmPreferences } from './qr-alarm-settings.types';
 import { QrScannerStatusDialog } from './qr-scanner-status-dialog';
 import { QrStudentPaymentPanel } from './qr-student-payment-panel';
 
@@ -56,9 +63,23 @@ export function QrScannerWorkspace() {
 
   const canRecordAttendance = hasPermission(PERMISSIONS.ATTENDANCE_RECORD);
   const canCollectPayment = hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
+  const canManageAlarmSounds =
+    canRecordAttendance ||
+    hasPermission(PERMISSIONS.SESSIONS_MANAGE) ||
+    hasPermission(PERMISSIONS.SETTINGS_MANAGE);
 
   const [scanInput, setScanInput] = React.useState('');
-  const [soundEnabled, setSoundEnabled] = React.useState(true);
+  const [alarmPrefs, setAlarmPrefs] = React.useState<QrAlarmPreferences>(() =>
+    loadQrAlarmPreferences(),
+  );
+  const [alarmSettingsOpen, setAlarmSettingsOpen] = React.useState(false);
+
+  const updateAlarmPrefs = React.useCallback((next: QrAlarmPreferences) => {
+    setAlarmPrefs(next);
+    saveQrAlarmPreferences(next);
+  }, []);
+
+  const soundEnabled = alarmPrefs.enabled;
   const [autoCheckIn, setAutoCheckIn] = React.useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = React.useState(false);
   const [qrPdfModalOpen, setQrPdfModalOpen] = React.useState(false);
@@ -144,7 +165,11 @@ export function QrScannerWorkspace() {
     },
     onError: (err) => {
       if (soundEnabled) {
-        playQrBlockedAlarmSound();
+        playQrBlockedAlarmSound({
+          soundId: alarmPrefs.soundId,
+          customAudioUrl: alarmPrefs.customAudioUrl,
+          volumePercent: alarmPrefs.volumePercent,
+        });
       }
       notify(extractErrorMessage(err), 'error');
     },
@@ -164,7 +189,11 @@ export function QrScannerWorkspace() {
 
       if (data.paymentGate.isBlocked) {
         if (soundEnabled) {
-          playQrBlockedAlarmSound();
+          playQrBlockedAlarmSound({
+            soundId: alarmPrefs.soundId,
+            customAudioUrl: alarmPrefs.customAudioUrl,
+            volumePercent: alarmPrefs.volumePercent,
+          });
         }
         appendScanLog({
           studentName: data.student.fullName,
@@ -227,7 +256,8 @@ export function QrScannerWorkspace() {
     [lookupMutation, notify, soundEnabled],
   );
 
-  const listenerEnabled = !collectOpen && !activeReceipt && !qrPdfModalOpen;
+  const listenerEnabled =
+    !collectOpen && !activeReceipt && !qrPdfModalOpen && !alarmSettingsOpen;
 
   // Hardware USB/Bluetooth QR scanner listener + live signal verification
   const listenerState = useQrScannerListener({
@@ -341,7 +371,12 @@ export function QrScannerWorkspace() {
 
             <button
               type="button"
-              onClick={() => setSoundEnabled((v) => !v)}
+              onClick={() =>
+                updateAlarmPrefs({
+                  ...alarmPrefs,
+                  enabled: !alarmPrefs.enabled,
+                })
+              }
               className={`inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-xs font-bold transition-colors ${
                 soundEnabled
                   ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
@@ -349,7 +384,16 @@ export function QrScannerWorkspace() {
               }`}
             >
               {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-              {soundEnabled ? 'الإنذار مفعل' : 'الإنذار مكتوم'}
+              {soundEnabled ? `الإنذار مفعل (${alarmPrefs.volumePercent}%)` : 'الإنذار مكتوم'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAlarmSettingsOpen(true)}
+              className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-500/15 dark:text-amber-300"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              إعدادات الصوت
             </button>
 
             {canRecordAttendance && (
@@ -503,6 +547,16 @@ export function QrScannerWorkspace() {
 
       {qrPdfModalOpen && (
         <StudentQrPdfModal open={qrPdfModalOpen} onOpenChange={setQrPdfModalOpen} />
+      )}
+
+      {alarmSettingsOpen && (
+        <QrAlarmSettingsModal
+          open={alarmSettingsOpen}
+          onOpenChange={setAlarmSettingsOpen}
+          prefs={alarmPrefs}
+          onChangePrefs={updateAlarmPrefs}
+          canManageSounds={canManageAlarmSounds}
+        />
       )}
     </div>
   );

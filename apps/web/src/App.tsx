@@ -70,6 +70,9 @@ const BackupsPage = React.lazy(() =>
 const SettingsPage = React.lazy(() =>
   import('@/features/settings/settings-page').then((m) => ({ default: m.SettingsPage })),
 );
+const WhatsappPage = React.lazy(() =>
+  import('@/features/whatsapp/whatsapp-page').then((m) => ({ default: m.WhatsappPage })),
+);
 const DocsPage = React.lazy(() =>
   import('@/features/docs/docs-page').then((m) => ({ default: m.DocsPage })),
 );
@@ -209,6 +212,21 @@ export function App() {
                   element={
                     <PermissionGuardRoute permission={PERMISSIONS.CLASSROOMS_VIEW}>
                       <ClassroomsPage />
+                    </PermissionGuardRoute>
+                  }
+                />
+                <Route
+                  path="whatsapp"
+                  element={
+                    <PermissionGuardRoute
+                      anyPermissions={[
+                        PERMISSIONS.STUDENTS_VIEW,
+                        PERMISSIONS.GROUPS_VIEW,
+                        PERMISSIONS.ATTENDANCE_VIEW,
+                        PERMISSIONS.FINANCE_VIEW,
+                      ]}
+                    >
+                      <WhatsappPage />
                     </PermissionGuardRoute>
                   }
                 />

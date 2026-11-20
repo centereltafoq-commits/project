@@ -1,20 +1,31 @@
+import { Response } from 'express';
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PERMISSIONS } from '@edu-center/shared';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import {
   RequireAnyPermissions,
   RequirePermissions,
 } from '../../common/decorators/permissions.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import type { UploadedMulterFile } from '../../common/types/multer.types';
+import { AttendanceAlarmSoundsService } from './attendance-alarm-sounds.service';
 import { AttendanceQrService } from './attendance-qr.service';
 import { AttendanceService } from './attendance.service';
+import { UploadAlarmSoundDto } from './dto/alarm-sound.dto';
 import { RecordSessionAttendanceDto } from './dto/attendance-record.dto';
 import { QrCheckInDto, QrLookupQueryDto } from './dto/qr-attendance.dto';
 import {
@@ -28,7 +39,65 @@ export class AttendanceController {
   constructor(
     private readonly attendanceService: AttendanceService,
     private readonly attendanceQrService: AttendanceQrService,
+    private readonly alarmSoundsService: AttendanceAlarmSoundsService,
   ) {}
+
+  @Get('alarm-sounds')
+  @RequireAnyPermissions(
+    PERMISSIONS.ATTENDANCE_VIEW,
+    PERMISSIONS.ATTENDANCE_RECORD,
+    PERMISSIONS.SESSIONS_VIEW,
+  )
+  async listAlarmSounds() {
+    return this.alarmSoundsService.listSounds();
+  }
+
+  @Public()
+  @Get('alarm-sounds/:filename')
+  async getAlarmSoundFile(@Param('filename') filename: string, @Res() res: Response) {
+    const filePath = await this.alarmSoundsService.resolveSoundFilePath(filename);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.sendFile(filePath);
+  }
+
+  @Post('alarm-sounds')
+  @RequireAnyPermissions(
+    PERMISSIONS.ATTENDANCE_RECORD,
+    PERMISSIONS.SESSIONS_MANAGE,
+    PERMISSIONS.SETTINGS_MANAGE,
+  )
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    }),
+  )
+  async uploadAlarmSound(
+    @UploadedFile() file: UploadedMulterFile,
+    @Body() dto: UploadAlarmSoundDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    if (!file) {
+      throw new BadRequestException('يرجى اختيار ملف MP3 لرفعه');
+    }
+    return this.alarmSoundsService.uploadSound(file, dto.label, actor);
+  }
+
+  @Delete('alarm-sounds/:id')
+  @RequireAnyPermissions(
+    PERMISSIONS.ATTENDANCE_RECORD,
+    PERMISSIONS.SESSIONS_MANAGE,
+    PERMISSIONS.SETTINGS_MANAGE,
+  )
+  async deleteAlarmSound(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.alarmSoundsService.deleteSound(id, actor);
+  }
 
   @Get('qr/lookup')
   @RequireAnyPermissions(

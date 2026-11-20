@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
+import { isReversibleAuditAction } from './audit-rollback.types';
 import { AuditLogsRepository, CreateAuditLogInput } from './audit-logs.repository';
 import { AuditLogQueryDto } from './dto/audit-log-query.dto';
 import { AppLoggerService } from '../../common/logger/app-logger.service';
@@ -53,6 +54,12 @@ export class AuditLogsService {
 
   async list(query: AuditLogQueryDto) {
     const { rows, total, page, limit } = await this.repository.findPaginated(query);
+    const ids = rows.map((r: any) => r.id).filter(Boolean);
+    const rollbackMap =
+      typeof this.repository.findRollbackMapForAuditIds === 'function'
+        ? await this.repository.findRollbackMapForAuditIds(ids)
+        : new Map<string, { rollbackAuditLogId: string; revertedAt: Date; revertedByName: string }>();
+
     const enrichedRows = rows.map((r) => {
       const metadata =
         r.metadata && typeof r.metadata === 'object' && !Array.isArray(r.metadata)
@@ -67,11 +74,18 @@ export class AuditLogsService {
           ? metadata.entityTypeAr
           : getEntityArabicLabel(r.entityType);
 
+      const rollbackInfo = rollbackMap.get(r.id);
+
       return {
         ...r,
         actionAr,
         entityTypeAr,
         actorName: (r as any).actorName || (r as any).actor_name || 'النظام',
+        isReversible: isReversibleAuditAction(r.action),
+        isReverted: Boolean(rollbackInfo),
+        revertedAt: rollbackInfo?.revertedAt ?? null,
+        revertedByName: rollbackInfo?.revertedByName ?? null,
+        rollbackAuditLogId: rollbackInfo?.rollbackAuditLogId ?? null,
       };
     });
     return createPaginatedResult(enrichedRows, total, page, limit);

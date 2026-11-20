@@ -56,6 +56,14 @@ export const AUDIT_ACTION_TRANSLATIONS: Record<string, { label: string; variant:
   SESSION_CREATE: { label: 'إنشاء حصة دراسية جديدة', variant: 'success' },
   GENERATE_MONTH_SESSIONS: { label: 'توليد حصص الشهر للمجموعة', variant: 'info' },
   SESSION_GENERATE_MONTH: { label: 'توليد حصص الشهر للمجموعة', variant: 'info' },
+  COMPLETE_GROUP_SESSION: { label: 'تحضير المجموعة (حصة اشتراك)', variant: 'success' },
+  AUDIT_ROLLBACK: { label: 'التراجع عن عملية سابقة', variant: 'warning' },
+  'attendance.alarm_sound_upload': { label: 'رفع صوت إنذار مخصص للحضور', variant: 'info' },
+  'attendance.alarm_sound_delete': { label: 'حذف صوت إنذار مخصص', variant: 'warning' },
+  'whatsapp.template_create': { label: 'إنشاء قالب رسالة واتساب', variant: 'success' },
+  'whatsapp.template_update': { label: 'تعديل قالب رسالة واتساب', variant: 'info' },
+  'whatsapp.template_delete': { label: 'حذف قالب رسالة واتساب', variant: 'danger' },
+  'whatsapp.template_reset_defaults': { label: 'استعادة قوالب واتساب الافتراضية', variant: 'warning' },
 
   // القاعات
   CREATE_CLASSROOM: { label: 'إضافة قاعة دراسية جديدة', variant: 'success' },
@@ -545,6 +553,17 @@ export const PAYLOAD_KEY_TRANSLATIONS: Record<string, string> = {
   entityId: 'معرّف السجل',
   entityType: 'نوع القسم',
   action: 'كود العملية',
+  revertedAuditLogId: 'معرّف العملية المتراجع عنها',
+  revertedAction: 'نوع العملية المتراجع عنها',
+  revertedActionAr: 'وصف العملية المتراجع عنها',
+  affectedMonths: 'الشهور المتأثرة',
+  affectedChanges: 'تفاصيل التغييرات في النظام',
+  sessionSequenceInMonth: 'ترتيب الحصة في الاشتراك',
+  completedSessionsInMonth: 'عدد الحصص المنفذة بالشهر',
+  area: 'القسم المتأثر',
+  summary: 'ملخص التأثير',
+  detail: 'التفاصيل',
+  severity: 'مستوى التنبيه',
 };
 
 export const PAYLOAD_VALUE_TRANSLATIONS: Record<string, string> = {

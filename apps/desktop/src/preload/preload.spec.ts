@@ -125,4 +125,14 @@ describe('createDesktopApi Bridge', () => {
     expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(DESKTOP_CHANNELS.PRINT_RECEIPT, opts);
     expect(res.success).toBe(true);
   });
+
+  it('delegates openWhatsApp to DESKTOP_CHANNELS.OPEN_WHATSAPP with url', async () => {
+    mockIpcRenderer.invoke.mockResolvedValueOnce({ success: true });
+    const api = createDesktopApi(mockIpcRenderer as any);
+
+    const url = 'https://web.whatsapp.com/send?phone=201012345678';
+    const res = await api.openWhatsApp?.(url);
+    expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(DESKTOP_CHANNELS.OPEN_WHATSAPP, url);
+    expect(res?.success).toBe(true);
+  });
 });

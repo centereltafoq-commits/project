@@ -9,6 +9,7 @@ import { registerIpcHandlers } from './ipc-handlers';
 import { testServerConnection } from './network-utils';
 import { TrayManager } from './tray-manager';
 import { UpdateManager } from './update-manager';
+import { WhatsappWindowManager } from './whatsapp-window-manager';
 import { DESKTOP_EVENTS } from '../preload/desktop-api.types';
 
 export interface AppContext {
@@ -18,6 +19,7 @@ export interface AppContext {
   discoveryResponder?: LanDiscoveryResponder;
   trayManager?: TrayManager;
   updateManager?: UpdateManager;
+  whatsappWindowManager?: WhatsappWindowManager;
   isForceQuitting?: () => boolean;
   mainWindow: BrowserWindow | null;
 }
@@ -30,7 +32,18 @@ export interface LoadOptions {
  * Builds a self-contained Arabic HTML recovery & connection wizard page
  * displayed when client mode cannot reach the central center server.
  */
-export function getConnectionSetupFallbackHtml(targetUrl: string, errorReason: string): string {
+export function getConnectionSetupFallbackHtml(
+  targetUrl: string,
+  errorReason: string,
+  isFirstLaunch = false,
+): string {
+  const badgeStyle = isFirstLaunch
+    ? 'background: #dbeafe; color: #1d4ed8;'
+    : 'background: #fee2e2; color: #991b1b;';
+  const badgeText = isFirstLaunch ? 'التشغيل الأول للبرنامج' : 'تعذر الاتصال بالسيرفر';
+  const descHtml = isFirstLaunch
+    ? 'اختر ما إذا كان هذا الجهاز هو <strong>السيرفر الرئيسي للسنتر</strong> أو محطة استقبال متصلة بالسيرفر عبر الشبكة.'
+    : `لم نتمكن من الوصول إلى السيرفر على العنوان:<br><strong style="color: #0f172a; direction: ltr; display: inline-block;">${targetUrl}</strong><br><span style="font-size: 12px; color: #94a3b8;">(${errorReason})</span>`;
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -147,13 +160,9 @@ export function getConnectionSetupFallbackHtml(targetUrl: string, errorReason: s
 </head>
 <body>
   <div class="card">
-    <div class="badge">تعذر الاتصال بالسيرفر</div>
+    <div class="badge" style="${badgeStyle}">${badgeText}</div>
     <h1>إعداد الاتصال بشبكة السنتر</h1>
-    <p class="desc">
-      لم نتمكن من الوصول إلى السيرفر على العنوان:<br>
-      <strong style="color: #0f172a; direction: ltr; display: inline-block;">${targetUrl}</strong>
-      <br><span style="font-size: 12px; color: #94a3b8;">(${errorReason})</span>
-    </p>
+    <p class="desc">${descHtml}</p>
 
     <div class="input-group">
       <label for="serverUrlInput">عنوان خادم السنتر (IP / URL):</label>
@@ -256,16 +265,42 @@ export function getConnectionSetupFallbackHtml(targetUrl: string, errorReason: s
 
     async function switchToServerMode() {
       const msg = document.getElementById('statusMsg');
+      const btn = document.getElementById('serverModeBtn');
+      const targetUrl = 'http://localhost:4000';
+      btn.disabled = true;
+      btn.innerText = 'جاري تشغيل السيرفر وقاعدة البيانات...';
+      msg.innerText = '';
+
       try {
         if (window.desktopApi && typeof window.desktopApi.saveConfig === 'function') {
-          await window.desktopApi.saveConfig({ serverMode: 'server', serverUrl: 'http://localhost:4000' });
+          await window.desktopApi.saveConfig({ serverMode: 'server', serverUrl: targetUrl });
           if (typeof window.desktopApi.startServer === 'function') {
-            await window.desktopApi.startServer();
+            const startRes = await window.desktopApi.startServer();
+            if (startRes && startRes.success === false) {
+              msg.innerText = startRes.error || 'تعذر تشغيل الخادم المحلي';
+              return;
+            }
           }
-          window.location.reload();
+
+          if (typeof window.desktopApi.testConnection === 'function') {
+            for (let i = 0; i < 25; i++) {
+              const res = await window.desktopApi.testConnection(targetUrl);
+              if (res && res.ok) {
+                window.location.href = targetUrl;
+                return;
+              }
+              await new Promise((r) => setTimeout(r, 1000));
+            }
+            msg.innerText = 'استغرق بدء السيرفر وقتاً أطول من المعتاد — اضغط "فحص الاتصال" للمتابعة.';
+          } else {
+            window.location.href = targetUrl;
+          }
         }
       } catch (err) {
         msg.innerText = 'تعذر التبديل إلى وضع السيرفر';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'تشغيل هذا الجهاز كسيرفر رئيسي للسنتر';
       }
     }
   </script>
@@ -343,6 +378,7 @@ export async function loadAppContent(
         getConnectionSetupFallbackHtml(
           targetUrl,
           connection.error || 'تعذر الوصول إلى الخادم عبر الشبكة المحلية',
+          Boolean(config.isFirstLaunch),
         ),
       );
     }
@@ -369,6 +405,7 @@ export async function createMainWindow(
     y: bounds.y,
     minWidth: 1024,
     minHeight: 700,
+    autoHideMenuBar: true,
     show: false,
     title: 'EduCenter ERP - إدارة السنتر التعليمي',
     webPreferences: {
@@ -420,6 +457,7 @@ export async function createMainWindow(
     serverManager,
     printerManager,
     updateManager: context.updateManager,
+    whatsappWindowManager: context.whatsappWindowManager,
     webContentsGetter: () => (mainWindow.isDestroyed() ? null : mainWindow.webContents),
     onConfigSaved: async (saved) => {
       if (saved.serverMode === 'server') {
@@ -446,6 +484,7 @@ export function setupApp(customContext?: AppContext) {
   let forceQuitting = false;
 
   const stopDesktopServices = async (): Promise<void> => {
+    context.whatsappWindowManager?.close();
     const stopTasks: Promise<unknown>[] = [];
     if (context.discoveryResponder) {
       stopTasks.push(
@@ -510,6 +549,7 @@ export function setupApp(customContext?: AppContext) {
       discoveryResponder,
       trayManager,
       updateManager,
+      whatsappWindowManager: new WhatsappWindowManager(),
       isForceQuitting: () => forceQuitting,
       mainWindow: null,
     };

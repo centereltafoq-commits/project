@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Eye, RotateCcw } from 'lucide-react';
+import { Eye, RotateCcw, Undo2 } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult } from '@edu-center/shared';
 import { Badge, Button, PageHeader, Select, ServerDataTable, TableColumn } from '@/design-system';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -11,6 +11,7 @@ import {
   AuditLogQuickViewModal,
   AuditLogRow,
 } from './components/audit-log-quick-view-modal';
+import { AuditRollbackModal } from './components/audit-rollback-modal';
 
 export function AuditLogsPage() {
   const [page, setPage] = React.useState(1);
@@ -21,6 +22,8 @@ export function AuditLogsPage() {
 
   const [quickViewLog, setQuickViewLog] = React.useState<AuditLogRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
+  const [rollbackLog, setRollbackLog] = React.useState<AuditLogRow | null>(null);
+  const [rollbackOpen, setRollbackOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery<PaginatedResult<AuditLogRow>>({
     queryKey: ['audit-logs', page, limit, debouncedSearch, entityType],
@@ -66,7 +69,16 @@ export function AuditLogsPage() {
       render: (r) => {
         const actionMeta = translateAuditAction(r.action);
         const actionLabel = r.actionAr || actionMeta.label;
-        return <Badge variant={actionMeta.variant} className="text-xs">{actionLabel}</Badge>;
+        return (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant={actionMeta.variant} className="text-xs">{actionLabel}</Badge>
+            {r.isReverted && (
+              <Badge variant="warning" className="text-[10px]">
+                تم التراجع
+              </Badge>
+            )}
+          </div>
+        );
       },
     },
     {
@@ -103,7 +115,21 @@ export function AuditLogsPage() {
       header: 'إجراءات',
       className: 'whitespace-nowrap text-left pl-4',
       render: (r) => (
-        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          {r.isReversible && !r.isReverted && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1 px-2.5 text-xs font-bold border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+              onClick={() => {
+                setRollbackLog(r);
+                setRollbackOpen(true);
+              }}
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              رجوع
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -209,6 +235,17 @@ export function AuditLogsPage() {
         open={quickViewOpen}
         onOpenChange={setQuickViewOpen}
         log={quickViewLog}
+        onRequestRollback={(log) => {
+          setQuickViewOpen(false);
+          setRollbackLog(log);
+          setRollbackOpen(true);
+        }}
+      />
+
+      <AuditRollbackModal
+        open={rollbackOpen}
+        onOpenChange={setRollbackOpen}
+        log={rollbackLog}
       />
     </div>
   );

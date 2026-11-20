@@ -108,6 +108,7 @@ export interface DesktopApi {
   getUpdateStatus?: () => Promise<DesktopUpdateStatus>;
   checkForUpdates?: () => Promise<DesktopUpdateStatus>;
   installUpdate?: () => Promise<{ success: boolean; error?: string }>;
+  openWhatsApp?: (url: string) => Promise<{ success: boolean; error?: string }>;
   onUpdateStatusChange?: (callback: (status: DesktopUpdateStatus) => void) => () => void;
 }
 

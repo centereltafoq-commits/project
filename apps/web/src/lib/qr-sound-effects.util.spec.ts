@@ -1,47 +1,78 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   playQrBlockedAlarmSound,
-  playQrErrorTone,
-  playQrSuccessBeep,
+  stopQrAlarmPreview,
 } from './qr-sound-effects.util';
 
-describe('qr-sound-effects.util (offline bundled audio assets)', () => {
+describe('qr-sound-effects.util', () => {
   const originalAudio = globalThis.Audio;
 
+  beforeEach(() => {
+    stopQrAlarmPreview();
+  });
+
   afterEach(() => {
+    stopQrAlarmPreview();
     globalThis.Audio = originalAudio;
     vi.restoreAllMocks();
   });
 
-  it('plays bundled offline audio files for blocked alarm, success beep, and error tone', () => {
-    const playSpy = vi.fn().mockResolvedValue(undefined);
-    const audioInstances: Array<{ src: string; volume: number; currentTime: number }> = [];
+  it('does not play audio when volumePercent is 0', () => {
+    const audioInstances: any[] = [];
+    globalThis.Audio = vi.fn().mockImplementation((src?: string) => {
+      const instance = {
+        src: src ?? '',
+        volume: 1,
+        currentTime: 0,
+        preload: '',
+        play: vi.fn().mockResolvedValue(undefined),
+        pause: vi.fn(),
+        onerror: null,
+      };
+      audioInstances.push(instance);
+      return instance;
+    }) as any;
 
-    class MockAudio {
-      src: string;
-      volume = 1;
-      preload = '';
-      currentTime = 5;
-      play = playSpy;
+    playQrBlockedAlarmSound({
+      customAudioUrl: '/api/attendance/alarm-sounds/alarm-zero.mp3',
+      volumePercent: 0,
+    });
 
-      constructor(src: string) {
-        this.src = src;
-        audioInstances.push(this);
-      }
-    }
+    expect(audioInstances).toHaveLength(0);
+  });
 
-    globalThis.Audio = MockAudio as unknown as typeof Audio;
+  it('plays custom MP3 audio URL at requested volume percentage and stops cleanly on stopQrAlarmPreview', () => {
+    const audioInstances: any[] = [];
+    globalThis.Audio = vi.fn().mockImplementation((src?: string) => {
+      const instance = {
+        src: src ?? '',
+        volume: 1,
+        currentTime: 0,
+        preload: '',
+        play: vi.fn().mockResolvedValue(undefined),
+        pause: vi.fn(),
+        onerror: null,
+      };
+      audioInstances.push(instance);
+      return instance;
+    }) as any;
 
-    playQrBlockedAlarmSound();
-    playQrSuccessBeep();
-    playQrErrorTone();
+    playQrBlockedAlarmSound({
+      soundId: 'custom-1',
+      customAudioUrl: '/api/attendance/alarm-sounds/alarm-custom-1.mp3',
+      volumePercent: 60,
+    });
 
-    expect(playSpy).toHaveBeenCalledTimes(3);
-    expect(audioInstances.map((a) => a.src)).toEqual([
-      expect.stringContaining('emergency_siren_short_burst.ogg'),
-      expect.stringContaining('beep_short.ogg'),
-      expect.stringContaining('beeper_emergency_call.ogg'),
-    ]);
-    expect(audioInstances.every((a) => a.currentTime === 0)).toBe(true);
+    expect(audioInstances).toHaveLength(1);
+    const created = audioInstances[0]!;
+    expect(created.src).toBe('/api/attendance/alarm-sounds/alarm-custom-1.mp3');
+    expect(created.volume).toBeCloseTo(0.6, 4);
+    expect(created.play).toHaveBeenCalledTimes(1);
+
+    created.currentTime = 3.2;
+    stopQrAlarmPreview();
+
+    expect(created.pause).toHaveBeenCalledTimes(1);
+    expect(created.currentTime).toBe(0);
   });
 });

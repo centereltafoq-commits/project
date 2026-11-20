@@ -7,10 +7,12 @@ import {
   QrCode,
   Search,
   Square,
+  Users,
 } from 'lucide-react';
 import { PaginatedResult, StudentStatus } from '@edu-center/shared';
 import { Badge, Button, Input, Modal, Select, useToast } from '@/design-system';
 import { useGradeLevels } from '@/features/grade-levels/use-grade-levels';
+import { GroupRow } from '@/features/groups/groups.types';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
 import {
   generateStudentsQrPdf,
@@ -23,6 +25,7 @@ interface StudentQrPdfModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialGradeFilter?: string;
+  initialGroupId?: string;
 }
 
 const PRESET_OPTIONS: Array<{ value: QrPdfGridPreset; label: string }> = [
@@ -31,15 +34,20 @@ const PRESET_OPTIONS: Array<{ value: QrPdfGridPreset; label: string }> = [
   { value: 'medium-12', label: 'كبير وواضح — 12 كارت في ورقة A4 (3 × 4)' },
 ];
 
+const EMPTY_GROUPS: GroupRow[] = [];
+const EMPTY_STUDENTS: StudentRow[] = [];
+
 export function StudentQrPdfModal({
   open,
   onOpenChange,
   initialGradeFilter = '',
+  initialGroupId = '',
 }: StudentQrPdfModalProps) {
   const { notify } = useToast();
   const { options: gradeOptions } = useGradeLevels(false);
 
   const [gradeFilter, setGradeFilter] = React.useState(initialGradeFilter);
+  const [groupFilter, setGroupFilter] = React.useState(initialGroupId);
   const [activeOnly, setActiveOnly] = React.useState(true);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [preset, setPreset] = React.useState<QrPdfGridPreset>('compact-20');
@@ -49,13 +57,101 @@ export function StudentQrPdfModal({
   React.useEffect(() => {
     if (open) {
       setGradeFilter(initialGradeFilter);
+      setGroupFilter(initialGroupId);
       setSearchTerm('');
+      setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
     }
-  }, [open, initialGradeFilter]);
+  }, [open, initialGradeFilter, initialGroupId]);
 
-  const { data: allStudents = [], isLoading } = useQuery<StudentRow[]>({
-    queryKey: ['students-qr-pdf-list', gradeFilter, activeOnly],
+  const {
+    data: groups = EMPTY_GROUPS,
+    isLoading: isLoadingGroups,
+    isError: isGroupsError,
+    error: groupsError,
+  } = useQuery<GroupRow[]>({
+    queryKey: ['groups-qr-pdf-list'],
     enabled: open,
+    queryFn: async () => {
+      const collected: GroupRow[] = [];
+      let currentPage = 1;
+      let totalPages = 1;
+
+      while (currentPage <= totalPages && currentPage <= 25) {
+        const res = await apiClient.get<PaginatedResult<GroupRow>>('/groups', {
+          params: {
+            page: currentPage,
+            limit: 100,
+            isActive: 'true',
+          },
+        });
+        collected.push(...(res.data.data ?? []));
+        totalPages = res.data.meta?.totalPages ?? 1;
+        currentPage += 1;
+      }
+
+      return collected;
+    },
+  });
+
+  const mergedGradeOptions = React.useMemo(() => {
+    const map = new Map(gradeOptions.map((opt) => [opt.value, opt]));
+    for (const group of groups) {
+      if (group.gradeLevel && !map.has(group.gradeLevel)) {
+        map.set(group.gradeLevel, { value: group.gradeLevel, label: group.gradeLevel });
+      }
+    }
+    return Array.from(map.values());
+  }, [gradeOptions, groups]);
+
+  const filteredGroups = React.useMemo(() => {
+    if (!gradeFilter) return groups;
+    return groups.filter((group) => group.gradeLevel === gradeFilter);
+  }, [groups, gradeFilter]);
+
+  const selectedGroup = React.useMemo(
+    () => groups.find((group) => group.id === groupFilter) ?? null,
+    [groups, groupFilter],
+  );
+
+  const groupOptions = React.useMemo(
+    () =>
+      filteredGroups.map((group) => ({
+        value: group.id,
+        label: `${group.name} (${group.groupCode})`,
+        sublabel: `${group.gradeLevel} • ${group.subject} • ${group.activeStudentsCount} طالب`,
+      })),
+    [filteredGroups],
+  );
+
+  const handleGradeChange = (nextGrade: string) => {
+    setGradeFilter(nextGrade);
+    if (groupFilter && nextGrade && selectedGroup && selectedGroup.gradeLevel !== nextGrade) {
+      setGroupFilter('');
+      setSearchTerm('');
+      setSelectedIds(new Set());
+    }
+  };
+
+  React.useEffect(() => {
+    if (
+      open &&
+      !isLoadingGroups &&
+      groupFilter &&
+      gradeFilter &&
+      !filteredGroups.some((group) => group.id === groupFilter)
+    ) {
+      setGroupFilter('');
+    }
+  }, [open, isLoadingGroups, groupFilter, gradeFilter, filteredGroups]);
+
+  const handleGroupChange = (nextGroupId: string) => {
+    setGroupFilter(nextGroupId);
+    setSearchTerm('');
+  };
+
+  const { data: allStudents = EMPTY_STUDENTS, isLoading } = useQuery<StudentRow[]>({
+    queryKey: ['students-qr-pdf-list', groupFilter, activeOnly],
+    enabled: open && Boolean(groupFilter),
     queryFn: async () => {
       const collected: StudentRow[] = [];
       let currentPage = 1;
@@ -66,7 +162,7 @@ export function StudentQrPdfModal({
           params: {
             page: currentPage,
             limit: 100,
-            gradeLevel: gradeFilter || undefined,
+            groupId: groupFilter,
             status: activeOnly ? StudentStatus.ACTIVE : undefined,
           },
         });
@@ -89,11 +185,14 @@ export function StudentQrPdfModal({
     );
   }, [allStudents, searchTerm]);
 
-  // Auto-select loaded students whenever filter results refresh
+  // Auto-select loaded group students whenever selection results refresh
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || !groupFilter) {
+      setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
+      return;
+    }
     setSelectedIds(new Set(allStudents.map((s) => s.id)));
-  }, [open, allStudents]);
+  }, [open, groupFilter, allStudents]);
 
   const selectedStudents = React.useMemo(
     () => filteredStudents.filter((s) => selectedIds.has(s.id)),
@@ -104,6 +203,7 @@ export function StudentQrPdfModal({
     filteredStudents.length > 0 && selectedStudents.length === filteredStudents.length;
 
   const toggleAll = () => {
+    if (!groupFilter) return;
     if (allChecked) {
       setSelectedIds(new Set());
     } else {
@@ -130,6 +230,10 @@ export function StudentQrPdfModal({
   );
 
   const handleGeneratePdf = async () => {
+    if (!groupFilter) {
+      notify('يرجى اختيار مجموعة معينة أولاً قبل توليد ملف PDF', 'error');
+      return;
+    }
     if (selectedStudents.length === 0) {
       notify('يرجى تحديد طالب واحد على الأقل لتوليد ملف PDF', 'error');
       return;
@@ -137,6 +241,11 @@ export function StudentQrPdfModal({
 
     setIsGenerating(true);
     try {
+      const safeGroupCode = selectedGroup?.groupCode
+        ?.replace(/[^A-Za-z0-9_-]/g, '')
+        .trim();
+      const todayIso = new Date().toISOString().slice(0, 10);
+
       const result = await generateStudentsQrPdf({
         students: selectedStudents.map((s) => ({
           id: s.id,
@@ -146,6 +255,10 @@ export function StudentQrPdfModal({
         })),
         preset,
         title: 'STUDENT QR PASS CARDS',
+        subtitle: safeGroupCode ? `Group: ${safeGroupCode}` : undefined,
+        filename: safeGroupCode
+          ? `student-qr-codes-${safeGroupCode}-${todayIso}.pdf`
+          : undefined,
       });
       notify(
         `تم توليد وتحميل ملف PDF (${result.fileName}) لعدد ${selectedStudents.length} طالب بنجاح`,
@@ -159,31 +272,54 @@ export function StudentQrPdfModal({
     }
   };
 
+  const groupPlaceholder = isLoadingGroups
+    ? 'جاري تحميل المجموعات...'
+    : filteredGroups.length === 0
+      ? 'لا توجد مجموعات متاحة لهذا الصف'
+      : 'اختر المجموعة...';
+
   return (
     <Modal
       open={open}
       onOpenChange={onOpenChange}
       size="lg"
       title="تصدير وطباعة كروت QR للطلاب (PDF A4)"
-      description="توليد ملف A4 منسّق بالإنجليزية يحتوي على عدة كروت QR في نفس الصفحة لتوفير الورق والطباعة"
+      description="توليد ملف A4 منسّق بالإنجليزية لطباعة كروت QR لطلاب مجموعة محددة (مع إمكانية تصفية المجموعات حسب السنة الدراسية)"
     >
       <div className="space-y-4">
-        {/* إعدادات التخطيط والفلترة */}
+        {/* إعدادات السنة والمجموعة والتخطيط */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Select
+            label="تصفية حسب الصف الدراسي (اختياري)"
+            placeholder="كل الصفوف الدراسية"
+            clearable
+            searchable
+            value={gradeFilter}
+            onChange={(e) => handleGradeChange(e.target.value)}
+            options={mergedGradeOptions}
+          />
+          <Select
+            label="المجموعة (مطلوب)"
+            placeholder={groupPlaceholder}
+            searchPlaceholder="ابحث باسم المجموعة أو الكود أو المادة..."
+            emptyText="لا توجد مجموعات مطابقة"
+            clearable
+            searchable
+            required
+            disabled={isLoadingGroups || filteredGroups.length === 0}
+            value={groupFilter}
+            onChange={(e) => handleGroupChange(e.target.value)}
+            options={groupOptions}
+            error={isGroupsError ? extractErrorMessage(groupsError) : undefined}
+          />
+        </div>
+
+        <div className="grid grid-cols-1">
           <Select
             label="توزيع الكروت في صفحة A4"
             value={preset}
             onChange={(e) => setPreset(e.target.value as QrPdfGridPreset)}
             options={PRESET_OPTIONS}
-          />
-          <Select
-            label="تصفية حسب الصف الدراسي"
-            placeholder="كل الصفوف الدراسية"
-            clearable
-            searchable
-            value={gradeFilter}
-            onChange={(e) => setGradeFilter(e.target.value)}
-            options={gradeOptions}
           />
         </div>
 
@@ -199,6 +335,11 @@ export function StudentQrPdfModal({
           </label>
 
           <div className="flex flex-wrap items-center gap-2">
+            {selectedGroup && (
+              <Badge variant="purple">
+                المجموعة: {selectedGroup.name}
+              </Badge>
+            )}
             <Badge variant="info">
               المحدد: {selectedStudents.length} طالب
             </Badge>
@@ -216,6 +357,7 @@ export function StudentQrPdfModal({
                 placeholder="ابحث باسم الطالب أو الكود..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={!groupFilter}
                 className="pr-9"
               />
               <Search className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -225,7 +367,7 @@ export function StudentQrPdfModal({
               variant="outline"
               size="sm"
               onClick={toggleAll}
-              disabled={filteredStudents.length === 0}
+              disabled={!groupFilter || filteredStudents.length === 0}
               className="gap-1.5"
             >
               {allChecked ? (
@@ -238,14 +380,28 @@ export function StudentQrPdfModal({
           </div>
 
           <div className="max-h-56 overflow-y-auto rounded-xl border border-border bg-card divide-y divide-border">
-            {isLoading ? (
+            {isGroupsError ? (
+              <div className="px-4 py-8 text-center text-xs font-semibold text-destructive">
+                {extractErrorMessage(groupsError)}
+              </div>
+            ) : !groupFilter ? (
+              <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-8 text-center">
+                <Users className="h-6 w-6 text-muted-foreground/70" />
+                <p className="text-xs font-bold text-foreground">
+                  يرجى اختيار مجموعة معينة أولاً
+                </p>
+                <p className="text-[11px] text-muted-foreground max-w-md">
+                  يمكنك تصفية المجموعات حسب الصف الدراسي بالأعلى، ثم اختيار المجموعة المطلوبة لعرض طلابها وطباعة كروت QR الخاصة بهم.
+                </p>
+              </div>
+            ) : isLoading ? (
               <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>جاري تحميل قائمة الطلاب...</span>
+                <span>جاري تحميل طلاب المجموعة...</span>
               </div>
             ) : filteredStudents.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
-                لا يوجد طلاب مطابقون للبحث أو الفلتر الحالي
+                لا يوجد طلاب مطابقون داخل هذه المجموعة حالياً
               </div>
             ) : (
               filteredStudents.map((student) => {
@@ -304,7 +460,7 @@ export function StudentQrPdfModal({
           <Button
             type="button"
             onClick={handleGeneratePdf}
-            disabled={isGenerating || selectedStudents.length === 0}
+            disabled={isGenerating || !groupFilter || selectedStudents.length === 0}
             className="gap-2 font-bold"
           >
             {isGenerating ? (

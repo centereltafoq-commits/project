@@ -170,7 +170,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
           )}
 
           <div className="rounded-xl border border-blue-200/80 bg-blue-50/70 px-3.5 py-2 text-xs font-medium text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
-            ملاحظة النظام المالي: تسجيل حضور المجموعة (أو حفظ هذا الكشف) يجعل الحصة منفذة ويُحمّل رسومها على جميع طلاب المجموعة تلقائياً؛ أما حالات الغياب/الحضور الفردية هنا فهي للمتابعة الأكاديمية فقط.
+            تحضير المجموعة يُسجّل انعقاد الحصة في عدّاد اشتراك الشهر (مثلاً 1 من 4 أو 8) بشكل مستقل، بينما كشف الحضور هنا لتسجيل حضور وغياب كل طالب على حدة.
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 p-3 text-xs">
@@ -186,7 +186,7 @@ export function SessionSheetModal({ sessionId, onClose }: SessionSheetModalProps
                   <CompleteGroupSessionButton
                     sessionId={data.session.id}
                     disabled={isMonthClosed}
-                    label="تسجيل حضور المجموعة فقط"
+                    label="تحضير المجموعة فقط (حصة اشتراك)"
                   />
                 )}
                 <Button type="button" size="sm" variant="secondary" onClick={markAllPresent}>

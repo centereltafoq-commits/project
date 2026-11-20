@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { StudentStatus } from '@edu-center/shared';
+import { EnrollmentStatus, StudentStatus } from '@edu-center/shared';
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import { enrollments, gradeLevels, students } from '../../database/schemas';
@@ -11,7 +11,9 @@ import { StudentExportQueryDto } from './dto/student-excel.dto';
 export class StudentsRepository {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
 
-  private buildWhereClause(query: Pick<StudentQueryDto, 'status' | 'gradeLevel' | 'search'>) {
+  private buildWhereClause(
+    query: Pick<StudentQueryDto, 'status' | 'gradeLevel' | 'search' | 'groupId'>,
+  ) {
     const conditions: SQL[] = [];
 
     if (query.status) {
@@ -19,6 +21,17 @@ export class StudentsRepository {
     }
     if (query.gradeLevel) {
       conditions.push(eq(students.gradeLevel, query.gradeLevel));
+    }
+    if (query.groupId) {
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1
+          FROM ${enrollments} e
+          WHERE e.student_id = ${students.id}
+            AND e.group_id = ${query.groupId}
+            AND e.status = ${EnrollmentStatus.ACTIVE}
+        )`,
+      );
     }
     if (query.search) {
       const pattern = `%${query.search.trim()}%`;

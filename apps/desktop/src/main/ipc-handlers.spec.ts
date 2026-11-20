@@ -393,4 +393,36 @@ describe('registerIpcHandlers', () => {
       expect(onConfigSaved).toHaveBeenCalledWith(expect.objectContaining({ serverMode: 'server' }));
     });
   });
+
+  describe('OPEN_WHATSAPP channel', () => {
+    it('validates WhatsApp URLs and delegates to whatsappWindowManager', async () => {
+      const mockWhatsappManager = {
+        openUrl: vi.fn().mockResolvedValue({ success: true }),
+      };
+
+      registerIpcHandlers({
+        ipcMain: mockIpcMain as any,
+        storeManager: mockStoreManager,
+        serverManager: mockServerManager,
+        printerManager: mockPrinterManager,
+        whatsappWindowManager: mockWhatsappManager,
+        webContentsGetter: mockWebContentsGetter,
+        networkUtils: mockNetworkUtils,
+      });
+
+      const handler = registeredHandlers.get(DESKTOP_CHANNELS.OPEN_WHATSAPP)!;
+      const invalidRes = await handler({} as any, 'https://not-whatsapp.example.com');
+      expect(invalidRes.success).toBe(false);
+      expect(mockWhatsappManager.openUrl).not.toHaveBeenCalled();
+
+      const validRes = await handler(
+        {} as any,
+        'https://web.whatsapp.com/send?phone=201012345678&text=hi',
+      );
+      expect(validRes).toEqual({ success: true });
+      expect(mockWhatsappManager.openUrl).toHaveBeenCalledWith(
+        'https://web.whatsapp.com/send?phone=201012345678&text=hi',
+      );
+    });
+  });
 });

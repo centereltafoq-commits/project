@@ -156,6 +156,52 @@ export class AuditLogsRepository {
 
     return { rows, total: Number(total), page, limit };
   }
+
+  async findRollbackMapForAuditIds(
+    ids: string[],
+  ): Promise<
+    Map<string, { rollbackAuditLogId: string; revertedAt: Date; revertedByName: string }>
+  > {
+    const result = new Map<
+      string,
+      { rollbackAuditLogId: string; revertedAt: Date; revertedByName: string }
+    >();
+    if (!ids || ids.length === 0) {
+      return result;
+    }
+
+    const rollbackRows = await this.db
+      .select({
+        rollbackAuditLogId: auditLogs.id,
+        revertedAt: auditLogs.createdAt,
+        revertedByName: sql<string>`COALESCE(NULLIF(TRIM(${auditLogs.actorName}), ''), ${users.fullName}, 'النظام')`,
+        revertedAuditLogId: sql<string>`${auditLogs.metadata}->>'revertedAuditLogId'`,
+      })
+      .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.actorUserId, users.id))
+      .where(
+        and(
+          eq(auditLogs.action, 'AUDIT_ROLLBACK'),
+          sql`${auditLogs.metadata}->>'revertedAuditLogId' IN (${sql.join(
+            ids.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        ),
+      )
+      .orderBy(desc(auditLogs.createdAt));
+
+    for (const row of rollbackRows) {
+      if (row.revertedAuditLogId && !result.has(row.revertedAuditLogId)) {
+        result.set(row.revertedAuditLogId, {
+          rollbackAuditLogId: row.rollbackAuditLogId,
+          revertedAt: row.revertedAt,
+          revertedByName: row.revertedByName,
+        });
+      }
+    }
+
+    return result;
+  }
 }
 
 

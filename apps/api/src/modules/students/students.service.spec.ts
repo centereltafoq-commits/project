@@ -3,7 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StudentStatus } from '@edu-center/shared';
-import { CreateStudentDto, UpdateStudentDto } from './dto/student.dto';
+import { CreateStudentDto, StudentQueryDto, UpdateStudentDto } from './dto/student.dto';
 import { StudentsService } from './students.service';
 
 describe('StudentsService & Student DTOs (optional student phone)', () => {
@@ -119,6 +119,35 @@ describe('StudentsService & Student DTOs (optional student phone)', () => {
       totalCount: 10,
       activeCount: 8,
       inactiveCount: 2,
+    });
+  });
+
+  it('validates optional UUID groupId in StudentQueryDto and passes it to repository.findPaginated', async () => {
+    const validGroupId = '550e8400-e29b-41d4-a716-446655440000';
+
+    const omittedDto = plainToInstance(StudentQueryDto, {});
+    expect(await validate(omittedDto)).toHaveLength(0);
+
+    const validDto = plainToInstance(StudentQueryDto, { groupId: validGroupId });
+    expect(await validate(validDto)).toHaveLength(0);
+
+    const invalidDto = plainToInstance(StudentQueryDto, { groupId: 'not-a-uuid' });
+    const invalidErrors = await validate(invalidDto);
+    expect(invalidErrors.some((e) => e.property === 'groupId')).toBe(true);
+
+    (mockRepo as any).findPaginated = vi.fn().mockResolvedValue({
+      rows: [],
+      total: 0,
+      page: 1,
+      limit: 100,
+      summary: { totalCount: 0, activeCount: 0, inactiveCount: 0 },
+    });
+
+    await service.list({ page: 1, limit: 100, groupId: validGroupId });
+    expect((mockRepo as any).findPaginated).toHaveBeenCalledWith({
+      page: 1,
+      limit: 100,
+      groupId: validGroupId,
     });
   });
 });

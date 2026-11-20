@@ -6,6 +6,7 @@ import {
   Calculator,
   Calendar,
   Edit3,
+  MessageCircle,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -67,6 +68,12 @@ export function GroupDetailsPage() {
         description={`المادة: ${group.subject} • الصف: ${group.gradeLevel} • القاعة: ${group.defaultClassroomName || 'غير محددة'}`}
         actions={
           <>
+            <Link to={`/whatsapp?groupId=${group.id}`}>
+              <Button variant="outline">
+                <MessageCircle className="h-4 w-4 text-emerald-600" />
+                رسائل واتساب
+              </Button>
+            </Link>
             {canManageGroups && (
               <Button variant="outline" onClick={() => setEditOpen(true)}>
                 <Edit3 className="h-4 w-4" />

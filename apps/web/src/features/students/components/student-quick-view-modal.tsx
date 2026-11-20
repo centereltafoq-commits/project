@@ -21,6 +21,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { apiClient } from '@/lib/api-client';
 import { formatCurrency, formatDateAr, formatYearMonthAr } from '@/lib/formatters';
+import { buildWhatsAppUrl } from '@/lib/whatsapp.util';
 import {
   STUDENT_STATUS_META,
   StudentProfileData,
@@ -250,17 +251,21 @@ export function StudentQuickViewModal({
               <p dir="ltr" className="mt-0.5 text-right font-mono text-xs font-bold text-foreground">
                 {student.phone || 'غير مسجل'}
               </p>
-              {student.phone && (
-                <a
-                  href={`https://wa.me/2${student.phone.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:underline"
-                >
-                  <MessageCircle className="h-3 w-3" />
-                  واتساب
-                </a>
-              )}
+              {student.phone && (() => {
+                const waUrl = buildWhatsAppUrl(student.phone, '', 'app');
+                if (!waUrl) return null;
+                return (
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:underline"
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    واتساب
+                  </a>
+                );
+              })()}
             </div>
           </div>
 
@@ -273,17 +278,21 @@ export function StudentQuickViewModal({
               <p dir="ltr" className="mt-0.5 text-right font-mono text-xs font-bold text-foreground">
                 {student.guardianPhone || 'غير مسجل'}
               </p>
-              {student.guardianPhone && (
-                <a
-                  href={`https://wa.me/2${student.guardianPhone.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:underline"
-                >
-                  <MessageCircle className="h-3 w-3" />
-                  واتساب ولي الأمر
-                </a>
-              )}
+              {student.guardianPhone && (() => {
+                const waUrl = buildWhatsAppUrl(student.guardianPhone, '', 'app');
+                if (!waUrl) return null;
+                return (
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:underline"
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    واتساب ولي الأمر
+                  </a>
+                );
+              })()}
             </div>
           </div>
 
@@ -339,18 +348,32 @@ export function StudentQuickViewModal({
             <span />
           )}
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              onOpenChange(false);
-              navigate(`/students/${student.id}`);
-            }}
-            className="gap-1.5 font-bold"
-          >
-            الملف الأكاديمي والمالي الشامل
-            <ExternalLink className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onOpenChange(false);
+                navigate(`/whatsapp?studentId=${student.id}`);
+              }}
+              className="gap-1.5 text-emerald-700 dark:text-emerald-300"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              رسالة قالب
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                onOpenChange(false);
+                navigate(`/students/${student.id}`);
+              }}
+              className="gap-1.5 font-bold"
+            >
+              الملف الأكاديمي والمالي الشامل
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>

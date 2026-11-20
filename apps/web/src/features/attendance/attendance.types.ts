@@ -49,6 +49,10 @@ export interface SessionRow {
   notes: string | null;
   presentCount: number;
   recordedCount: number;
+  enrolledCount?: number;
+  monthlySessionsCount?: number;
+  completedSessionsInMonth?: number;
+  sessionSequenceInMonth?: number | null;
 }
 
 export interface SheetStudentRow {
@@ -72,7 +76,9 @@ export interface SheetStudentRow {
 }
 
 export interface SessionSheetResponse {
-  session: Omit<SessionRow, 'presentCount' | 'recordedCount'> & { gradeLevel: string };
+  session: Omit<SessionRow, 'presentCount' | 'recordedCount' | 'enrolledCount'> & {
+    gradeLevel: string;
+  };
   isMonthClosed?: boolean;
   summary: {
     totalStudents: number;

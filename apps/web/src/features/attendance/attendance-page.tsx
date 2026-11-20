@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarPlus, ClipboardList, QrCode, Sparkles } from 'lucide-react';
+import { ClipboardList, QrCode } from 'lucide-react';
 import { PERMISSIONS } from '@edu-center/shared';
 import {
   Button,
@@ -14,26 +14,22 @@ import { useAuth } from '@/features/auth/auth-context';
 import { apiClient } from '@/lib/api-client';
 import { AttendanceLookups } from './attendance.types';
 import { QrScannerWorkspace } from './qr-scanner-workspace';
-import { CreateSessionModal, GenerateMonthModal } from './session-modals';
 import { SessionsTab } from './sessions-tab';
 
 export function AttendancePage() {
   const { hasPermission } = useAuth();
   const canViewSessions =
     hasPermission(PERMISSIONS.ATTENDANCE_VIEW) || hasPermission(PERMISSIONS.SESSIONS_VIEW);
-  const canManageSessions = hasPermission(PERMISSIONS.SESSIONS_MANAGE);
   const canUseQrGate =
     canViewSessions || hasPermission(PERMISSIONS.ATTENDANCE_RECORD);
 
   const [activeTab, setActiveTab] = React.useState<'sessions' | 'qr-gate'>(
     canViewSessions ? 'sessions' : 'qr-gate',
   );
-  const [createOpen, setCreateOpen] = React.useState(false);
-  const [generateOpen, setGenerateOpen] = React.useState(false);
 
   const { data: lookups } = useQuery<AttendanceLookups>({
     queryKey: ['attendance-lookups'],
-    enabled: canViewSessions || canManageSessions,
+    enabled: canViewSessions,
     queryFn: async () => (await apiClient.get('/attendance/lookups')).data,
   });
 
@@ -41,10 +37,10 @@ export function AttendancePage() {
     <div className="space-y-5">
       <PageHeader
         title="إدارة الحصص ورصد الحضور"
-        description="توليد جدول الحصص الشهري، فتح كشوف الحضور، وبوابة مسح الـ QR Code الفورية بالريسبشن"
+        description="متابعة سجل الحصص وكشوف الحضور، وبوابة مسح الـ QR Code الفورية بالريسبشن"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {canUseQrGate && activeTab !== 'qr-gate' && (
+          canUseQrGate && activeTab !== 'qr-gate' ? (
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 variant="success"
@@ -54,29 +50,8 @@ export function AttendancePage() {
                 <QrCode className="h-4 w-4" />
                 بوابة مسح QR الحضور
               </Button>
-            )}
-            {canManageSessions && (
-              <>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setGenerateOpen(true)}
-                  className="h-9 gap-1.5 px-3"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  توليد حصص الشهر تلقائياً
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setCreateOpen(true)}
-                  className="h-9 gap-1.5 px-3.5"
-                >
-                  <CalendarPlus className="h-3.5 w-3.5" />
-                  إنشاء حصة مفردة
-                </Button>
-              </>
-            )}
-          </div>
+            </div>
+          ) : undefined
         }
       />
 
@@ -112,13 +87,6 @@ export function AttendancePage() {
           </TabsContent>
         )}
       </Tabs>
-
-      {canManageSessions && (
-        <>
-          <CreateSessionModal open={createOpen} onOpenChange={setCreateOpen} lookups={lookups} />
-          <GenerateMonthModal open={generateOpen} onOpenChange={setGenerateOpen} lookups={lookups} />
-        </>
-      )}
     </div>
   );
 }

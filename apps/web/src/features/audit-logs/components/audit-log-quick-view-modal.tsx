@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Clock, Eye, Globe, Key, Shield, User, Code2, ListFilter } from 'lucide-react';
+import { Clock, Eye, Globe, Key, Shield, Undo2, User, Code2, ListFilter } from 'lucide-react';
 import { Badge, Button, Modal } from '@/design-system';
 import { formatDateTimeAr } from '@/lib/formatters';
 import {
@@ -23,12 +23,18 @@ export interface AuditLogRow {
   metadata?: unknown;
   ipAddress: string | null;
   createdAt: string;
+  isReversible?: boolean;
+  isReverted?: boolean;
+  revertedAt?: string | null;
+  revertedByName?: string | null;
+  rollbackAuditLogId?: string | null;
 }
 
 interface AuditLogQuickViewModalProps {
   log: AuditLogRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRequestRollback?: (log: AuditLogRow) => void;
 }
 
 function RenderItemValue({ val, keyName }: { val: unknown; keyName?: string }) {
@@ -172,6 +178,7 @@ export function AuditLogQuickViewModal({
   log,
   open,
   onOpenChange,
+  onRequestRollback,
 }: AuditLogQuickViewModalProps) {
   if (!log) return null;
 
@@ -188,6 +195,15 @@ export function AuditLogQuickViewModal({
       size="lg"
     >
       <div className="space-y-4">
+        {log.isReverted && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+            <span>
+              تم التراجع عن هذه العملية بواسطة ({log.revertedByName || 'الإدارة'})
+              {log.revertedAt ? ` بتاريخ ${formatDateTimeAr(log.revertedAt)}` : ''}
+            </span>
+            <Badge variant="warning">تم التراجع</Badge>
+          </div>
+        )}
         {/* الترويسة */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 rounded-xl border border-border bg-muted/30 p-4">
           <div className="space-y-1">
@@ -268,6 +284,21 @@ export function AuditLogQuickViewModal({
                 data={log.metadata}
               />
             )}
+          </div>
+        )}
+
+        {log.isReversible && !log.isReverted && onRequestRollback && (
+          <div className="flex justify-end border-t border-border pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onRequestRollback(log)}
+              className="gap-1.5 font-bold text-amber-700 border-amber-500/40 hover:bg-amber-500/10 dark:text-amber-300"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              رجوع عن هذه العملية
+            </Button>
           </div>
         )}
       </div>

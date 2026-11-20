@@ -7,6 +7,7 @@ import {
   Database,
   GraduationCap,
   LayoutDashboard,
+  MessageCircle,
   ScrollText,
   ShieldCheck,
   UserCheck,
@@ -48,6 +49,17 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
   },
   { label: 'الحسابات والمالية', to: '/finance', icon: Wallet, permission: PERMISSIONS.FINANCE_VIEW },
   { label: 'إدارة القاعات', to: '/classrooms', icon: Building2, permission: PERMISSIONS.CLASSROOMS_VIEW },
+  {
+    label: 'رسائل واتساب',
+    to: '/whatsapp',
+    icon: MessageCircle,
+    anyPermissions: [
+      PERMISSIONS.STUDENTS_VIEW,
+      PERMISSIONS.GROUPS_VIEW,
+      PERMISSIONS.ATTENDANCE_VIEW,
+      PERMISSIONS.FINANCE_VIEW,
+    ],
+  },
   { label: 'التقويم الموحد', to: '/calendar', icon: Calendar, permission: PERMISSIONS.CALENDAR_VIEW },
   { label: 'التقارير التفصيلية', to: '/reports', icon: BarChart3, permission: PERMISSIONS.REPORTS_VIEW },
   {

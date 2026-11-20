@@ -50,7 +50,7 @@ vi.mock('electron', () => {
 });
 
 import { app, BrowserWindow } from 'electron';
-import { createMainWindow, loadAppContent, setupApp, AppContext } from './index';
+import { createMainWindow, getConnectionSetupFallbackHtml, loadAppContent, setupApp, AppContext } from './index';
 
 describe('Electron Main Process (index.ts)', () => {
   let mockContext: AppContext;
@@ -173,6 +173,15 @@ describe('Electron Main Process (index.ts)', () => {
       expect(mockWindow.loadURL).toHaveBeenCalledWith(
         expect.stringContaining('data:text/html'),
       );
+    });
+
+    it('setup fallback page navigates to localhost:4000 after starting server instead of reloading data URL', () => {
+      const encoded = getConnectionSetupFallbackHtml('http://localhost:4000', 'fetch failed', true);
+      const html = decodeURIComponent(encoded.replace('data:text/html;charset=utf-8,', ''));
+
+      expect(html).toContain('التشغيل الأول للبرنامج');
+      expect(html).toContain('window.location.href = targetUrl');
+      expect(html).not.toContain('window.location.reload()');
     });
   });
 

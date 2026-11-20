@@ -331,8 +331,8 @@ export class AttendanceService {
   }
 
   /**
-   * Marks an entire group session as attended/completed and triggers monthly financial billing
-   * for all active students enrolled in that group independently of individual attendance sheets.
+   * Marks the group session as COMPLETED to advance the group's monthly subscription session
+   * counter (e.g., 1 of 4 or 8) without touching individual student attendance sheets.
    */
   async completeGroupSession(sessionId: string, actor: AuthenticatedUser) {
     const session = await this.repository.findSessionById(sessionId);
@@ -348,22 +348,41 @@ export class AttendanceService {
       await this.settlementService.assertMonthOpen(session.yearMonth);
     }
 
-    const updatedSession =
-      session.status === SessionStatus.COMPLETED
-        ? session
-        : (await this.sheetRepository.markSessionCompleted(sessionId)) ?? session;
+    const wasNotCompleted = session.status !== SessionStatus.COMPLETED;
+    if (wasNotCompleted) {
+      await this.sheetRepository.markSessionCompleted(sessionId);
+    }
 
-    if (session.status !== SessionStatus.COMPLETED) {
+    const progress = this.repository.getGroupMonthSessionProgress
+      ? await this.repository.getGroupMonthSessionProgress(
+          session.groupId,
+          session.yearMonth,
+          sessionId,
+        )
+      : {
+          monthlySessionsCount: 4,
+          completedSessionsInMonth: 1,
+          sessionSequenceInMonth: 1,
+        };
+
+    if (wasNotCompleted) {
       await this.audit.record({
         actorUserId: actor.id,
         actorName: actor.fullName,
         action: 'COMPLETE_GROUP_SESSION',
         entityType: 'SESSION',
         entityId: sessionId,
+        beforeData: {
+          status: session.status,
+        },
         afterData: {
+          status: SessionStatus.COMPLETED,
           groupId: session.groupId,
           yearMonth: session.yearMonth,
           sessionDate: session.sessionDate,
+          sessionSequenceInMonth: progress.sessionSequenceInMonth,
+          completedSessionsInMonth: progress.completedSessionsInMonth,
+          monthlySessionsCount: progress.monthlySessionsCount,
         },
       });
     }
@@ -379,6 +398,15 @@ export class AttendanceService {
       ]);
     } catch {}
 
-    return updatedSession;
+    return {
+      ...session,
+      status: SessionStatus.COMPLETED,
+      sessionSequenceInMonth: progress.sessionSequenceInMonth,
+      completedSessionsInMonth: progress.completedSessionsInMonth,
+      monthlySessionsCount: progress.monthlySessionsCount,
+      isExtraSession:
+        progress.sessionSequenceInMonth !== null &&
+        progress.sessionSequenceInMonth > progress.monthlySessionsCount,
+    };
   }
 }

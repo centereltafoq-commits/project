@@ -23,6 +23,7 @@ export function createDesktopApi(customIpcRenderer = ipcRenderer): DesktopApi {
     getUpdateStatus: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.GET_UPDATE_STATUS),
     checkForUpdates: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.CHECK_FOR_UPDATES),
     installUpdate: () => customIpcRenderer.invoke(DESKTOP_CHANNELS.INSTALL_UPDATE),
+    openWhatsApp: (url) => customIpcRenderer.invoke(DESKTOP_CHANNELS.OPEN_WHATSAPP, url),
     onUpdateStatusChange: (callback) => {
       const listener = (_event: any, status: any) => callback(status);
       customIpcRenderer.on(DESKTOP_EVENTS.UPDATE_STATUS_CHANGED, listener);

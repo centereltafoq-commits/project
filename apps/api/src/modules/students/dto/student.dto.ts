@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   MinLength,
@@ -21,6 +22,10 @@ export class StudentQueryDto extends PaginationQueryDto {
   @IsString()
   @MaxLength(80)
   gradeLevel?: string;
+
+  @IsOptional()
+  @IsUUID('4', { message: 'معرف المجموعة غير صالح' })
+  groupId?: string;
 }
 
 export class StudentProfileQueryDto {

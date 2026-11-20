@@ -49,7 +49,14 @@ export const ACTION_TRANSLATIONS: Record<string, string> = {
   SESSION_CREATE: 'إنشاء حصة دراسية جديدة',
   GENERATE_MONTH_SESSIONS: 'توليد حصص الشهر للمجموعة تلقائياً',
   SESSION_GENERATE_MONTH: 'توليد حصص الشهر للمجموعة تلقائياً',
-  COMPLETE_GROUP_SESSION: 'تسجيل حضور مجموعة لحصة',
+  COMPLETE_GROUP_SESSION: 'تحضير المجموعة (حصة اشتراك)',
+  AUDIT_ROLLBACK: 'التراجع عن عملية سابقة',
+  'attendance.alarm_sound_upload': 'رفع صوت إنذار مخصص للحضور',
+  'attendance.alarm_sound_delete': 'حذف صوت إنذار مخصص',
+  'whatsapp.template_create': 'إنشاء قالب رسالة واتساب',
+  'whatsapp.template_update': 'تعديل قالب رسالة واتساب',
+  'whatsapp.template_delete': 'حذف قالب رسالة واتساب',
+  'whatsapp.template_reset_defaults': 'استعادة قوالب واتساب الافتراضية',
 
   // Classrooms
   CREATE_CLASSROOM: 'إضافة قاعة دراسية جديدة',

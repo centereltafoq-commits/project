@@ -28,6 +28,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { GradeLevelsModule } from './modules/grade-levels/grade-levels.module';
 import { BackupsModule } from './modules/backups/backups.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
 @Controller('health')
 class HealthController {
@@ -74,6 +75,7 @@ class HealthController {
     GradeLevelsModule,
     BackupsModule,
     SettingsModule,
+    WhatsappModule,
   ],
   controllers: [HealthController],
   providers: [

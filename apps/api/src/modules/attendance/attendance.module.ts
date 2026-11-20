@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { FinanceModule } from '../finance/finance.module';
 import { StudentsModule } from '../students/students.module';
 import { AttendanceController } from './attendance.controller';
+import { AttendanceAlarmSoundsService } from './attendance-alarm-sounds.service';
 import { AttendanceQrService } from './attendance-qr.service';
 import { AttendanceRepository } from './attendance.repository';
 import { AttendanceService } from './attendance.service';
@@ -15,7 +16,13 @@ import { SessionSheetRepository } from './session-sheet.repository';
     SessionSheetRepository,
     AttendanceService,
     AttendanceQrService,
+    AttendanceAlarmSoundsService,
   ],
-  exports: [AttendanceService, AttendanceQrService, AttendanceRepository],
+  exports: [
+    AttendanceService,
+    AttendanceQrService,
+    AttendanceRepository,
+    AttendanceAlarmSoundsService,
+  ],
 })
 export class AttendanceModule {}

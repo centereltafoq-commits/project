@@ -115,6 +115,7 @@ export class AttendanceRepository {
           groupName: groups.name,
           groupCode: groups.groupCode,
           subject: groups.subject,
+          monthlySessionsCount: groups.monthlySessionsCount,
           teacherId: sessions.teacherId,
           teacherName: teachers.fullName,
           classroomId: sessions.classroomId,
@@ -146,17 +147,62 @@ export class AttendanceRepository {
 
     const sessionIds = rows.map((r) => r.id);
     const statsMap = new Map<string, { presentCount: number; recordedCount: number }>();
+    const groupEnrollmentsMap = new Map<
+      string,
+      Array<{ studentId: string; startDate: string; endDate: string | null }>
+    >();
+    let completedCountByGroupMonth = new Map<string, number>();
+    let sequenceBySessionId = new Map<string, number>();
 
     if (sessionIds.length > 0) {
-      const counts = await this.db
-        .select({
-          sessionId: attendance.sessionId,
-          recordedCount: count(),
-          presentCount: sql<number>`count(*) filter (where ${attendance.status} = 'PRESENT')`,
-        })
-        .from(attendance)
-        .where(inArray(attendance.sessionId, sessionIds))
-        .groupBy(attendance.sessionId);
+      const groupIds = Array.from(new Set(rows.map((r) => r.groupId)));
+      const yearMonths = Array.from(new Set(rows.map((r) => r.yearMonth)));
+      const [counts, groupEnrollments, monthSessionRows] = await Promise.all([
+        this.db
+          .select({
+            sessionId: attendance.sessionId,
+            recordedCount: count(),
+            presentCount: sql<number>`count(*) filter (where ${attendance.status} = 'PRESENT')`,
+          })
+          .from(attendance)
+          .where(inArray(attendance.sessionId, sessionIds))
+          .groupBy(attendance.sessionId),
+        groupIds.length > 0
+          ? this.db
+              .select({
+                groupId: enrollments.groupId,
+                studentId: enrollments.studentId,
+                startDate: enrollments.startDate,
+                endDate: enrollments.endDate,
+              })
+              .from(enrollments)
+              .where(
+                and(
+                  inArray(enrollments.groupId, groupIds),
+                  ne(enrollments.status, EnrollmentStatus.CANCELLED),
+                ),
+              )
+          : Promise.resolve([]),
+        groupIds.length > 0 && yearMonths.length > 0
+          ? this.db
+              .select({
+                id: sessions.id,
+                groupId: sessions.groupId,
+                yearMonth: sessions.yearMonth,
+                status: sessions.status,
+                hasAttendance: sql<boolean>`EXISTS (SELECT 1 FROM attendance a WHERE a.session_id = ${sessions.id})`,
+              })
+              .from(sessions)
+              .where(
+                and(
+                  inArray(sessions.groupId, groupIds),
+                  inArray(sessions.yearMonth, yearMonths),
+                  ne(sessions.status, SessionStatus.CANCELLED),
+                ),
+              )
+              .orderBy(asc(sessions.sessionDate), asc(sessions.startTime), asc(sessions.id))
+          : Promise.resolve([]),
+      ]);
 
       for (const c of counts) {
         statsMap.set(c.sessionId, {
@@ -164,15 +210,115 @@ export class AttendanceRepository {
           recordedCount: Number(c.recordedCount),
         });
       }
+
+      for (const enr of groupEnrollments) {
+        const list = groupEnrollmentsMap.get(enr.groupId) ?? [];
+        list.push({
+          studentId: enr.studentId,
+          startDate: enr.startDate,
+          endDate: enr.endDate,
+        });
+        groupEnrollmentsMap.set(enr.groupId, list);
+      }
+
+      const progressMaps = this.buildGroupMonthProgressMaps(monthSessionRows);
+      completedCountByGroupMonth = progressMaps.completedCountByGroupMonth;
+      sequenceBySessionId = progressMaps.sequenceBySessionId;
     }
 
-    const enriched = rows.map((r) => ({
-      ...r,
-      presentCount: statsMap.get(r.id)?.presentCount ?? 0,
-      recordedCount: statsMap.get(r.id)?.recordedCount ?? 0,
-    }));
+    const enriched = rows.map((r) => {
+      const stats = statsMap.get(r.id) ?? { presentCount: 0, recordedCount: 0 };
+      const candidates = groupEnrollmentsMap.get(r.groupId) ?? [];
+      const enrolledStudentIds = new Set<string>();
+      for (const enr of candidates) {
+        if (enr.startDate <= r.sessionDate && (!enr.endDate || enr.endDate >= r.sessionDate)) {
+          enrolledStudentIds.add(enr.studentId);
+        }
+      }
+      const enrolledCount = Math.max(enrolledStudentIds.size, stats.recordedCount);
+      const groupMonthKey = `${r.groupId}|${r.yearMonth}`;
+
+      return {
+        ...r,
+        monthlySessionsCount: Math.max(1, Number(r.monthlySessionsCount || 4)),
+        completedSessionsInMonth: completedCountByGroupMonth.get(groupMonthKey) ?? 0,
+        sessionSequenceInMonth: sequenceBySessionId.get(r.id) ?? null,
+        presentCount: stats.presentCount,
+        recordedCount: stats.recordedCount,
+        enrolledCount,
+      };
+    });
 
     return { rows: enriched, total: Number(total), page, limit };
+  }
+
+  private buildGroupMonthProgressMaps(
+    rows: Array<{
+      id: string;
+      groupId: string;
+      yearMonth: string;
+      status: string;
+      hasAttendance: boolean;
+    }>,
+  ) {
+    const completedCountByGroupMonth = new Map<string, number>();
+    const sequenceBySessionId = new Map<string, number>();
+
+    for (const row of rows) {
+      const isExecuted = row.status === SessionStatus.COMPLETED || Boolean(row.hasAttendance);
+      if (!isExecuted) continue;
+
+      const key = `${row.groupId}|${row.yearMonth}`;
+      const nextSeq = (completedCountByGroupMonth.get(key) ?? 0) + 1;
+      completedCountByGroupMonth.set(key, nextSeq);
+      sequenceBySessionId.set(row.id, nextSeq);
+    }
+
+    return { completedCountByGroupMonth, sequenceBySessionId };
+  }
+
+  async getGroupMonthSessionProgress(
+    groupId: string,
+    yearMonth: string,
+    targetSessionId: string,
+  ): Promise<{
+    monthlySessionsCount: number;
+    completedSessionsInMonth: number;
+    sessionSequenceInMonth: number | null;
+  }> {
+    const [[groupRow], monthSessionRows] = await Promise.all([
+      this.db
+        .select({ monthlySessionsCount: groups.monthlySessionsCount })
+        .from(groups)
+        .where(eq(groups.id, groupId))
+        .limit(1),
+      this.db
+        .select({
+          id: sessions.id,
+          groupId: sessions.groupId,
+          yearMonth: sessions.yearMonth,
+          status: sessions.status,
+          hasAttendance: sql<boolean>`EXISTS (SELECT 1 FROM attendance a WHERE a.session_id = ${sessions.id})`,
+        })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.groupId, groupId),
+            eq(sessions.yearMonth, yearMonth),
+            ne(sessions.status, SessionStatus.CANCELLED),
+          ),
+        )
+        .orderBy(asc(sessions.sessionDate), asc(sessions.startTime), asc(sessions.id)),
+    ]);
+
+    const { completedCountByGroupMonth, sequenceBySessionId } =
+      this.buildGroupMonthProgressMaps(monthSessionRows);
+
+    return {
+      monthlySessionsCount: Math.max(1, Number(groupRow?.monthlySessionsCount || 4)),
+      completedSessionsInMonth: completedCountByGroupMonth.get(`${groupId}|${yearMonth}`) ?? 0,
+      sessionSequenceInMonth: sequenceBySessionId.get(targetSessionId) ?? null,
+    };
   }
 
   async findGroupById(groupId: string) {

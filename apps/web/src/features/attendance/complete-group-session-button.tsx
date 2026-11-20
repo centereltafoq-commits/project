@@ -37,17 +37,41 @@ export function CompleteGroupSessionButton({
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post(`/attendance/sessions/${sessionId}/complete-group`);
+      const res = await apiClient.post<{
+        sessionSequenceInMonth?: number | null;
+        completedSessionsInMonth?: number;
+        monthlySessionsCount?: number;
+        isExtraSession?: boolean;
+      }>(`/attendance/sessions/${sessionId}/complete-group`);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['session-sheet', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['finance'] });
       queryClient.invalidateQueries({ queryKey: ['student-profile'] });
       queryClient.invalidateQueries({ queryKey: ['reports'] });
-      notify('تم تسجيل حضور المجموعة وتحديث المستحقات المالية تلقائياً', 'success');
+      queryClient.invalidateQueries({ queryKey: ['group-enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      if (
+        typeof data?.sessionSequenceInMonth === 'number' &&
+        typeof data?.monthlySessionsCount === 'number'
+      ) {
+        if (data.isExtraSession || data.sessionSequenceInMonth > data.monthlySessionsCount) {
+          notify(
+            `تم تحضير المجموعة — الحصة ${data.sessionSequenceInMonth} من ${data.monthlySessionsCount} (حصة إضافية هذا الشهر) • كشف حضور الطلاب منفصل`,
+            'success',
+          );
+        } else {
+          notify(
+            `تم تحضير المجموعة بنجاح (الحصة ${data.sessionSequenceInMonth} من ${data.monthlySessionsCount} في الاشتراك) • كشف حضور الطلاب منفصل`,
+            'success',
+          );
+        }
+      } else {
+        notify('تم تسجيل حضور المجموعة (حصة مكتملة بالاشتراك) وتحديث المتابعة تلقائياً', 'success');
+      }
       onCompleted?.();
     },
     onError: (err) => {

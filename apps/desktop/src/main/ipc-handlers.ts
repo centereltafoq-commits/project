@@ -6,6 +6,7 @@ import { getLocalNetworkIps, testServerConnection } from './network-utils';
 import { discoverLanServers, type DiscoveredServer } from './lan-discovery';
 import { configureLanFirewallRules, type FirewallConfigResult } from './firewall-utils';
 import type { UpdateManager } from './update-manager';
+import { isAllowedWhatsAppUrl, type WhatsappWindowManager } from './whatsapp-window-manager';
 
 export interface RegisterIpcHandlersOptions {
   ipcMain: any;
@@ -13,6 +14,7 @@ export interface RegisterIpcHandlersOptions {
   serverManager: ServerManager;
   printerManager: PrinterManager;
   updateManager?: UpdateManager;
+  whatsappWindowManager?: Pick<WhatsappWindowManager, 'openUrl'>;
   webContentsGetter: () => any;
   onConfigSaved?: (config: DesktopConfig) => Promise<void> | void;
   networkUtils?: {
@@ -114,6 +116,7 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
     serverManager,
     printerManager,
     updateManager,
+    whatsappWindowManager,
     webContentsGetter,
     onConfigSaved,
     networkUtils,
@@ -262,6 +265,17 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
       return { success: false, error: 'وحدة التحديث غير مفعلة' };
     }
     return updateManager.installDownloadedUpdate();
+  });
+
+  // 6. Embedded WhatsApp WebView Window
+  registerHandler(DESKTOP_CHANNELS.OPEN_WHATSAPP, async (_event, url) => {
+    if (!isAllowedWhatsAppUrl(url)) {
+      return { success: false, error: 'رابط واتساب غير صالح' };
+    }
+    if (!whatsappWindowManager) {
+      return { success: false, error: 'نافذة واتساب غير متاحة في هذا الوضع' };
+    }
+    return whatsappWindowManager.openUrl(url.trim());
   });
 
   return () => {

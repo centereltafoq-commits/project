@@ -15,11 +15,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { ARABIC_DAYS, formatDateAr, formatTimeRangeAr, getCurrentYearMonth } from '@/lib/formatters';
 import { CompleteGroupSessionButton } from './complete-group-session-button';
-import {
-  AttendanceLookups,
-  SESSION_STATUS_META,
-  SessionRow,
-} from './attendance.types';
+import { AttendanceLookups, SessionRow } from './attendance.types';
 import { SessionSheetModal } from './session-sheet-modal';
 
 interface SessionsTabProps {
@@ -70,8 +66,8 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'date',
       header: 'التاريخ والوقت',
-      className: 'w-[18%] min-w-[125px] px-2.5 truncate',
-      headerClassName: 'w-[18%] min-w-[125px] px-2.5',
+      className: 'w-[16%] min-w-[125px] px-2.5 truncate',
+      headerClassName: 'w-[16%] min-w-[125px] px-2.5',
       render: (row) => {
         const d = new Date(`${row.sessionDate}T00:00:00`);
         const dayName = Number.isNaN(d.getTime()) ? '' : ARABIC_DAYS[d.getDay()];
@@ -93,8 +89,8 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'group',
       header: 'المجموعة والمادة',
-      className: 'w-[28%] min-w-[150px] px-2.5 truncate',
-      headerClassName: 'w-[28%] min-w-[150px] px-2.5',
+      className: 'w-[23%] min-w-[145px] px-2.5 truncate',
+      headerClassName: 'w-[23%] min-w-[145px] px-2.5',
       render: (row) => (
         <div className="truncate">
           <div className="font-bold text-foreground text-xs truncate leading-snug" title={row.groupName}>
@@ -109,8 +105,8 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
     {
       key: 'teacher',
       header: 'المدرس / القاعة',
-      className: 'w-[20%] min-w-[120px] px-2.5 truncate',
-      headerClassName: 'w-[20%] min-w-[120px] px-2.5',
+      className: 'w-[16%] min-w-[115px] px-2.5 truncate',
+      headerClassName: 'w-[16%] min-w-[115px] px-2.5',
       render: (row) => (
         <div className="truncate">
           <div className="font-medium text-foreground text-xs truncate" title={row.teacherName}>
@@ -123,61 +119,96 @@ export function SessionsTab({ lookups }: SessionsTabProps) {
       ),
     },
     {
-      key: 'attendanceCount',
-      header: 'ملخص الرصد',
-      className: 'w-[14%] min-w-[100px] whitespace-nowrap text-center px-1.5',
-      headerClassName: 'w-[14%] min-w-[100px] text-center px-1.5',
-      render: (row) =>
-        row.recordedCount > 0 ? (
-          <Badge variant="purple" className="text-[11px] px-2 py-0.5">
-            حضور {row.presentCount} من {row.recordedCount}
-          </Badge>
-        ) : (
-          <span className="text-[11px] text-muted-foreground">لم يُرصد بعد</span>
-        ),
+      key: 'groupProgress',
+      header: 'حصة الاشتراك',
+      className: 'w-[15%] min-w-[118px] whitespace-nowrap text-center px-1.5',
+      headerClassName: 'w-[15%] min-w-[118px] text-center px-1.5',
+      render: (row) => {
+        if (row.status === SessionStatus.CANCELLED) {
+          return (
+            <Badge variant="danger" className="text-[11px] px-2 py-0.5">
+              ملغاة
+            </Badge>
+          );
+        }
+
+        const target = Math.max(1, row.monthlySessionsCount ?? 4);
+        if (typeof row.sessionSequenceInMonth === 'number') {
+          const isExtra = row.sessionSequenceInMonth > target;
+          return (
+            <div className="flex flex-col items-center gap-0.5">
+              <Badge variant={isExtra ? 'warning' : 'success'} className="text-[11px] px-2 py-0.5">
+                {isExtra
+                  ? `الحصة ${row.sessionSequenceInMonth} من ${target} (إضافية)`
+                  : `الحصة ${row.sessionSequenceInMonth} من ${target}`}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground">مكتملة</span>
+            </div>
+          );
+        }
+
+        const completed = row.completedSessionsInMonth ?? 0;
+        return (
+          <div className="flex flex-col items-center gap-0.5">
+            <Badge variant="info" className="text-[11px] px-2 py-0.5">
+              مجدولة
+            </Badge>
+            <span className="text-[10px] text-muted-foreground">
+              المنفذ: {completed} من {target}
+            </span>
+          </div>
+        );
+      },
     },
     {
-      key: 'status',
-      header: 'الحالة',
-      className: 'w-[9%] min-w-[65px] whitespace-nowrap text-center px-1',
-      headerClassName: 'w-[9%] min-w-[65px] text-center px-1',
+      key: 'attendanceCount',
+      header: 'كشف الطلاب',
+      className: 'w-[12%] min-w-[100px] whitespace-nowrap text-center px-1.5',
+      headerClassName: 'w-[12%] min-w-[100px] text-center px-1.5',
       render: (row) => {
-        const meta = SESSION_STATUS_META[row.status] ?? {
-          label: row.status,
-          variant: 'neutral' as const,
-        };
+        const total = Math.max(row.enrolledCount ?? 0, row.recordedCount);
+        if (row.recordedCount > 0) {
+          return (
+            <Badge variant="purple" className="text-[11px] px-2 py-0.5">
+              حضور {row.presentCount} من {total}
+            </Badge>
+          );
+        }
         return (
-          <Badge variant={meta.variant} className="text-[11px] px-2 py-0.5">
-            {meta.label}
-          </Badge>
+          <span className="text-[11px] text-muted-foreground">
+            {total > 0 ? `لم يُرصد (0 من ${total})` : 'لم يُرصد'}
+          </span>
         );
       },
     },
     {
       key: 'actions',
       header: 'إجراءات',
-      className: 'w-[20%] min-w-[220px] whitespace-nowrap text-left pl-2 pr-1',
-      headerClassName: 'w-[20%] min-w-[220px] text-left pl-2 pr-1',
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {row.status === SessionStatus.SCHEDULED && (
-            <CompleteGroupSessionButton
-              sessionId={row.id}
-              label="تحضير المجموعة"
-              className="h-7.5 px-2.5 text-xs font-bold"
-            />
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7.5 gap-1.5 px-2.5 text-xs font-bold"
-            onClick={() => setActiveSheetSessionId(row.id)}
-          >
-            <ClipboardList className="h-3.5 w-3.5 text-primary" />
-            كشف الحضور
-          </Button>
-        </div>
-      ),
+      className: 'w-[18%] min-w-[195px] whitespace-nowrap text-left pl-2 pr-1',
+      headerClassName: 'w-[18%] min-w-[195px] text-left pl-2 pr-1',
+      render: (row) => {
+        const canQuickComplete = row.status === SessionStatus.SCHEDULED;
+        return (
+          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+            {canQuickComplete && (
+              <CompleteGroupSessionButton
+                sessionId={row.id}
+                label="تحضير المجموعة"
+                className="h-7.5 px-2.5 text-xs font-bold"
+              />
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7.5 gap-1.5 px-2.5 text-xs font-bold"
+              onClick={() => setActiveSheetSessionId(row.id)}
+            >
+              <ClipboardList className="h-3.5 w-3.5 text-primary" />
+              كشف الحضور
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 

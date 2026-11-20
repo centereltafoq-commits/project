@@ -23,6 +23,7 @@ export const DESKTOP_CHANNELS = {
   GET_UPDATE_STATUS: 'desktop:get-update-status',
   CHECK_FOR_UPDATES: 'desktop:check-for-updates',
   INSTALL_UPDATE: 'desktop:install-update',
+  OPEN_WHATSAPP: 'desktop:open-whatsapp',
 } as const;
 
 export const DESKTOP_EVENTS = {
@@ -53,6 +54,7 @@ export interface DesktopApi {
   getUpdateStatus?: () => Promise<DesktopUpdateStatus>;
   checkForUpdates?: () => Promise<DesktopUpdateStatus>;
   installUpdate?: () => Promise<{ success: boolean; error?: string }>;
+  openWhatsApp?: (url: string) => Promise<{ success: boolean; error?: string }>;
   onUpdateStatusChange?: (callback: (status: DesktopUpdateStatus) => void) => () => void;
 }
 
