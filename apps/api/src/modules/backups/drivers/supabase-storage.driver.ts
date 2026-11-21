@@ -156,7 +156,6 @@ export class SupabaseStorageDriver {
             id: bucketName,
             name: bucketName,
             public: false,
-            file_size_limit: 104857600,
           }),
         });
 

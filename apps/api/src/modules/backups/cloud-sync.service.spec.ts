@@ -315,7 +315,15 @@ describe('CloudSyncService & CloudSyncController', () => {
           return;
         }
         if (req.method === 'POST' && reqUrl === '/storage/v1/bucket') {
-          const parsed = JSON.parse(body.toString('utf8')) as { name: string };
+          const parsed = JSON.parse(body.toString('utf8')) as {
+            name: string;
+            file_size_limit?: number;
+          };
+          if (parsed.file_size_limit && parsed.file_size_limit > 52428800) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ message: 'The object exceeded the maximum allowed size' }));
+            return;
+          }
           buckets.add(parsed.name);
           res.writeHead(201, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ name: parsed.name }));
