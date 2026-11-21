@@ -1,4 +1,5 @@
 import { ChildProcess, spawn } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 import { testServerConnection } from './network-utils';
 import { DatabaseStatus, PostgresManager, resolveAsciiSafePostgresDir } from './postgres-manager';
@@ -155,6 +156,23 @@ export class ServerManager {
       }
       if (drizzleDir && !env.API_DRIZZLE_DIR) {
         env.API_DRIZZLE_DIR = drizzleDir;
+      }
+
+      const cloudDefaultsFile = path.join(apiCwd, 'cloud-sync-defaults.json');
+      if (fs.existsSync(cloudDefaultsFile)) {
+        try {
+          const defaults = JSON.parse(fs.readFileSync(cloudDefaultsFile, 'utf8')) as Record<
+            string,
+            unknown
+          >;
+          for (const key of ['SUPABASE_SYNC_URL', 'SUPABASE_SYNC_KEY', 'SUPABASE_SYNC_BUCKET']) {
+            if (!env[key] && typeof defaults[key] === 'string' && defaults[key].trim() !== '') {
+              env[key] = defaults[key].trim();
+            }
+          }
+        } catch (err: any) {
+          console.warn('[API-Server] Could not read cloud-sync-defaults.json:', err?.message);
+        }
       }
 
       const child = this.spawnFn(command, [this.apiDistPath], {

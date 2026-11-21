@@ -18,7 +18,6 @@ import {
   Printer,
   RefreshCw,
   Server,
-  Wifi,
   Power,
   Cloud,
   Settings2,
@@ -37,7 +36,6 @@ import {
 import { cn } from '@/lib/cn';
 import { extractErrorMessage } from '@/lib/api-client';
 import { useDesktop } from '@/hooks/use-desktop';
-import { DesktopConnectionModal } from '@/components/desktop-connection-modal';
 import { DesktopUpdatePanel } from '@/components/desktop-update-panel';
 import { CloudSyncModal } from '@/components/cloud-sync-modal';
 import { useCloudSyncStatus } from '@/features/backups/use-cloud-sync';
@@ -52,7 +50,6 @@ export function SettingsPage() {
     isDesktop,
     config,
     serverStatus,
-    localIps,
     printers,
     saveConfig,
     startServer,
@@ -72,7 +69,6 @@ export function SettingsPage() {
 
   const [isSaving, setIsSaving] = React.useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
-  const [isConnectionWizardOpen, setIsConnectionWizardOpen] = React.useState(false);
   const [cloudSyncModalOpen, setCloudSyncModalOpen] = React.useState(false);
   const [cloudSyncTab, setCloudSyncTab] = React.useState<'sync' | 'config'>('config');
   const { data: cloudSyncStatus } = useCloudSyncStatus(true);
@@ -529,16 +525,6 @@ export function SettingsPage() {
                     <Printer className="h-5 w-5 text-primary" />
                     <CardTitle>إعدادات أجهزة السنتر والطباعة الحرارية (Desktop & Hardware)</CardTitle>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs"
-                    onClick={() => setIsConnectionWizardOpen(true)}
-                  >
-                    <Wifi className="h-3.5 w-3.5" />
-                    <span>معالج إعداد اتصال الشبكة (LAN)</span>
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
@@ -664,46 +650,6 @@ export function SettingsPage() {
                           <Power className="h-3.5 w-3.5" />
                           <span>إيقاف السيرفر</span>
                         </Button>
-                      )}
-                    </div>
-
-                    {/* Local IPs */}
-                    <div className="space-y-2 pt-2 border-t border-border">
-                      <span className="block text-xs font-semibold text-muted-foreground">
-                        عناوين IP المحلية لربط أجهزة الاستقبال (Reception Devices):
-                      </span>
-                      {localIps.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {localIps.map((ip) => {
-                            const url = `http://${ip}:${serverStatus?.port || 4000}`;
-                            return (
-                              <div
-                                key={ip}
-                                className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-xs"
-                              >
-                                <span className="font-mono text-foreground font-semibold" dir="ltr">
-                                  {url}
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-[11px]"
-                                  onClick={() => {
-                                    navigator.clipboard?.writeText(url);
-                                    notify('تم نسخ عنوان السيرفر', 'info');
-                                  }}
-                                >
-                                  نسخ
-                                </Button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">
-                          لم يتم رصد أي عناوين IP نشطة على الشبكة المحلية حالياً.
-                        </p>
                       )}
                     </div>
                   </div>
@@ -873,14 +819,6 @@ export function SettingsPage() {
         open={isResetModalOpen}
         onOpenChange={setIsResetModalOpen}
       />
-
-      {/* Desktop LAN Connection Modal */}
-      {isDesktop && (
-        <DesktopConnectionModal
-          open={isConnectionWizardOpen}
-          onOpenChange={setIsConnectionWizardOpen}
-        />
-      )}
 
       {/* Supabase Cloud Sync Modal */}
       <CloudSyncModal

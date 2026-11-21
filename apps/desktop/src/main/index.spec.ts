@@ -157,6 +157,29 @@ describe('Electron Main Process (index.ts)', () => {
       expect(mockWindow.loadURL).toHaveBeenCalledWith('http://localhost:4000');
     });
 
+    it('auto-heals stale client mode pointing to localhost into server mode and boots directly', async () => {
+      mockContext.storeManager.getConfig = vi.fn().mockReturnValue({
+        serverMode: 'client',
+        serverUrl: 'http://localhost:4000',
+      });
+      mockContext.serverManager.getStatus = vi.fn().mockReturnValue({ running: false });
+
+      const mockWindow = {
+        loadURL: vi.fn().mockResolvedValue(undefined),
+      } as any;
+
+      const mockTestConn = vi.fn().mockResolvedValue({ ok: true });
+
+      await loadAppContent(mockWindow, mockContext, { testConnectionFn: mockTestConn });
+
+      expect(mockContext.storeManager.saveConfig).toHaveBeenCalledWith({
+        serverMode: 'server',
+        serverUrl: 'http://localhost:4000',
+      });
+      expect(mockContext.serverManager.start).toHaveBeenCalled();
+      expect(mockWindow.loadURL).toHaveBeenCalledWith('http://localhost:4000');
+    });
+
     it('in Client Mode: tests connection and loads serverUrl when reachable', async () => {
       mockContext.storeManager.getConfig = vi.fn().mockReturnValue({
         serverMode: 'client',

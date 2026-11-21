@@ -294,6 +294,44 @@ describe('CloudSyncService & CloudSyncController', () => {
     expect(ownerStatus.configured).toBe(false);
   });
 
+  it('auto-populates Supabase configuration from environment defaults when sync-config.json is absent', async () => {
+    const prevAllow = process.env.CLOUD_SYNC_ALLOW_ENV_DEFAULTS;
+    const prevUrl = process.env.SUPABASE_SYNC_URL;
+    const prevKey = process.env.SUPABASE_SYNC_KEY;
+    const prevBucket = process.env.SUPABASE_SYNC_BUCKET;
+
+    process.env.CLOUD_SYNC_ALLOW_ENV_DEFAULTS = 'true';
+    process.env.SUPABASE_SYNC_URL = 'https://auto-center.supabase.co';
+    process.env.SUPABASE_SYNC_KEY = 'auto-service-role-secret-123456';
+    process.env.SUPABASE_SYNC_BUCKET = 'educenter-sync';
+    mockBackupsRepo.getOperationalDatabaseStats.mockResolvedValue(emptyDbStats);
+
+    try {
+      const freshService = new CloudSyncService(
+        mockBackupsService,
+        mockBackupsRepo,
+        mockSupabaseDriver,
+        mockAuditLogsService,
+      );
+      const status = await freshService.getStatus();
+      expect(status.configured).toBe(true);
+      expect(status.enabled).toBe(true);
+      expect(status.supabaseUrl).toBe('https://auto-center.supabase.co');
+      expect(status.bucketName).toBe('educenter-sync');
+      expect(status.hasSupabaseKey).toBe(true);
+      expect(status.state).toBe('REMOTE_EMPTY');
+    } finally {
+      if (prevAllow === undefined) delete process.env.CLOUD_SYNC_ALLOW_ENV_DEFAULTS;
+      else process.env.CLOUD_SYNC_ALLOW_ENV_DEFAULTS = prevAllow;
+      if (prevUrl === undefined) delete process.env.SUPABASE_SYNC_URL;
+      else process.env.SUPABASE_SYNC_URL = prevUrl;
+      if (prevKey === undefined) delete process.env.SUPABASE_SYNC_KEY;
+      else process.env.SUPABASE_SYNC_KEY = prevKey;
+      if (prevBucket === undefined) delete process.env.SUPABASE_SYNC_BUCKET;
+      else process.env.SUPABASE_SYNC_BUCKET = prevBucket;
+    }
+  });
+
   it('completes real HTTP two-device Push & Pull round-trip via SupabaseStorageDriver', async () => {
     const buckets = new Set<string>();
     const objects = new Map<string, Buffer>();

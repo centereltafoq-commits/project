@@ -8,7 +8,6 @@ import { CenterSettingsProvider } from '@/features/settings/center-settings-cont
 import { LoginPage } from '@/features/auth/login-page';
 import { PermissionGuardRoute } from '@/components/permission-guard-route';
 import { ForbiddenPage } from '@/components/forbidden-page';
-import { DesktopConnectionModal } from '@/components/desktop-connection-modal';
 
 const DashboardPage = React.lazy(() =>
   import('@/features/dashboard/dashboard-page').then((m) => ({ default: m.DashboardPage })),
@@ -110,7 +109,6 @@ export function App() {
   return (
     <AuthProvider>
       <CenterSettingsProvider>
-        <DesktopConnectionModal />
         <BrowserRouter>
           <React.Suspense fallback={<PageLoader />}>
             <Routes>

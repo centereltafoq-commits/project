@@ -66,17 +66,56 @@ export class CloudSyncService {
     }
   }
 
+  private getEnvSyncDefaults(): {
+    supabaseUrl: string;
+    supabaseKey: string;
+    bucketName: string;
+  } {
+    const allowEnvDefaults =
+      typeof process.env.VITEST === 'undefined' ||
+      process.env.CLOUD_SYNC_ALLOW_ENV_DEFAULTS === 'true';
+
+    if (!allowEnvDefaults) {
+      return {
+        supabaseUrl: '',
+        supabaseKey: '',
+        bucketName: DEFAULT_BUCKET_NAME,
+      };
+    }
+
+    return {
+      supabaseUrl: (process.env.SUPABASE_SYNC_URL || '').trim(),
+      supabaseKey: (process.env.SUPABASE_SYNC_KEY || '').trim(),
+      bucketName:
+        (process.env.SUPABASE_SYNC_BUCKET || DEFAULT_BUCKET_NAME).trim() ||
+        DEFAULT_BUCKET_NAME,
+    };
+  }
+
   private readLocalConfig(): CloudSyncLocalConfig {
     this.ensureConfigDir();
+    const envDefaults = this.getEnvSyncDefaults();
+
     if (fs.existsSync(this.configFilePath)) {
       try {
         const raw = fs.readFileSync(this.configFilePath, 'utf-8');
         const parsed = JSON.parse(raw) as Partial<CloudSyncLocalConfig>;
-        return {
-          enabled: Boolean(parsed.enabled ?? true),
-          supabaseUrl: String(parsed.supabaseUrl || ''),
-          supabaseKey: String(parsed.supabaseKey || ''),
-          bucketName: String(parsed.bucketName || DEFAULT_BUCKET_NAME),
+        const resolvedUrl = String(parsed.supabaseUrl || envDefaults.supabaseUrl || '');
+        const resolvedKey = String(parsed.supabaseKey || envDefaults.supabaseKey || '');
+        const resolvedBucket = String(
+          parsed.bucketName || envDefaults.bucketName || DEFAULT_BUCKET_NAME,
+        );
+        const resolvedEnabled = Boolean(
+          parsed.enabled !== undefined
+            ? parsed.enabled || (resolvedUrl && resolvedKey && !parsed.supabaseUrl)
+            : resolvedUrl && resolvedKey,
+        );
+
+        const merged: CloudSyncLocalConfig = {
+          enabled: resolvedEnabled,
+          supabaseUrl: resolvedUrl,
+          supabaseKey: resolvedKey,
+          bucketName: resolvedBucket,
           deviceId: String(parsed.deviceId || crypto.randomUUID()),
           deviceName: String(parsed.deviceName || os.hostname() || 'جهاز السنتر'),
           lastSyncedVersion: Number(parsed.lastSyncedVersion || 0),
@@ -86,16 +125,22 @@ export class CloudSyncService {
           lastPushedAt: parsed.lastPushedAt ?? null,
           lastPulledAt: parsed.lastPulledAt ?? null,
         };
+
+        if (!parsed.supabaseUrl && envDefaults.supabaseUrl && envDefaults.supabaseKey) {
+          this.writeLocalConfigAtomic(merged);
+        }
+        return merged;
       } catch (err: any) {
         this.logger.warn(`Failed parsing sync-config.json, resetting defaults: ${err?.message}`);
       }
     }
 
+    const hasEnvDefaults = Boolean(envDefaults.supabaseUrl && envDefaults.supabaseKey);
     const initial: CloudSyncLocalConfig = {
-      enabled: false,
-      supabaseUrl: '',
-      supabaseKey: '',
-      bucketName: DEFAULT_BUCKET_NAME,
+      enabled: hasEnvDefaults,
+      supabaseUrl: envDefaults.supabaseUrl,
+      supabaseKey: envDefaults.supabaseKey,
+      bucketName: envDefaults.bucketName,
       deviceId: crypto.randomUUID(),
       deviceName: os.hostname() || 'جهاز السنتر',
       lastSyncedVersion: 0,

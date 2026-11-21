@@ -123,6 +123,22 @@ export function CloudSyncModal({
     }
   };
 
+  const handleQuickDeviceSelect = async (nextName: string) => {
+    if (!status?.supabaseUrl) return;
+    try {
+      const res = await saveConfigMutation.mutateAsync({
+        deviceName: nextName,
+        supabaseUrl: status.supabaseUrl,
+        bucketName: status.bucketName || 'educenter-sync',
+        enabled: true,
+      });
+      setDeviceName(nextName);
+      notify(res.message, 'success');
+    } catch (err) {
+      notify(extractErrorMessage(err), 'error');
+    }
+  };
+
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deviceName.trim()) {
@@ -343,6 +359,31 @@ export function CloudSyncModal({
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">اسم الجهاز:</span>
                           <span className="font-bold text-foreground">{status.deviceName}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                          <span className="text-[11px] text-muted-foreground">تبديل سريع للهوية:</span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={status.deviceName.includes('الأسستنت') ? 'primary' : 'outline'}
+                            className="h-6 px-2 text-[11px] gap-1"
+                            disabled={isBusy}
+                            onClick={() => handleQuickDeviceSelect('جهاز السنتر الرئيسي (الأسستنت)')}
+                          >
+                            <Server className="h-3 w-3" />
+                            <span>جهاز السنتر (الأسستنت)</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={status.deviceName.includes('المدير') ? 'primary' : 'outline'}
+                            className="h-6 px-2 text-[11px] gap-1"
+                            disabled={isBusy}
+                            onClick={() => handleQuickDeviceSelect('جهاز المدير (المتابعة والإدارة)')}
+                          >
+                            <Laptop className="h-3 w-3" />
+                            <span>جهاز المدير</span>
+                          </Button>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">آخر إصدار متزامن:</span>

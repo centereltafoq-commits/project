@@ -377,11 +377,21 @@ export async function loadAppContent(
   const { storeManager, serverManager } = context;
   const config = storeManager.getConfig();
   const testConn = options?.testConnectionFn || testServerConnection;
+  const targetUrl = config.serverUrl || 'http://localhost:4000';
+  const isLocalTarget =
+    !config.serverUrl ||
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(config.serverUrl.trim());
 
-  if (config.serverMode === 'server') {
-    // 1. Server Mode: ensure local NestJS API is started & LAN discovery announces it
+  if (config.serverMode === 'server' || isLocalTarget) {
+    if (config.serverMode !== 'server') {
+      try {
+        storeManager.saveConfig({ serverMode: 'server', serverUrl: targetUrl });
+      } catch {}
+    }
+
+    // 1. Server Mode: ensure local NestJS API is started directly
     const status = serverManager.getStatus();
-    const serverUrl = config.serverUrl || 'http://localhost:4000';
+    const serverUrl = targetUrl;
     if (!status.running) {
       const startResult = await serverManager.start();
       if (startResult && startResult.success === false) {
@@ -436,7 +446,6 @@ export async function loadAppContent(
       // Ignore responder stop errors
     }
 
-    const targetUrl = config.serverUrl || 'http://localhost:4000';
     const connection = await testConn(targetUrl, 3000);
 
     if (connection.ok) {

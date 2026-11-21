@@ -4,7 +4,6 @@ import {
   BookOpen,
   CloudDownload,
   GraduationCap,
-  Laptop,
   Loader2,
   LogOut,
   Menu,
@@ -12,7 +11,6 @@ import {
   PanelRightClose,
   PanelRightOpen,
   RotateCw,
-  Server,
   Sun,
   X,
 } from 'lucide-react';
@@ -22,7 +20,6 @@ import { cn } from '@/lib/cn';
 import { useAuth } from '@/features/auth/auth-context';
 import { useCenterSettings } from '@/features/settings/center-settings-context';
 import { useDesktop } from '@/hooks/use-desktop';
-import { DesktopConnectionModal } from '@/components/desktop-connection-modal';
 import { DesktopUpdateModal } from '@/components/desktop-update-panel';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { HeaderCloudSyncButton } from '@/components/header-cloud-sync-button';
@@ -32,8 +29,7 @@ export function AppLayout() {
   const location = useLocation();
   const { user, isLoading, logout, hasPermission } = useAuth();
   const { settings } = useCenterSettings();
-  const { isDesktop, config: desktopConfig, serverStatus, updateStatus } = useDesktop();
-  const [desktopModalOpen, setDesktopModalOpen] = React.useState(false);
+  const { isDesktop, updateStatus } = useDesktop();
   const [updateModalOpen, setUpdateModalOpen] = React.useState(false);
   const [logoError, setLogoError] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -335,29 +331,6 @@ export function AppLayout() {
               </button>
             )}
 
-            {isDesktop && (
-              <button
-                type="button"
-                onClick={() => setDesktopModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-accent hover:text-accent-foreground px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm transition-colors"
-                title="إعدادات السيرفر والربط عبر الشبكة المحلية (LAN)"
-                data-testid="header-desktop-lan-btn"
-              >
-                {desktopConfig?.serverMode === 'server' ? (
-                  <Server className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                ) : (
-                  <Laptop className="h-3.5 w-3.5 text-primary shrink-0" />
-                )}
-                <span className="hidden md:inline">
-                  {desktopConfig?.serverMode === 'server'
-                    ? serverStatus?.running
-                      ? 'سيرفر رئيسي (نشط)'
-                      : 'سيرفر رئيسي'
-                    : 'متصل بالشبكة'}
-                </span>
-              </button>
-            )}
-
             {/* Creator Branding Badge */}
             <div
               className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs text-muted-foreground select-none"
@@ -396,13 +369,6 @@ export function AppLayout() {
           </ErrorBoundary>
         </main>
       </div>
-
-      {isDesktop && desktopModalOpen && (
-        <DesktopConnectionModal
-          open={desktopModalOpen}
-          onOpenChange={setDesktopModalOpen}
-        />
-      )}
 
       {isDesktop && updateModalOpen && (
         <DesktopUpdateModal

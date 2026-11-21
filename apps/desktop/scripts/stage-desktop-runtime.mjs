@@ -237,6 +237,39 @@ async function stageRuntime() {
   copyDirClean(path.join(apiDir, 'drizzle'), path.join(targetApiDir, 'drizzle'));
   fs.copyFileSync(path.join(apiDir, 'package.json'), path.join(targetApiDir, 'package.json'));
 
+  const envFile = path.join(apiDir, '.env');
+  const parsedEnv = {};
+  if (fs.existsSync(envFile)) {
+    for (const rawLine of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eq = line.indexOf('=');
+      if (eq > 0) {
+        parsedEnv[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+      }
+    }
+  }
+  const syncUrl = process.env.SUPABASE_SYNC_URL || parsedEnv.SUPABASE_SYNC_URL || '';
+  const syncKey = process.env.SUPABASE_SYNC_KEY || parsedEnv.SUPABASE_SYNC_KEY || '';
+  const syncBucket =
+    process.env.SUPABASE_SYNC_BUCKET || parsedEnv.SUPABASE_SYNC_BUCKET || 'educenter-sync';
+  if (syncUrl && syncKey) {
+    fs.writeFileSync(
+      path.join(targetApiDir, 'cloud-sync-defaults.json'),
+      JSON.stringify(
+        {
+          SUPABASE_SYNC_URL: syncUrl,
+          SUPABASE_SYNC_KEY: syncKey,
+          SUPABASE_SYNC_BUCKET: syncBucket,
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    );
+    console.log('[Stage] Staged Supabase cloud-sync-defaults.json into desktop app-runtime.');
+  }
+
   const trigramSrc = path.join(apiDir, 'src', 'database', 'indexes', 'trigram-indexes.sql');
   if (fs.existsSync(trigramSrc)) {
     for (const relDest of [

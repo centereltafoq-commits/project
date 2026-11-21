@@ -182,7 +182,7 @@ describe('SettingsPage Component', () => {
       screen.getByText('تفعيل الطباعة الصامتة المباشرة لإيصالات السداد (بدون نافذة المتصفح)'),
     ).toBeInTheDocument();
     expect(screen.getByText('يعمل (منفذ 4000)')).toBeInTheDocument();
-    expect(screen.getByText('http://192.168.1.15:4000')).toBeInTheDocument();
+    expect(screen.queryByText(/معالج إعداد اتصال الشبكة/i)).not.toBeInTheDocument();
 
     // Toggle direct printing
     const toggleCheckbox = screen.getByLabelText(
