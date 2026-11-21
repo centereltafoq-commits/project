@@ -31,7 +31,7 @@ export interface DesktopConfig {
  * Standard default configuration applied on first installation or after reset.
  */
 export const DEFAULT_CONFIG: DesktopConfig = {
-  serverMode: 'client',
+  serverMode: 'server',
   serverUrl: 'http://localhost:4000',
   directPrintEnabled: true,
   keepRunningInTray: true,
@@ -143,12 +143,16 @@ export class StoreManager {
         }
       : { ...(this.config.updateSettings || DEFAULT_CONFIG.updateSettings) };
 
+    const updateKeys = Object.keys(updates);
+    const isBoundsOnly =
+      updateKeys.length > 0 && updateKeys.every((key) => key === 'windowBounds');
+
     this.config = {
       ...this.config,
       ...updates,
       updateSettings: updatedUpdateSettings,
       windowBounds: updatedWindowBounds,
-      isFirstLaunch: false,
+      isFirstLaunch: isBoundsOnly ? this.config.isFirstLaunch : false,
     };
 
     try {

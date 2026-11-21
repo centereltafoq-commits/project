@@ -25,6 +25,7 @@ import { useDesktop } from '@/hooks/use-desktop';
 import { DesktopConnectionModal } from '@/components/desktop-connection-modal';
 import { DesktopUpdateModal } from '@/components/desktop-update-panel';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { HeaderCloudSyncButton } from '@/components/header-cloud-sync-button';
 import { SIDEBAR_NAV_ITEMS } from './nav-items';
 
 export function AppLayout() {
@@ -292,6 +293,9 @@ export function AppLayout() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Prominent Cloud Sync (Push & Pull via Supabase) */}
+            <HeaderCloudSyncButton />
+
             {/* Desktop Auto-Update Button (always accessible in desktop mode) */}
             {isDesktop && (
               <button

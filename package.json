@@ -20,6 +20,7 @@
     "dev:desktop": "npm run --workspace=@edu-center/desktop dev",
     "pack:desktop": "npm run --workspace=@edu-center/desktop pack:win",
     "dist:win": "npm run build && npm run build:desktop && npm run pack:desktop",
+    "dist:win:portable": "npm run build && npm run build:desktop && npm run --workspace=@edu-center/desktop pack:portable",
     "release:win": "npm run build && npm run build:desktop && npm run --workspace=@edu-center/desktop stage && npx --workspace=@edu-center/desktop electron-builder --win --x64 --publish always",
     "db:migrate": "npm run db:migrate --workspace=@edu-center/api",
     "db:seed": "npm run db:seed --workspace=@edu-center/api",

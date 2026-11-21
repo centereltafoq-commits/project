@@ -120,4 +120,31 @@ describe('UpdateManager (GitHub Releases Auto-Update)', () => {
     expect(onBeforeInstallQuit).toHaveBeenCalledTimes(1);
     expect(mockUpdater.quitAndInstall).toHaveBeenCalledWith(false, true);
   });
+
+  it('disables auto-updates cleanly when running as a Windows portable executable', async () => {
+    const prevPortable = process.env.PORTABLE_EXECUTABLE_FILE;
+    process.env.PORTABLE_EXECUTABLE_FILE = 'C:\\Users\\Client\\Desktop\\EduCenter-ERP-Portable-1.0.0.exe';
+    try {
+      const manager = new UpdateManager({
+        storeManager: mockStore,
+        autoUpdaterFactory: () => mockUpdater,
+      });
+
+      expect(manager.getStatus()).toMatchObject({
+        state: 'UNCONFIGURED',
+        isConfigured: false,
+      });
+
+      const res = await manager.checkForUpdates();
+      expect(res.state).toBe('UNCONFIGURED');
+      expect(res.error).toContain('النسخة المحمولة');
+      expect(mockUpdater.checkForUpdates).not.toHaveBeenCalled();
+    } finally {
+      if (prevPortable === undefined) {
+        delete process.env.PORTABLE_EXECUTABLE_FILE;
+      } else {
+        process.env.PORTABLE_EXECUTABLE_FILE = prevPortable;
+      }
+    }
+  });
 });

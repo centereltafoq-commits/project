@@ -99,6 +99,10 @@ export class UpdateManager {
     };
   }
 
+  private isPortableRuntime(): boolean {
+    return Boolean(process.env.PORTABLE_EXECUTABLE_FILE);
+  }
+
   private resolveTargetRepo(): {
     isConfigured: boolean;
     owner: string;
@@ -108,6 +112,14 @@ export class UpdateManager {
       this.options.storeManager.getConfig().updateSettings;
     const customOwner = cfgSettings?.githubOwner?.trim() || '';
     const customRepo = cfgSettings?.githubRepo?.trim() || '';
+
+    if (this.isPortableRuntime()) {
+      return {
+        isConfigured: false,
+        owner: customOwner || DEFAULT_GITHUB_OWNER,
+        repo: customRepo || DEFAULT_GITHUB_REPO,
+      };
+    }
 
     if (customOwner && customRepo) {
       return { isConfigured: true, owner: customOwner, repo: customRepo };
@@ -220,6 +232,13 @@ export class UpdateManager {
   }
 
   public async checkForUpdates(): Promise<DesktopUpdateStatus> {
+    if (this.isPortableRuntime()) {
+      return this.emitStatus({
+        state: 'UNCONFIGURED',
+        error: 'التحديث التلقائي متاح في نسخة التثبيت فقط — النسخة المحمولة تعمل بشكل مستقل بدون تثبيت',
+      });
+    }
+
     const resolved = this.resolveTargetRepo();
     if (!resolved.isConfigured) {
       return this.emitStatus({

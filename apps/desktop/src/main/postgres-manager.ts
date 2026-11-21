@@ -29,6 +29,72 @@ async function runPostgresCommand(file: string, args: string[]): Promise<void> {
 
 export type DatabaseSource = 'external' | 'portable' | 'none';
 
+export function hasNonAsciiChars(targetPath: string): boolean {
+  return /[^\x00-\x7F]/.test(targetPath);
+}
+
+export function getSafeAsciiRootDir(): string {
+  return path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'EduCenter-ERP');
+}
+
+/**
+ * Ensures PostgreSQL's `pgdata` directory stays on a pure ASCII path so `initdb.exe` and
+ * `postgres.exe` never fail on Windows machines with Arabic user account names.
+ */
+export function resolveSafePgDataDir(
+  baseDataDir: string,
+  asciiRootDir = getSafeAsciiRootDir(),
+): string {
+  if (!hasNonAsciiChars(baseDataDir)) {
+    return path.join(baseDataDir, 'pgdata');
+  }
+  return path.join(asciiRootDir, 'pgdata');
+}
+
+/**
+ * Exposes a bundled `pgsql` folder located under a non-ASCII/Arabic folder via an ASCII
+ * NTFS junction (or fallback copy) under `C:\Users\Public\EduCenter-ERP\pgsql-runtime`.
+ */
+export function resolveAsciiSafePostgresDir(
+  portableDir: string,
+  asciiRootDir = getSafeAsciiRootDir(),
+): string {
+  if (!hasNonAsciiChars(portableDir)) {
+    return portableDir;
+  }
+
+  fs.mkdirSync(asciiRootDir, { recursive: true });
+  const safeDir = path.join(asciiRootDir, 'pgsql-runtime');
+  const resolvedSource = path.resolve(portableDir);
+
+  if (fs.existsSync(safeDir)) {
+    try {
+      const stat = fs.lstatSync(safeDir);
+      if (stat.isSymbolicLink() && path.resolve(fs.realpathSync(safeDir)) === resolvedSource) {
+        return safeDir;
+      }
+    } catch {
+      // Recreate broken link or stale directory below
+    }
+    try {
+      fs.rmSync(safeDir, { recursive: true, force: true });
+    } catch {
+      // If active lock exists, return existing safe runtime if pg_ctl.exe is already present
+      if (fs.existsSync(path.join(safeDir, 'bin', 'pg_ctl.exe'))) {
+        return safeDir;
+      }
+    }
+  }
+
+  try {
+    fs.symlinkSync(portableDir, safeDir, 'junction');
+    return safeDir;
+  } catch {
+    fs.cpSync(portableDir, safeDir, { recursive: true, force: true });
+    return safeDir;
+  }
+}
+
 export interface DatabaseStatus {
   running: boolean;
   source: DatabaseSource;
@@ -80,12 +146,15 @@ export class PostgresManager {
   private readonly execFileFn: (file: string, args: string[]) => Promise<unknown>;
 
   private startedPortable = false;
+  private resolvedPortableDir: string | null = null;
   private status: DatabaseStatus;
 
   constructor(options?: PostgresManagerOptions) {
-    this.port = options?.port ?? 5432;
+    this.port =
+      options?.port ??
+      (resolvePortablePostgresDir() && !process.env.DATABASE_URL ? 5439 : 5432);
     const baseDataDir = options?.dataDir ?? resolveDesktopDataDir();
-    this.pgDataDir = path.join(baseDataDir, 'pgdata');
+    this.pgDataDir = resolveSafePgDataDir(baseDataDir);
     this.portableDirOverride = options?.portableDir;
     this.tcpProbeFn = options?.tcpProbeFn ?? probeTcpPort;
     this.execFileFn = options?.execFileFn ?? runPostgresCommand;
@@ -105,6 +174,16 @@ export class PostgresManager {
       return this.portableDirOverride;
     }
     return resolvePortablePostgresDir();
+  }
+
+  public getResolvedPortableDir(): string | null {
+    const portableDir = this.getPortableDir();
+    if (!portableDir) {
+      this.resolvedPortableDir = null;
+      return null;
+    }
+    this.resolvedPortableDir = resolveAsciiSafePostgresDir(portableDir);
+    return this.resolvedPortableDir;
   }
 
   private buildDefaultDatabaseUrl(): string {
@@ -127,7 +206,7 @@ export class PostgresManager {
       return this.getStatus();
     }
 
-    const portableDir = this.getPortableDir();
+    const portableDir = this.getResolvedPortableDir();
     if (!portableDir) {
       this.status = {
         running: false,
@@ -145,6 +224,18 @@ export class PostgresManager {
 
     try {
       fs.mkdirSync(this.pgDataDir, { recursive: true });
+      const pidFile = path.join(this.pgDataDir, 'postmaster.pid');
+      if (fs.existsSync(pidFile)) {
+        try {
+          fs.unlinkSync(pidFile);
+          console.warn(
+            '[PostgresManager] Removed stale postmaster.pid left from an unclean shutdown.',
+          );
+        } catch {
+          // Non-fatal: pg_ctl will report exact lock state if still held
+        }
+      }
+
       if (!fs.existsSync(path.join(this.pgDataDir, 'PG_VERSION'))) {
         await this.execFileFn(initDbExe, [
           '-D',
@@ -197,7 +288,7 @@ export class PostgresManager {
    */
   public async stop(): Promise<void> {
     if (!this.startedPortable) return;
-    const portableDir = this.getPortableDir();
+    const portableDir = this.getResolvedPortableDir();
     if (!portableDir) return;
 
     const pgCtlExe = path.join(portableDir, 'bin', 'pg_ctl.exe');

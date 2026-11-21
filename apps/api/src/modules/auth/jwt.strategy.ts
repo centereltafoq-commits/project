@@ -30,7 +30,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    const user = await this.usersRepository.findByIdWithRole(payload.sub);
+    const byId = await this.usersRepository.findByIdWithRole(payload.sub);
+    const user =
+      byId ??
+      (payload.email ? await this.usersRepository.findByEmailWithRole(payload.email) : null);
     if (!user || !user.isActive) {
       throw new UnauthorizedException('الحساب غير نشط أو غير مصرح له');
     }

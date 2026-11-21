@@ -105,6 +105,7 @@ export class TrayManager {
         app.setLoginItemSettings({
           openAtLogin: Boolean(enabled),
           openAsHidden: true,
+          path: process.env.PORTABLE_EXECUTABLE_FILE || process.execPath,
         });
       }
     } catch (err) {

@@ -23,7 +23,7 @@ describe('StoreManager', () => {
     const store = new StoreManager(tempFile);
     const config = store.getConfig();
 
-    expect(config.serverMode).toBe('client');
+    expect(config.serverMode).toBe('server');
     expect(config.serverUrl).toBe('http://localhost:4000');
     expect(config.directPrintEnabled).toBe(true);
     expect(config.isFirstLaunch).toBe(true);
@@ -100,14 +100,14 @@ describe('StoreManager', () => {
 
     const resetConfig = store.resetConfig();
 
-    expect(resetConfig.serverMode).toBe('client');
+    expect(resetConfig.serverMode).toBe('server');
     expect(resetConfig.serverUrl).toBe('http://localhost:4000');
     expect(resetConfig.isFirstLaunch).toBe(true);
     expect(fs.existsSync(tempFile)).toBe(false);
 
     // Verify reloading after reset yields defaults
     const reloaded = new StoreManager(tempFile);
-    expect(reloaded.getConfig().serverMode).toBe('client');
+    expect(reloaded.getConfig().serverMode).toBe('server');
     expect(reloaded.getConfig().isFirstLaunch).toBe(true);
   });
 
@@ -116,22 +116,32 @@ describe('StoreManager', () => {
     store.saveConfig({ defaultThermalPrinter: 'XP-80' });
 
     expect(store.getConfig().defaultThermalPrinter).toBe('XP-80');
-    expect(store.getConfig().serverMode).toBe('client');
+    expect(store.getConfig().serverMode).toBe('server');
     expect(store.getConfig().serverUrl).toBe('http://localhost:4000');
 
-    store.saveConfig({ serverMode: 'server' });
+    store.saveConfig({ serverMode: 'client' });
     expect(store.getConfig().defaultThermalPrinter).toBe('XP-80');
-    expect(store.getConfig().serverMode).toBe('server');
+    expect(store.getConfig().serverMode).toBe('client');
+  });
+
+  it('preserves isFirstLaunch when saving windowBounds only', () => {
+    const store = new StoreManager(tempFile);
+    expect(store.getConfig().isFirstLaunch).toBe(true);
+
+    const afterBounds = store.saveConfig({
+      windowBounds: { width: 1366, height: 768, x: 0, y: 0 },
+    });
+    expect(afterBounds.isFirstLaunch).toBe(true);
   });
 
   it('returns cloned copy of config to prevent external direct mutations', () => {
     const store = new StoreManager(tempFile);
     const config1 = store.getConfig();
-    config1.serverMode = 'server';
+    config1.serverMode = 'client';
     config1.windowBounds.width = 9999;
 
     const config2 = store.getConfig();
-    expect(config2.serverMode).toBe('client');
+    expect(config2.serverMode).toBe('server');
     expect(config2.windowBounds.width).toBe(1280);
   });
 });

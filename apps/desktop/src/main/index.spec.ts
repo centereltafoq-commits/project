@@ -50,7 +50,14 @@ vi.mock('electron', () => {
 });
 
 import { app, BrowserWindow } from 'electron';
-import { createMainWindow, getConnectionSetupFallbackHtml, loadAppContent, setupApp, AppContext } from './index';
+import {
+  createMainWindow,
+  getConnectionSetupFallbackHtml,
+  getStartupSplashHtml,
+  loadAppContent,
+  setupApp,
+  AppContext,
+} from './index';
 
 describe('Electron Main Process (index.ts)', () => {
   let mockContext: AppContext;
@@ -115,6 +122,18 @@ describe('Electron Main Process (index.ts)', () => {
       expect(mockContext.storeManager.saveConfig).toHaveBeenCalledWith({
         windowBounds: { width: 1280, height: 850, x: 10, y: 10 },
       });
+    });
+
+    it('loads the Arabic startup splash screen and shows the window immediately before connecting', async () => {
+      const window: any = await createMainWindow(mockContext, {
+        testConnectionFn: vi.fn().mockResolvedValue({ ok: true }),
+      });
+
+      const splashUrl = getStartupSplashHtml();
+      expect(decodeURIComponent(splashUrl)).toContain('جاري تشغيل النظام وتجهيز قاعدة البيانات');
+      expect(window.show).toHaveBeenCalled();
+      expect(window.loadURL.mock.calls[0][0]).toBe(splashUrl);
+      expect(window.loadURL.mock.calls[1][0]).toBe('http://localhost:4000');
     });
   });
 

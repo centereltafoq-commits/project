@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from 'child_process';
 import * as path from 'path';
 import { testServerConnection } from './network-utils';
-import { DatabaseStatus, PostgresManager } from './postgres-manager';
+import { DatabaseStatus, PostgresManager, resolveAsciiSafePostgresDir } from './postgres-manager';
 import {
   ensureRuntimeSecrets,
   resolveApiDistPath,
@@ -53,6 +53,7 @@ export class ServerManager {
   private onRunningChange?: (running: boolean) => void;
   private startTime: number | null = null;
   private lastError?: string;
+  private lastStderrLine?: string;
 
   constructor(options?: ServerManagerOptions) {
     this.apiDistPath = options?.apiDistPath
@@ -92,6 +93,7 @@ export class ServerManager {
 
     try {
       this.lastError = undefined;
+      this.lastStderrLine = undefined;
 
       let managedDbUrl: string | undefined;
       if (this.postgresManager) {
@@ -130,8 +132,11 @@ export class ServerManager {
       if (!env.STORAGE_ROOT_DIR) {
         env.STORAGE_ROOT_DIR = desktopDataDir;
       }
-      if (portablePgDir && !env.PG_BIN_DIR) {
-        env.PG_BIN_DIR = path.join(portablePgDir, 'bin');
+      const effectivePgDir =
+        this.postgresManager?.getResolvedPortableDir?.() ??
+        (portablePgDir ? resolveAsciiSafePostgresDir(portablePgDir) : null);
+      if (effectivePgDir && !env.PG_BIN_DIR) {
+        env.PG_BIN_DIR = path.join(effectivePgDir, 'bin');
       }
       if (managedDbUrl && !env.DATABASE_URL) {
         env.DATABASE_URL = managedDbUrl;
@@ -172,6 +177,10 @@ export class ServerManager {
       child.stderr?.on('data', (data: Buffer | string) => {
         const line = data.toString().trim();
         if (line) {
+          const lastLine = line.split(/\r?\n/).filter(Boolean).pop();
+          if (lastLine) {
+            this.lastStderrLine = lastLine.slice(0, 240);
+          }
           console.error(`[API-Server-Err] ${line}`);
         }
       });
@@ -186,7 +195,9 @@ export class ServerManager {
 
       child.on('exit', (code: number | null, signal: NodeJS.Signals | string | null) => {
         if (code !== null && code !== 0) {
-          this.lastError = `Process exited with code ${code}`;
+          this.lastError = this.lastStderrLine
+            ? `Process exited with code ${code}: ${this.lastStderrLine}`
+            : `Process exited with code ${code}`;
         } else if (signal && signal !== 'SIGTERM') {
           this.lastError = `Process terminated by signal ${signal}`;
         }

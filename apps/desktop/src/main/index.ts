@@ -29,6 +29,62 @@ export interface LoadOptions {
 }
 
 /**
+ * Instant Arabic splash page displayed as soon as the Electron window opens so the user
+ * never sees a blank/hidden startup while PostgreSQL and NestJS initialize in the background.
+ */
+export function getStartupSplashHtml(): string {
+  const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <title>EduCenter ERP - جاري التشغيل</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #0f172a 100%);
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .box {
+      text-align: center;
+      max-width: 420px;
+      padding: 40px 32px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+    }
+    .spinner {
+      width: 46px;
+      height: 46px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      border: 4px solid rgba(96, 165, 250, 0.25);
+      border-top-color: #60a5fa;
+      animation: spin 0.85s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h1 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+    p { font-size: 14px; line-height: 1.7; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner"></div>
+    <h1>EduCenter ERP</h1>
+    <p>جاري تشغيل النظام وتجهيز قاعدة البيانات والخادم المحلي...<br>يرجى الانتظار لحظات</p>
+  </div>
+</body>
+</html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
+/**
  * Builds a self-contained Arabic HTML recovery & connection wizard page
  * displayed when client mode cannot reach the central center server.
  */
@@ -325,8 +381,18 @@ export async function loadAppContent(
   if (config.serverMode === 'server') {
     // 1. Server Mode: ensure local NestJS API is started & LAN discovery announces it
     const status = serverManager.getStatus();
+    const serverUrl = config.serverUrl || 'http://localhost:4000';
     if (!status.running) {
-      await serverManager.start();
+      const startResult = await serverManager.start();
+      if (startResult && startResult.success === false) {
+        await window.loadURL(
+          getConnectionSetupFallbackHtml(
+            serverUrl,
+            startResult.error || 'تعذر بدء تشغيل السيرفر المحلي للسنتر',
+          ),
+        );
+        return;
+      }
     }
 
     try {
@@ -335,14 +401,17 @@ export async function loadAppContent(
       console.warn('[App] LAN discovery responder start skipped:', err);
     }
 
-    const serverUrl = config.serverUrl || 'http://localhost:4000';
     let isReady = false;
 
     // Retry checking health while PostgreSQL + NestJS + Drizzle bootstrap settle
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 25; i++) {
       const health = await testConn(serverUrl, 1500);
       if (health.ok) {
         isReady = true;
+        break;
+      }
+      const curStatus = serverManager.getStatus();
+      if (!curStatus.running && curStatus.error) {
         break;
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -351,14 +420,13 @@ export async function loadAppContent(
     if (isReady) {
       await window.loadURL(serverUrl);
     } else {
-      window.loadURL(serverUrl).catch(() => {
-        window.loadURL(
-          getConnectionSetupFallbackHtml(
-            serverUrl,
-            'جاري بدء تشغيل السيرفر المحلي للسنتر...',
-          ),
-        );
-      });
+      await window.loadURL(
+        getConnectionSetupFallbackHtml(
+          serverUrl,
+          serverManager.getStatus().error ||
+            'استغرق بدء تشغيل السيرفر وقتاً أطول من المعتاد — اضغط "فحص الاتصال" للمتابعة',
+        ),
+      );
     }
   } else {
     // 2. Client Mode: stop any LAN broadcast and test connection to remote server
@@ -470,6 +538,11 @@ export async function createMainWindow(
       context.updateManager?.syncConfiguration();
     },
   });
+
+  await mainWindow.loadURL(getStartupSplashHtml());
+  if (typeof mainWindow.show === 'function') {
+    mainWindow.show();
+  }
 
   await loadAppContent(mainWindow, context, options);
 

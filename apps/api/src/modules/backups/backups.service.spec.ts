@@ -212,9 +212,18 @@ describe('BackupsService - Upload & Integrity', () => {
     ).rejects.toThrow(/لا يمكن استعادة نسخة احتياطية غير مكتملة أو فاشلة/);
   });
 
-  it('upgrades DROP TABLE IF EXISTS statements to CASCADE during restore prep', () => {
-    const sql = 'DROP TABLE IF EXISTS public.system_settings;\nCREATE TABLE public.system_settings ();';
+  it('upgrades DROP TABLE IF EXISTS and schema statements safely during restore prep', () => {
+    const sql = [
+      'SET transaction_timeout = 0;',
+      'DROP SCHEMA IF EXISTS drizzle;',
+      'CREATE SCHEMA drizzle;',
+      'DROP TABLE IF EXISTS public.system_settings;',
+      'CREATE TABLE public.system_settings ();',
+    ].join('\n');
     const prepared = (service as any).prepareRestoreSql(sql);
+    expect(prepared).not.toContain('transaction_timeout');
+    expect(prepared).toContain('DROP SCHEMA IF EXISTS drizzle CASCADE;');
+    expect(prepared).toContain('CREATE SCHEMA IF NOT EXISTS drizzle;');
     expect(prepared).toContain('DROP TABLE IF EXISTS public.system_settings CASCADE;');
   });
 

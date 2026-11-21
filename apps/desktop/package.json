@@ -12,6 +12,7 @@
     "test": "vitest run",
     "stage": "node scripts/stage-desktop-runtime.mjs",
     "pack:win": "npm run stage && electron-builder --win --x64",
+    "pack:portable": "npm run stage && electron-builder --win portable --x64",
     "prepare:postgres": "powershell -ExecutionPolicy Bypass -File scripts/prepare-portable-postgres.ps1"
   },
   "dependencies": {

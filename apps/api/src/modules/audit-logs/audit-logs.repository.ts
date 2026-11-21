@@ -29,6 +29,7 @@ const ENTITY_TYPE_ALIASES: Record<string, string[]> = {
   CLASSROOM_MAINTENANCE: ['classroom_maintenance', 'CLASSROOM_MAINTENANCE'],
   GRADE_LEVEL: ['grade_level', 'GRADE_LEVEL', 'grade_levels', 'GRADE_LEVELS'],
   BACKUP: ['backup', 'BACKUP', 'backups', 'BACKUPS'],
+  CLOUD_SYNC: ['cloud_sync', 'CLOUD_SYNC'],
   SETTINGS: ['settings', 'SETTINGS', 'system', 'SYSTEM'],
   SYSTEM: ['settings', 'SETTINGS', 'system', 'SYSTEM'],
   STUDENT: ['student', 'STUDENT', 'students', 'STUDENTS'],
@@ -47,17 +48,37 @@ export class AuditLogsRepository {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
 
   async insert(input: CreateAuditLogInput): Promise<void> {
-    await this.db.insert(auditLogs).values({
-      actorUserId: input.actorUserId ?? null,
-      actorName: input.actorName ?? null,
-      action: input.action,
-      entityType: input.entityType,
-      entityId: input.entityId ?? null,
-      beforeData: input.beforeData ?? null,
-      afterData: input.afterData ?? null,
-      metadata: input.metadata ?? null,
-      ipAddress: input.ipAddress ?? null,
-    });
+    try {
+      await this.db.insert(auditLogs).values({
+        actorUserId: input.actorUserId ?? null,
+        actorName: input.actorName ?? null,
+        action: input.action,
+        entityType: input.entityType,
+        entityId: input.entityId ?? null,
+        beforeData: input.beforeData ?? null,
+        afterData: input.afterData ?? null,
+        metadata: input.metadata ?? null,
+        ipAddress: input.ipAddress ?? null,
+      });
+    } catch (err: any) {
+      // If actorUserId references a user UUID that changed during a cross-device DB restore, preserve actorName safely
+      const pgCode = err?.code || err?.cause?.code;
+      if (pgCode === '23503' && input.actorUserId) {
+        await this.db.insert(auditLogs).values({
+          actorUserId: null,
+          actorName: input.actorName ?? null,
+          action: input.action,
+          entityType: input.entityType,
+          entityId: input.entityId ?? null,
+          beforeData: input.beforeData ?? null,
+          afterData: input.afterData ?? null,
+          metadata: input.metadata ?? null,
+          ipAddress: input.ipAddress ?? null,
+        });
+        return;
+      }
+      throw err;
+    }
   }
 
   async findPaginated(query: AuditLogQueryDto) {

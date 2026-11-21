@@ -121,6 +121,26 @@ export class BackupsService {
     return record;
   }
 
+  getStorageDir(): string {
+    return this.storageDir;
+  }
+
+  validateBackupBuffer(buffer: Buffer, expectGzipExtension = true): Buffer {
+    return this.normalizeAndValidateBackupBuffer(buffer, expectGzipExtension);
+  }
+
+  async restoreDatabaseFromCloudSnapshot(filePath: string): Promise<void> {
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException('ملف النسخة السحابية غير موجود للمعالجة');
+    }
+    const fileBytes = fs.readFileSync(filePath);
+    if (fileBytes.length === 0) {
+      throw new BadRequestException('ملف النسخة السحابية فارغ أو تالف');
+    }
+    this.normalizeAndValidateBackupBuffer(fileBytes, true);
+    await this.restoreDatabase(filePath);
+  }
+
   async createBackup(
     triggerType: 'MANUAL' | 'SCHEDULED' = 'MANUAL',
     actor?: AuthenticatedUser,
@@ -574,10 +594,20 @@ export class BackupsService {
   }
 
   private prepareRestoreSql(rawSql: string): string {
-    return rawSql.replace(
-      /\bDROP TABLE IF EXISTS\s+((?:"[^"]+"|[^\s;])+(?:\.(?:"[^"]+"|[^\s;])+)?)\s*;/gi,
-      'DROP TABLE IF EXISTS $1 CASCADE;',
-    );
+    return rawSql
+      .replace(/^\s*SET\s+transaction_timeout\s*=[^;]*;\s*$/gim, '')
+      .replace(
+        /\bDROP TABLE IF EXISTS\s+((?:"[^"]+"|[^\s;])+(?:\.(?:"[^"]+"|[^\s;])+)?)\s*;/gi,
+        'DROP TABLE IF EXISTS $1 CASCADE;',
+      )
+      .replace(
+        /\bDROP SCHEMA IF EXISTS\s+((?:"[^"]+"|[^\s;])+)\s*;/gi,
+        'DROP SCHEMA IF EXISTS $1 CASCADE;',
+      )
+      .replace(
+        /\bCREATE SCHEMA\s+(?!IF\s+NOT\s+EXISTS\b)((?:"[^"]+"|[^\s;])+)\s*;/gi,
+        'CREATE SCHEMA IF NOT EXISTS $1;',
+      );
   }
 
   private filterCriticalRestoreErrors(errOutput: string): string[] {

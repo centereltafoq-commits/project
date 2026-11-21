@@ -122,6 +122,9 @@ export const ACTION_TRANSLATIONS: Record<string, string> = {
   BACKUP_SETTINGS_UPDATE: 'تعديل إعدادات النسخ الاحتياطي',
   UPDATE_BACKUP_SETTINGS: 'تعديل إعدادات النسخ الاحتياطي',
   BACKUP_DISCONNECT_GOOGLE: 'فصل المزامنة السحابية مع Google Drive',
+  CLOUD_SYNC_PUSH: 'نشر نسخة التعديلات إلى السحابة (Supabase)',
+  CLOUD_SYNC_PULL: 'سحب آخر التعديلات من السحابة (Supabase)',
+  CLOUD_SYNC_CONFIG_UPDATE: 'تحديث إعدادات الربط السحابي (Supabase)',
 
   // System & Settings
   'system.settings_update': 'تحديث إعدادات النظام والهوية',
@@ -214,6 +217,8 @@ export const ENTITY_TRANSLATIONS: Record<string, string> = {
   BACKUPS: 'النسخ الاحتياطي',
   backup: 'النسخ الاحتياطي',
   backups: 'النسخ الاحتياطي',
+  CLOUD_SYNC: 'المزامنة السحابية (Supabase)',
+  cloud_sync: 'المزامنة السحابية (Supabase)',
   SETTINGS: 'إعدادات النظام',
   settings: 'إعدادات النظام',
   SYSTEM: 'النظام',

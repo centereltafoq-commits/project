@@ -24,8 +24,11 @@
     }
   ],
   "win": {
-    "target": ["nsis"],
+    "target": ["nsis", "portable"],
     "icon": "resources/icon.png"
+  },
+  "portable": {
+    "artifactName": "EduCenter-ERP-Portable-${version}.exe"
   },
   "publish": {
     "provider": "github",

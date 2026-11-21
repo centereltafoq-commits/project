@@ -12,11 +12,13 @@ describe('Desktop Package Configuration', () => {
     expect(pkg.scripts['build']).toBeDefined();
   });
 
-  it('has electron-builder configuration specifying windows nsis target', () => {
+  it('has electron-builder configuration specifying windows nsis and portable targets', () => {
     const builderPath = path.resolve(__dirname, '../../electron-builder.json');
     expect(fs.existsSync(builderPath)).toBe(true);
     const builder = JSON.parse(fs.readFileSync(builderPath, 'utf8'));
     expect(builder.appId).toBe('com.educenter.erp');
     expect(builder.win.target).toContain('nsis');
+    expect(builder.win.target).toContain('portable');
+    expect(builder.portable?.artifactName).toBe('EduCenter-ERP-Portable-${version}.exe');
   });
 });

@@ -20,6 +20,8 @@ import {
   Server,
   Wifi,
   Power,
+  Cloud,
+  Settings2,
 } from 'lucide-react';
 import {
   Badge,
@@ -37,6 +39,8 @@ import { extractErrorMessage } from '@/lib/api-client';
 import { useDesktop } from '@/hooks/use-desktop';
 import { DesktopConnectionModal } from '@/components/desktop-connection-modal';
 import { DesktopUpdatePanel } from '@/components/desktop-update-panel';
+import { CloudSyncModal } from '@/components/cloud-sync-modal';
+import { useCloudSyncStatus } from '@/features/backups/use-cloud-sync';
 import { settingsApi } from './settings-api';
 import { useCenterSettings } from './center-settings-context';
 import { NewAcademicYearModal } from './components/new-academic-year-modal';
@@ -69,6 +73,9 @@ export function SettingsPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
   const [isConnectionWizardOpen, setIsConnectionWizardOpen] = React.useState(false);
+  const [cloudSyncModalOpen, setCloudSyncModalOpen] = React.useState(false);
+  const [cloudSyncTab, setCloudSyncTab] = React.useState<'sync' | 'config'>('config');
+  const { data: cloudSyncStatus } = useCloudSyncStatus(true);
   const [logoPreviewError, setLogoPreviewError] = React.useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = React.useState(false);
   const [isDragOver, setIsDragOver] = React.useState(false);
@@ -754,6 +761,72 @@ export function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Supabase Cloud Sync Setup Card */}
+          <Card className="border-blue-500/30 bg-blue-500/5 shadow-sm">
+            <CardHeader className="border-b border-blue-500/20">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <Cloud className="h-5 w-5" />
+                  <CardTitle className="text-sm font-bold">
+                    المزامنة السحابية عبر Supabase
+                  </CardTitle>
+                </div>
+                <Badge variant={cloudSyncStatus?.configured ? 'success' : 'neutral'}>
+                  {cloudSyncStatus?.configured ? 'متصل بالسحابة' : 'غير مربوط'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3 text-xs">
+              <p className="text-muted-foreground leading-relaxed">
+                اربط البرنامج بحساب Supabase المجاني لنشر تعديلات الأسستنت آخر اليوم وسحبها على جهاز المدير من أي مكان وبحماية كاملة للبيانات.
+              </p>
+              {cloudSyncStatus?.configured && (
+                <div className="rounded-lg border border-border bg-card p-2.5 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">الجهاز:</span>
+                    <span className="font-bold text-foreground">{cloudSyncStatus.deviceName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">الإصدار المتزامن:</span>
+                    <span className="font-mono font-bold text-foreground">
+                      {cloudSyncStatus.lastSyncedVersion > 0
+                        ? `v${cloudSyncStatus.lastSyncedVersion}`
+                        : 'لم يتزامن بعد'}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setCloudSyncTab('config');
+                    setCloudSyncModalOpen(true);
+                  }}
+                >
+                  <Settings2 className="h-3.5 w-3.5 text-primary" />
+                  <span>إعدادات الربط بـ Supabase</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setCloudSyncTab('sync');
+                    setCloudSyncModalOpen(true);
+                  }}
+                >
+                  <Cloud className="h-3.5 w-3.5" />
+                  <span>نشر وسحب التعديلات</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Danger Zone Card */}
           <Card className="border-destructive/40 bg-destructive/5 shadow-sm">
             <CardHeader className="border-b border-destructive/20">
@@ -808,6 +881,13 @@ export function SettingsPage() {
           onOpenChange={setIsConnectionWizardOpen}
         />
       )}
+
+      {/* Supabase Cloud Sync Modal */}
+      <CloudSyncModal
+        open={cloudSyncModalOpen}
+        onOpenChange={setCloudSyncModalOpen}
+        defaultTab={cloudSyncTab}
+      />
     </div>
   );
 }
