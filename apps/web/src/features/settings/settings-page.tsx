@@ -600,60 +600,58 @@ export function SettingsPage() {
                   </label>
                 </div>
 
-                {/* Server Mode Section */}
-                {config?.serverMode === 'server' && (
-                  <div className="space-y-4 rounded-xl border border-border bg-muted/10 p-4">
-                    <div className="flex items-center justify-between border-b border-border pb-3">
-                      <div className="flex items-center gap-2">
-                        <Server className="h-4 w-4 text-primary" />
-                        <h4 className="text-sm font-bold text-foreground">حالة السيرفر الرئيسي وقاعدة البيانات</h4>
-                      </div>
-                      <Badge variant={serverStatus?.running ? 'success' : 'danger'}>
-                        {serverStatus?.running ? `يعمل (منفذ ${serverStatus.port || 4000})` : 'متوقف'}
-                      </Badge>
+                {/* Local Server Status Section */}
+                <div className="space-y-4 rounded-xl border border-border bg-muted/10 p-4">
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <Server className="h-4 w-4 text-primary" />
+                      <h4 className="text-sm font-bold text-foreground">حالة الخادم المحلي وقاعدة البيانات</h4>
                     </div>
+                    <Badge variant={serverStatus?.running ? 'success' : 'danger'}>
+                      {serverStatus?.running ? `يعمل (منفذ ${serverStatus.port || 4000})` : 'متوقف'}
+                    </Badge>
+                  </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={serverStatus?.running ? 'outline' : 'primary'}
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await startServer();
+                          notify('تم تشغيل/إعادة تشغيل السيرفر بنجاح', 'success');
+                        } catch {
+                          notify('فشل بدء تشغيل السيرفر', 'error');
+                        }
+                      }}
+                      className="gap-1.5 text-xs"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span>إعادة تشغيل السيرفر</span>
+                    </Button>
+
+                    {serverStatus?.running && (
                       <Button
                         type="button"
-                        variant={serverStatus?.running ? 'outline' : 'primary'}
+                        variant="danger"
                         size="sm"
                         onClick={async () => {
                           try {
-                            await startServer();
-                            notify('تم تشغيل/إعادة تشغيل السيرفر بنجاح', 'success');
+                            await stopServer();
+                            notify('تم إيقاف السيرفر', 'info');
                           } catch {
-                            notify('فشل بدء تشغيل السيرفر', 'error');
+                            notify('فشل إيقاف السيرفر', 'error');
                           }
                         }}
                         className="gap-1.5 text-xs"
                       >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        <span>إعادة تشغيل السيرفر</span>
+                        <Power className="h-3.5 w-3.5" />
+                        <span>إيقاف السيرفر</span>
                       </Button>
-
-                      {serverStatus?.running && (
-                        <Button
-                          type="button"
-                          variant="danger"
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              await stopServer();
-                              notify('تم إيقاف السيرفر', 'info');
-                            } catch {
-                              notify('فشل إيقاف السيرفر', 'error');
-                            }
-                          }}
-                          className="gap-1.5 text-xs"
-                        >
-                          <Power className="h-3.5 w-3.5" />
-                          <span>إيقاف السيرفر</span>
-                        </Button>
-                      )}
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
 
                 {/* System Tray, Auto-Start & GitHub Releases Auto-Update */}
                 <DesktopUpdatePanel />

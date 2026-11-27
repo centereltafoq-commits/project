@@ -11,7 +11,6 @@ export interface DesktopUpdateSettings {
  * Persistent configuration schema for the desktop application.
  */
 export interface DesktopConfig {
-  serverMode: 'server' | 'client';
   serverUrl: string;
   defaultThermalPrinter?: string;
   directPrintEnabled: boolean;
@@ -31,7 +30,6 @@ export interface DesktopConfig {
  * Standard default configuration applied on first installation or after reset.
  */
 export const DEFAULT_CONFIG: DesktopConfig = {
-  serverMode: 'server',
   serverUrl: 'http://localhost:4000',
   directPrintEnabled: true,
   keepRunningInTray: true,

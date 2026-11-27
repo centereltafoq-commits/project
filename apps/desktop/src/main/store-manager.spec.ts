@@ -23,7 +23,6 @@ describe('StoreManager', () => {
     const store = new StoreManager(tempFile);
     const config = store.getConfig();
 
-    expect(config.serverMode).toBe('server');
     expect(config.serverUrl).toBe('http://localhost:4000');
     expect(config.directPrintEnabled).toBe(true);
     expect(config.isFirstLaunch).toBe(true);
@@ -38,14 +37,12 @@ describe('StoreManager', () => {
     const store = new StoreManager(tempFile);
 
     const saved = store.saveConfig({
-      serverMode: 'server',
-      serverUrl: 'http://192.168.1.100:4000',
+      serverUrl: 'http://localhost:4000',
       defaultThermalPrinter: 'POS-80C',
       windowBounds: { width: 1440, height: 900, x: 100, y: 50 },
     });
 
-    expect(saved.serverMode).toBe('server');
-    expect(saved.serverUrl).toBe('http://192.168.1.100:4000');
+    expect(saved.serverUrl).toBe('http://localhost:4000');
     expect(saved.defaultThermalPrinter).toBe('POS-80C');
     expect(saved.directPrintEnabled).toBe(true);
     expect(saved.isFirstLaunch).toBe(false);
@@ -61,8 +58,7 @@ describe('StoreManager', () => {
     const reloadedStore = new StoreManager(tempFile);
     const reloadedConfig = reloadedStore.getConfig();
 
-    expect(reloadedConfig.serverMode).toBe('server');
-    expect(reloadedConfig.serverUrl).toBe('http://192.168.1.100:4000');
+    expect(reloadedConfig.serverUrl).toBe('http://localhost:4000');
     expect(reloadedConfig.defaultThermalPrinter).toBe('POS-80C');
     expect(reloadedConfig.isFirstLaunch).toBe(false);
     expect(reloadedConfig.windowBounds).toEqual({
@@ -81,7 +77,6 @@ describe('StoreManager', () => {
     const store = new StoreManager(tempFile);
     const config = store.getConfig();
 
-    expect(config.serverMode).toBe(DEFAULT_CONFIG.serverMode);
     expect(config.serverUrl).toBe(DEFAULT_CONFIG.serverUrl);
     expect(config.isFirstLaunch).toBe(true);
     expect(config.windowBounds).toEqual(DEFAULT_CONFIG.windowBounds);
@@ -90,24 +85,22 @@ describe('StoreManager', () => {
   it('resets config to defaults and deletes the file from disk', () => {
     const store = new StoreManager(tempFile);
     store.saveConfig({
-      serverMode: 'server',
-      serverUrl: 'http://192.168.1.200:4000',
+      serverUrl: 'http://localhost:4500',
     });
 
     expect(fs.existsSync(tempFile)).toBe(true);
-    expect(store.getConfig().serverMode).toBe('server');
+    expect(store.getConfig().serverUrl).toBe('http://localhost:4500');
     expect(store.getConfig().isFirstLaunch).toBe(false);
 
     const resetConfig = store.resetConfig();
 
-    expect(resetConfig.serverMode).toBe('server');
     expect(resetConfig.serverUrl).toBe('http://localhost:4000');
     expect(resetConfig.isFirstLaunch).toBe(true);
     expect(fs.existsSync(tempFile)).toBe(false);
 
     // Verify reloading after reset yields defaults
     const reloaded = new StoreManager(tempFile);
-    expect(reloaded.getConfig().serverMode).toBe('server');
+    expect(reloaded.getConfig().serverUrl).toBe('http://localhost:4000');
     expect(reloaded.getConfig().isFirstLaunch).toBe(true);
   });
 
@@ -116,12 +109,11 @@ describe('StoreManager', () => {
     store.saveConfig({ defaultThermalPrinter: 'XP-80' });
 
     expect(store.getConfig().defaultThermalPrinter).toBe('XP-80');
-    expect(store.getConfig().serverMode).toBe('server');
     expect(store.getConfig().serverUrl).toBe('http://localhost:4000');
 
-    store.saveConfig({ serverMode: 'client' });
+    store.saveConfig({ directPrintEnabled: false });
     expect(store.getConfig().defaultThermalPrinter).toBe('XP-80');
-    expect(store.getConfig().serverMode).toBe('client');
+    expect(store.getConfig().directPrintEnabled).toBe(false);
   });
 
   it('preserves isFirstLaunch when saving windowBounds only', () => {
@@ -137,11 +129,11 @@ describe('StoreManager', () => {
   it('returns cloned copy of config to prevent external direct mutations', () => {
     const store = new StoreManager(tempFile);
     const config1 = store.getConfig();
-    config1.serverMode = 'client';
+    config1.serverUrl = 'http://localhost:9999';
     config1.windowBounds.width = 9999;
 
     const config2 = store.getConfig();
-    expect(config2.serverMode).toBe('server');
+    expect(config2.serverUrl).toBe('http://localhost:4000');
     expect(config2.windowBounds.width).toBe(1280);
   });
 });

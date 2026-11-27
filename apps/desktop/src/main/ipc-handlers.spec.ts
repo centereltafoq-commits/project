@@ -28,7 +28,6 @@ describe('registerIpcHandlers', () => {
 
     mockStoreManager = {
       getConfig: vi.fn().mockReturnValue({
-        serverMode: 'client',
         serverUrl: 'http://localhost:4000',
         directPrintEnabled: true,
         defaultThermalPrinter: 'POS-Default',
@@ -36,7 +35,6 @@ describe('registerIpcHandlers', () => {
         windowBounds: { width: 1280, height: 850 },
       }),
       saveConfig: vi.fn().mockImplementation((updates) => ({
-        serverMode: updates.serverMode || 'client',
         serverUrl: updates.serverUrl || 'http://localhost:4000',
         directPrintEnabled: updates.directPrintEnabled ?? true,
         defaultThermalPrinter: updates.defaultThermalPrinter || 'POS-Default',
@@ -64,12 +62,7 @@ describe('registerIpcHandlers', () => {
     };
 
     mockNetworkUtils = {
-      getLocalNetworkIps: vi.fn().mockReturnValue(['192.168.1.50']),
       testServerConnection: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
-      discoverLanServers: vi.fn().mockResolvedValue([
-        { url: 'http://192.168.1.50:4000', ip: '192.168.1.50', port: 4000, centerName: 'EduCenter' },
-      ]),
-      configureFirewall: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
     };
 
     mockWebContentsGetter = vi.fn().mockReturnValue({ id: 'webContentsMock' });
@@ -111,7 +104,6 @@ describe('registerIpcHandlers', () => {
       const result = await handler({} as any);
 
       expect(mockStoreManager.getConfig).toHaveBeenCalled();
-      expect(result.serverMode).toBe('client');
       expect(result.serverUrl).toBe('http://localhost:4000');
     });
   });
@@ -129,8 +121,7 @@ describe('registerIpcHandlers', () => {
 
       const handler = registeredHandlers.get(DESKTOP_CHANNELS.SAVE_CONFIG)!;
       const result = await handler({} as any, {
-        serverMode: 'server',
-        serverUrl: 'http://192.168.1.100:4000/',
+        serverUrl: 'http://localhost:4000/',
         defaultThermalPrinter: 'POS-80-USB',
         directPrintEnabled: true,
         windowBounds: { width: 1400, height: 900, x: 50, y: 50 },
@@ -138,16 +129,15 @@ describe('registerIpcHandlers', () => {
 
       expect(mockStoreManager.saveConfig).toHaveBeenCalledWith(
         expect.objectContaining({
-          serverMode: 'server',
-          serverUrl: 'http://192.168.1.100:4000',
+          serverUrl: 'http://localhost:4000',
           defaultThermalPrinter: 'POS-80-USB',
           directPrintEnabled: true,
         }),
       );
-      expect(result.serverMode).toBe('server');
+      expect(result.serverUrl).toBe('http://localhost:4000');
     });
 
-    it('ignores invalid serverMode and invalid URL schemes', async () => {
+    it('ignores invalid URL schemes', async () => {
       registerIpcHandlers({
         ipcMain: mockIpcMain as any,
         storeManager: mockStoreManager,
@@ -159,7 +149,6 @@ describe('registerIpcHandlers', () => {
 
       const handler = registeredHandlers.get(DESKTOP_CHANNELS.SAVE_CONFIG)!;
       await handler({} as any, {
-        serverMode: 'invalid-mode',
         serverUrl: 'javascript:alert(1)',
       });
 
@@ -201,25 +190,6 @@ describe('registerIpcHandlers', () => {
       expect(mockNetworkUtils.testServerConnection).not.toHaveBeenCalled();
       expect(res.ok).toBe(false);
       expect(res.error).toBeDefined();
-    });
-  });
-
-  describe('GET_LOCAL_IPS channel', () => {
-    it('delegates to networkUtils.getLocalNetworkIps', async () => {
-      registerIpcHandlers({
-        ipcMain: mockIpcMain as any,
-        storeManager: mockStoreManager,
-        serverManager: mockServerManager,
-        printerManager: mockPrinterManager,
-        webContentsGetter: mockWebContentsGetter,
-        networkUtils: mockNetworkUtils,
-      });
-
-      const handler = registeredHandlers.get(DESKTOP_CHANNELS.GET_LOCAL_IPS)!;
-      const ips = await handler({} as any);
-
-      expect(mockNetworkUtils.getLocalNetworkIps).toHaveBeenCalled();
-      expect(ips).toEqual(['192.168.1.50']);
     });
   });
 
@@ -364,8 +334,8 @@ describe('registerIpcHandlers', () => {
     });
   });
 
-  describe('LAN discovery, firewall, and config callback channels', () => {
-    it('DISCOVER_SERVERS and CONFIGURE_FIREWALL delegate to networkUtils', async () => {
+  describe('Config callback', () => {
+    it('invokes onConfigSaved when SAVE_CONFIG persists changes', async () => {
       const onConfigSaved = vi.fn();
       registerIpcHandlers({
         ipcMain: mockIpcMain as any,
@@ -377,20 +347,9 @@ describe('registerIpcHandlers', () => {
         onConfigSaved,
       });
 
-      const discoverHandler = registeredHandlers.get(DESKTOP_CHANNELS.DISCOVER_SERVERS)!;
-      const servers = await discoverHandler({} as any);
-      expect(mockNetworkUtils.discoverLanServers).toHaveBeenCalled();
-      expect(servers).toHaveLength(1);
-      expect(servers[0].url).toBe('http://192.168.1.50:4000');
-
-      const fwHandler = registeredHandlers.get(DESKTOP_CHANNELS.CONFIGURE_FIREWALL)!;
-      const fwRes = await fwHandler({} as any);
-      expect(mockNetworkUtils.configureFirewall).toHaveBeenCalled();
-      expect(fwRes.success).toBe(true);
-
       const saveHandler = registeredHandlers.get(DESKTOP_CHANNELS.SAVE_CONFIG)!;
-      await saveHandler({} as any, { serverMode: 'server' });
-      expect(onConfigSaved).toHaveBeenCalledWith(expect.objectContaining({ serverMode: 'server' }));
+      await saveHandler({} as any, { directPrintEnabled: false });
+      expect(onConfigSaved).toHaveBeenCalledWith(expect.objectContaining({ directPrintEnabled: false }));
     });
   });
 

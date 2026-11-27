@@ -52,7 +52,7 @@ vi.mock('electron', () => {
 import { app, BrowserWindow } from 'electron';
 import {
   createMainWindow,
-  getConnectionSetupFallbackHtml,
+  getServerRecoveryFallbackHtml,
   getStartupSplashHtml,
   loadAppContent,
   setupApp,
@@ -68,7 +68,6 @@ describe('Electron Main Process (index.ts)', () => {
     mockContext = {
       storeManager: {
         getConfig: vi.fn().mockReturnValue({
-          serverMode: 'client',
           serverUrl: 'http://localhost:4000',
           directPrintEnabled: true,
           windowBounds: { width: 1280, height: 850, x: 20, y: 20 },
@@ -138,9 +137,8 @@ describe('Electron Main Process (index.ts)', () => {
   });
 
   describe('loadAppContent', () => {
-    it('in Server Mode: starts server if not running and loads server URL', async () => {
+    it('starts local server if not running and loads http://localhost:4000', async () => {
       mockContext.storeManager.getConfig = vi.fn().mockReturnValue({
-        serverMode: 'server',
         serverUrl: 'http://localhost:4000',
       });
       mockContext.serverManager.getStatus = vi.fn().mockReturnValue({ running: false });
@@ -157,10 +155,9 @@ describe('Electron Main Process (index.ts)', () => {
       expect(mockWindow.loadURL).toHaveBeenCalledWith('http://localhost:4000');
     });
 
-    it('auto-heals stale client mode pointing to localhost into server mode and boots directly', async () => {
+    it('overrides stale LAN client serverUrl back to localhost:4000 and boots locally', async () => {
       mockContext.storeManager.getConfig = vi.fn().mockReturnValue({
-        serverMode: 'client',
-        serverUrl: 'http://localhost:4000',
+        serverUrl: 'http://192.168.1.100:4000',
       });
       mockContext.serverManager.getStatus = vi.fn().mockReturnValue({ running: false });
 
@@ -173,57 +170,45 @@ describe('Electron Main Process (index.ts)', () => {
       await loadAppContent(mockWindow, mockContext, { testConnectionFn: mockTestConn });
 
       expect(mockContext.storeManager.saveConfig).toHaveBeenCalledWith({
-        serverMode: 'server',
         serverUrl: 'http://localhost:4000',
       });
       expect(mockContext.serverManager.start).toHaveBeenCalled();
       expect(mockWindow.loadURL).toHaveBeenCalledWith('http://localhost:4000');
     });
 
-    it('in Client Mode: tests connection and loads serverUrl when reachable', async () => {
+    it('displays local server recovery fallback screen when local server fails to start', async () => {
       mockContext.storeManager.getConfig = vi.fn().mockReturnValue({
-        serverMode: 'client',
-        serverUrl: 'http://192.168.1.100:4000',
+        serverUrl: 'http://localhost:4000',
       });
+      mockContext.serverManager.start = vi
+        .fn()
+        .mockResolvedValue({ success: false, error: 'PostgreSQL failed' });
 
       const mockWindow = {
         loadURL: vi.fn().mockResolvedValue(undefined),
       } as any;
 
-      const mockTestConn = vi.fn().mockResolvedValue({ ok: true });
-
-      await loadAppContent(mockWindow, mockContext, { testConnectionFn: mockTestConn });
-
-      expect(mockTestConn).toHaveBeenCalledWith('http://192.168.1.100:4000', expect.any(Number));
-      expect(mockWindow.loadURL).toHaveBeenCalledWith('http://192.168.1.100:4000');
-    });
-
-    it('in Client Mode: displays setup fallback screen when server is unreachable', async () => {
-      mockContext.storeManager.getConfig = vi.fn().mockReturnValue({
-        serverMode: 'client',
-        serverUrl: 'http://192.168.1.100:4000',
-      });
-
-      const mockWindow = {
-        loadURL: vi.fn().mockResolvedValue(undefined),
-      } as any;
-
-      const mockTestConn = vi.fn().mockResolvedValue({ ok: false, error: 'ECONNREFUSED' });
-
-      await loadAppContent(mockWindow, mockContext, { testConnectionFn: mockTestConn });
+      await loadAppContent(mockWindow, mockContext, { testConnectionFn: vi.fn() });
 
       expect(mockWindow.loadURL).toHaveBeenCalledWith(
         expect.stringContaining('data:text/html'),
       );
+      const html = decodeURIComponent(
+        mockWindow.loadURL.mock.calls[0][0].replace('data:text/html;charset=utf-8,', ''),
+      );
+      expect(html).toContain('إعادة تشغيل السيرفر المحلي');
+      expect(html).not.toContain('إعداد الاتصال بشبكة السنتر');
+      expect(html).not.toContain('البحث التلقائي عن سيرفر السنتر');
     });
 
-    it('setup fallback page navigates to localhost:4000 after starting server instead of reloading data URL', () => {
-      const encoded = getConnectionSetupFallbackHtml('http://localhost:4000', 'fetch failed', true);
+    it('recovery fallback page navigates to localhost:4000 without LAN inputs', () => {
+      const encoded = getServerRecoveryFallbackHtml('http://localhost:4000', 'Process exited with code 1');
       const html = decodeURIComponent(encoded.replace('data:text/html;charset=utf-8,', ''));
 
-      expect(html).toContain('التشغيل الأول للبرنامج');
+      expect(html).toContain('تعذر تشغيل الخادم المحلي');
       expect(html).toContain('window.location.href = targetUrl');
       expect(html).not.toContain('window.location.reload()');
+      expect(html).not.toContain('discoverLan');
     });
   });
 

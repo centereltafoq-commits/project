@@ -53,17 +53,11 @@ export class TrayManager {
       return;
     }
 
-    const config = this.options.storeManager.getConfig();
-    const isServer = config.serverMode === 'server';
-    this.tray.setToolTip(
-      isServer
-        ? 'EduCenter ERP — سيرفر السنتر يعمل في الخلفية'
-        : 'EduCenter ERP — محطة استقبال',
-    );
+    this.tray.setToolTip('EduCenter ERP — الخادم المحلي يعمل في الخلفية');
 
     const template: Electron.MenuItemConstructorOptions[] = [
       {
-        label: isServer ? 'فتح لوحة الإدارة (السيرفر يعمل)' : 'فتح نافذة البرنامج',
+        label: 'فتح لوحة الإدارة',
         click: () => this.showMainWindow(),
       },
       {
@@ -75,7 +69,7 @@ export class TrayManager {
       },
       { type: 'separator' },
       {
-        label: isServer ? 'إيقاف السيرفر والخروج نهائياً' : 'إغلاق البرنامج نهائياً',
+        label: 'إيقاف الخادم والخروج نهائياً',
         click: () => this.options.onRequestQuit(),
       },
     ];
@@ -90,9 +84,9 @@ export class TrayManager {
     this.balloonShown = true;
     try {
       this.tray.displayBalloon({
-        title: 'EduCenter ERP - السيرفر مستمر في العمل',
+        title: 'EduCenter ERP - البرنامج مستمر في العمل',
         content:
-          'تم تصغير النافذة بجانب الساعة ليظل السيرفر متاحاً لباقي أجهزة السنتر. اضغط كليك يمين على الأيقونة للإغلاق النهائي.',
+          'تم تصغير النافذة بجانب الساعة لاستمرار عمل الخادم المحلي في الخلفية. اضغط كليك يمين على الأيقونة للإغلاق النهائي.',
       });
     } catch {
       // Ignore balloon failures on unsupported platforms

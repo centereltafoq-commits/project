@@ -225,6 +225,25 @@ describe('ServerManager', () => {
       expect(status.error).toContain('Process exited with code 1');
     });
 
+    it('captures the real Error line from stderr instead of trailing Node.js version banner', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const manager = new ServerManager({
+        apiDistPath: 'apps/api/dist/main.js',
+        spawnFunction: spawnSpy,
+      });
+
+      await manager.start();
+      mockChildProcess.stderr.emit(
+        'data',
+        Buffer.from('Error: connect ECONNREFUSED 127.0.0.1:5432\n    at bootstrap (main.js:10:5)\nNode.js v20.18.3\n'),
+      );
+      mockChildProcess.emit('exit', 1, null);
+
+      const status = manager.getStatus();
+      expect(status.error).toContain('Error: connect ECONNREFUSED 127.0.0.1:5432');
+      expect(status.error).not.toContain('Node.js v20.18.3');
+    });
+
     it('handles abnormal termination by signal (not SIGTERM)', async () => {
       const manager = new ServerManager({
         apiDistPath: 'apps/api/dist/main.js',

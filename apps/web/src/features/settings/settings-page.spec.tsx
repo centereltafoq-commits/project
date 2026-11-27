@@ -153,14 +153,12 @@ describe('SettingsPage Component', () => {
       platform: 'win32',
       version: '1.0.0',
       getConfig: vi.fn().mockResolvedValue({
-        serverMode: 'server',
         serverUrl: 'http://localhost:4000',
         defaultThermalPrinter: 'POS-80-Thermal',
         directPrintEnabled: true,
         isFirstLaunch: false,
       }),
       getServerStatus: vi.fn().mockResolvedValue({ running: true, port: 4000 }),
-      getLocalIps: vi.fn().mockResolvedValue(['192.168.1.15']),
       getPrinters: vi.fn().mockResolvedValue([
         { name: 'POS-80-Thermal', displayName: 'POS 80mm Printer', isDefault: true, status: 0 },
         { name: 'PDF-Printer', displayName: 'PDF Printer', isDefault: false, status: 0 },

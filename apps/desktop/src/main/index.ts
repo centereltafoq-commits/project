@@ -4,7 +4,6 @@ import { StoreManager } from './store-manager';
 import { ServerManager } from './server-manager';
 import { PrinterManager } from './printer-manager';
 import { PostgresManager } from './postgres-manager';
-import { LanDiscoveryResponder } from './lan-discovery';
 import { registerIpcHandlers } from './ipc-handlers';
 import { testServerConnection } from './network-utils';
 import { TrayManager } from './tray-manager';
@@ -16,7 +15,6 @@ export interface AppContext {
   storeManager: StoreManager;
   serverManager: ServerManager;
   printerManager: PrinterManager;
-  discoveryResponder?: LanDiscoveryResponder;
   trayManager?: TrayManager;
   updateManager?: UpdateManager;
   whatsappWindowManager?: WhatsappWindowManager;
@@ -85,26 +83,18 @@ export function getStartupSplashHtml(): string {
 }
 
 /**
- * Builds a self-contained Arabic HTML recovery & connection wizard page
- * displayed when client mode cannot reach the central center server.
+ * Builds a self-contained Arabic HTML recovery page displayed when the local
+ * embedded backend server or database fails to start within timeout.
  */
-export function getConnectionSetupFallbackHtml(
+export function getServerRecoveryFallbackHtml(
   targetUrl: string,
   errorReason: string,
-  isFirstLaunch = false,
 ): string {
-  const badgeStyle = isFirstLaunch
-    ? 'background: #dbeafe; color: #1d4ed8;'
-    : 'background: #fee2e2; color: #991b1b;';
-  const badgeText = isFirstLaunch ? 'التشغيل الأول للبرنامج' : 'تعذر الاتصال بالسيرفر';
-  const descHtml = isFirstLaunch
-    ? 'اختر ما إذا كان هذا الجهاز هو <strong>السيرفر الرئيسي للسنتر</strong> أو محطة استقبال متصلة بالسيرفر عبر الشبكة.'
-    : `لم نتمكن من الوصول إلى السيرفر على العنوان:<br><strong style="color: #0f172a; direction: ltr; display: inline-block;">${targetUrl}</strong><br><span style="font-size: 12px; color: #94a3b8;">(${errorReason})</span>`;
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="utf-8">
-  <title>نظام إدارة السنتر التعليمي - إعداد الاتصال</title>
+  <title>نظام إدارة السنتر التعليمي - تشغيل الخادم المحلي</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -149,31 +139,6 @@ export function getConnectionSetupFallbackHtml(
       line-height: 1.6;
       margin-bottom: 24px;
     }
-    .input-group {
-      text-align: right;
-      margin-bottom: 20px;
-    }
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #334155;
-      margin-bottom: 8px;
-    }
-    input[type="text"] {
-      width: 100%;
-      direction: ltr;
-      text-align: left;
-      padding: 12px 14px;
-      font-size: 15px;
-      border: 1.5px solid #cbd5e1;
-      border-radius: 10px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    input[type="text"]:focus {
-      border-color: #2563eb;
-    }
     .actions {
       display: flex;
       flex-direction: column;
@@ -209,133 +174,67 @@ export function getConnectionSetupFallbackHtml(
     .error-msg {
       color: #dc2626;
       font-size: 13px;
-      margin-top: 10px;
+      margin-top: 12px;
       min-height: 20px;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="badge" style="${badgeStyle}">${badgeText}</div>
-    <h1>إعداد الاتصال بشبكة السنتر</h1>
-    <p class="desc">${descHtml}</p>
-
-    <div class="input-group">
-      <label for="serverUrlInput">عنوان خادم السنتر (IP / URL):</label>
-      <input type="text" id="serverUrlInput" value="${targetUrl}" placeholder="http://192.168.1.50:4000">
-    </div>
-
-    <div id="discoveredList" style="display:none; text-align:right; margin-bottom:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px;"></div>
+    <div class="badge">تعذر تشغيل الخادم المحلي</div>
+    <h1>إعادة تشغيل السيرفر المحلي</h1>
+    <p class="desc">تعذر الاتصال بالخادم المحلي على الجهاز.<br><span style="font-size: 12px; color: #94a3b8; direction: ltr; display: inline-block;">(${errorReason})</span></p>
 
     <div class="actions">
-      <button class="btn-secondary" id="discoverBtn" onclick="discoverLan()" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">البحث التلقائي عن سيرفر السنتر في الشبكة</button>
-      <button class="btn-primary" id="retryBtn" onclick="retryConnection()">فحص الاتصال وإعادة المحاولة</button>
-      <button class="btn-secondary" id="serverModeBtn" onclick="switchToServerMode()">تشغيل هذا الجهاز كسيرفر رئيسي للسنتر</button>
+      <button class="btn-primary" id="restartBtn" onclick="restartLocalServer()">إعادة تشغيل الخادم والمحاولة الآن</button>
+      <button class="btn-secondary" id="retryBtn" onclick="retryLocalConnection()">فحص الجاهزية والمتابعة</button>
     </div>
 
     <div class="error-msg" id="statusMsg"></div>
   </div>
 
   <script>
-    async function discoverLan() {
-      const btn = document.getElementById('discoverBtn');
-      const list = document.getElementById('discoveredList');
-      const msg = document.getElementById('statusMsg');
+    const targetUrl = '${targetUrl}';
 
-      if (!window.desktopApi || typeof window.desktopApi.discoverServers !== 'function') {
-        msg.innerText = 'ميزة البحث التلقائي غير متاحة حالياً';
-        return;
-      }
-
-      btn.disabled = true;
-      btn.innerText = 'جاري البحث عن السيرفر في الشبكة...';
-      msg.innerText = '';
-      list.style.display = 'none';
-      list.innerHTML = '';
-
-      try {
-        const servers = await window.desktopApi.discoverServers();
-        if (!servers || servers.length === 0) {
-          msg.innerText = 'لم يتم العثور على سيرفر يعمل على الشبكة حالياً — تأكد من فتح السيرفر على الجهاز الرئيسي';
-          return;
-        }
-
-        list.style.display = 'block';
-        list.innerHTML = '<div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:8px;">السيرفرات المكتشفة:</div>';
-        servers.forEach((srv) => {
-          const item = document.createElement('div');
-          item.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px; background:#fff; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:6px;';
-          item.innerHTML =
-            '<div><div style="font-size:13px; font-weight:700; color:#0f172a;">' + (srv.name || 'سيرفر السنتر') + '</div>' +
-            '<div style="font-size:11px; color:#64748b; direction:ltr;">' + srv.url + '</div></div>' +
-            '<button style="padding:6px 12px; font-size:12px; background:#2563eb; color:#fff; border-radius:6px; cursor:pointer; border:none;">اتصال الآن</button>';
-          item.querySelector('button').onclick = async () => {
-            document.getElementById('serverUrlInput').value = srv.url;
-            await retryConnection();
-          };
-          list.appendChild(item);
-        });
-      } catch (err) {
-        msg.innerText = 'حدث خطأ أثناء البحث التلقائي عن السيرفر';
-      } finally {
-        btn.disabled = false;
-        btn.innerText = 'البحث التلقائي عن سيرفر السنتر في الشبكة';
-      }
-    }
-
-    async function retryConnection() {
-      const input = document.getElementById('serverUrlInput');
+    async function retryLocalConnection() {
       const msg = document.getElementById('statusMsg');
       const btn = document.getElementById('retryBtn');
-      const url = input.value.trim();
-
-      if (!url) {
-        msg.innerText = 'يرجى إدخال عنوان الخادم';
-        return;
-      }
-
       btn.disabled = true;
       btn.innerText = 'جاري الفحص...';
       msg.innerText = '';
 
       try {
         if (window.desktopApi && typeof window.desktopApi.testConnection === 'function') {
-          const res = await window.desktopApi.testConnection(url);
+          const res = await window.desktopApi.testConnection(targetUrl);
           if (res.ok) {
-            await window.desktopApi.saveConfig({ serverUrl: url });
-            window.location.href = url;
+            window.location.href = targetUrl;
             return;
-          } else {
-            msg.innerText = res.error || 'فشل الاتصال بهذا العنوان، تأكد من تشغيل السيرفر الرئيسي';
           }
+          msg.innerText = res.error || 'الخادم المحلي غير جاهز بعد';
         } else {
-          window.location.href = url;
+          window.location.href = targetUrl;
         }
       } catch (err) {
-        msg.innerText = 'حدث خطأ غير متوقع أثناء الفحص';
+        msg.innerText = 'حدث خطأ أثناء الفحص';
       } finally {
         btn.disabled = false;
-        btn.innerText = 'فحص الاتصال وإعادة المحاولة';
+        btn.innerText = 'فحص الجاهزية والمتابعة';
       }
     }
 
-    async function switchToServerMode() {
+    async function restartLocalServer() {
       const msg = document.getElementById('statusMsg');
-      const btn = document.getElementById('serverModeBtn');
-      const targetUrl = 'http://localhost:4000';
+      const btn = document.getElementById('restartBtn');
       btn.disabled = true;
       btn.innerText = 'جاري تشغيل السيرفر وقاعدة البيانات...';
       msg.innerText = '';
 
       try {
-        if (window.desktopApi && typeof window.desktopApi.saveConfig === 'function') {
-          await window.desktopApi.saveConfig({ serverMode: 'server', serverUrl: targetUrl });
-          if (typeof window.desktopApi.startServer === 'function') {
-            const startRes = await window.desktopApi.startServer();
-            if (startRes && startRes.success === false) {
-              msg.innerText = startRes.error || 'تعذر تشغيل الخادم المحلي';
-              return;
-            }
+        if (window.desktopApi && typeof window.desktopApi.startServer === 'function') {
+          const startRes = await window.desktopApi.startServer();
+          if (startRes && startRes.success === false) {
+            msg.innerText = startRes.error || 'تعذر تشغيل الخادم المحلي';
+            return;
           }
 
           if (typeof window.desktopApi.testConnection === 'function') {
@@ -347,16 +246,16 @@ export function getConnectionSetupFallbackHtml(
               }
               await new Promise((r) => setTimeout(r, 1000));
             }
-            msg.innerText = 'استغرق بدء السيرفر وقتاً أطول من المعتاد — اضغط "فحص الاتصال" للمتابعة.';
+            msg.innerText = 'استغرق بدء السيرفر وقتاً أطول من المعتاد — اضغط "فحص الجاهزية" للمتابعة.';
           } else {
             window.location.href = targetUrl;
           }
         }
       } catch (err) {
-        msg.innerText = 'تعذر التبديل إلى وضع السيرفر';
+        msg.innerText = 'تعذر تشغيل الخادم المحلي';
       } finally {
         btn.disabled = false;
-        btn.innerText = 'تشغيل هذا الجهاز كسيرفر رئيسي للسنتر';
+        btn.innerText = 'إعادة تشغيل الخادم والمحاولة الآن';
       }
     }
   </script>
@@ -367,7 +266,7 @@ export function getConnectionSetupFallbackHtml(
 }
 
 /**
- * Loads the application content into the main browser window based on server/client configuration.
+ * Always boots the embedded local NestJS API & PostgreSQL server and loads http://localhost:4000.
  */
 export async function loadAppContent(
   window: BrowserWindow,
@@ -377,88 +276,57 @@ export async function loadAppContent(
   const { storeManager, serverManager } = context;
   const config = storeManager.getConfig();
   const testConn = options?.testConnectionFn || testServerConnection;
-  const targetUrl = config.serverUrl || 'http://localhost:4000';
   const isLocalTarget =
-    !config.serverUrl ||
+    Boolean(config.serverUrl) &&
     /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(config.serverUrl.trim());
+  const serverUrl = isLocalTarget ? config.serverUrl : 'http://localhost:4000';
 
-  if (config.serverMode === 'server' || isLocalTarget) {
-    if (config.serverMode !== 'server') {
-      try {
-        storeManager.saveConfig({ serverMode: 'server', serverUrl: targetUrl });
-      } catch {}
-    }
-
-    // 1. Server Mode: ensure local NestJS API is started directly
-    const status = serverManager.getStatus();
-    const serverUrl = targetUrl;
-    if (!status.running) {
-      const startResult = await serverManager.start();
-      if (startResult && startResult.success === false) {
-        await window.loadURL(
-          getConnectionSetupFallbackHtml(
-            serverUrl,
-            startResult.error || 'تعذر بدء تشغيل السيرفر المحلي للسنتر',
-          ),
-        );
-        return;
-      }
-    }
-
+  if (!isLocalTarget) {
     try {
-      await context.discoveryResponder?.start();
-    } catch (err) {
-      console.warn('[App] LAN discovery responder start skipped:', err);
-    }
+      storeManager.saveConfig({ serverUrl });
+    } catch {}
+  }
 
-    let isReady = false;
-
-    // Retry checking health while PostgreSQL + NestJS + Drizzle bootstrap settle
-    for (let i = 0; i < 25; i++) {
-      const health = await testConn(serverUrl, 1500);
-      if (health.ok) {
-        isReady = true;
-        break;
-      }
-      const curStatus = serverManager.getStatus();
-      if (!curStatus.running && curStatus.error) {
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-
-    if (isReady) {
-      await window.loadURL(serverUrl);
-    } else {
+  const status = serverManager.getStatus();
+  if (!status.running) {
+    const startResult = await serverManager.start();
+    if (startResult && startResult.success === false) {
       await window.loadURL(
-        getConnectionSetupFallbackHtml(
+        getServerRecoveryFallbackHtml(
           serverUrl,
-          serverManager.getStatus().error ||
-            'استغرق بدء تشغيل السيرفر وقتاً أطول من المعتاد — اضغط "فحص الاتصال" للمتابعة',
+          startResult.error || 'تعذر بدء تشغيل السيرفر المحلي للسنتر',
         ),
       );
+      return;
     }
+  }
+
+  let isReady = false;
+
+  // Retry checking health while PostgreSQL + NestJS + Drizzle bootstrap settle
+  for (let i = 0; i < 25; i++) {
+    const health = await testConn(serverUrl, 1500);
+    if (health.ok) {
+      isReady = true;
+      break;
+    }
+    const curStatus = serverManager.getStatus();
+    if (!curStatus.running && curStatus.error) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  if (isReady) {
+    await window.loadURL(serverUrl);
   } else {
-    // 2. Client Mode: stop any LAN broadcast and test connection to remote server
-    try {
-      await context.discoveryResponder?.stop();
-    } catch {
-      // Ignore responder stop errors
-    }
-
-    const connection = await testConn(targetUrl, 3000);
-
-    if (connection.ok) {
-      await window.loadURL(targetUrl);
-    } else {
-      await window.loadURL(
-        getConnectionSetupFallbackHtml(
-          targetUrl,
-          connection.error || 'تعذر الوصول إلى الخادم عبر الشبكة المحلية',
-          Boolean(config.isFirstLaunch),
-        ),
-      );
-    }
+    await window.loadURL(
+      getServerRecoveryFallbackHtml(
+        serverUrl,
+        serverManager.getStatus().error ||
+          'استغرق بدء تشغيل السيرفر وقتاً أطول من المعتاد — اضغط "فحص الجاهزية" للمتابعة',
+      ),
+    );
   }
 }
 
@@ -511,7 +379,6 @@ export async function createMainWindow(
     const latestConfig = storeManager.getConfig();
     const shouldHideToTray =
       !context.isForceQuitting?.() &&
-      latestConfig.serverMode === 'server' &&
       latestConfig.keepRunningInTray !== false &&
       Boolean(context.trayManager) &&
       typeof mainWindow.hide === 'function';
@@ -537,11 +404,6 @@ export async function createMainWindow(
     whatsappWindowManager: context.whatsappWindowManager,
     webContentsGetter: () => (mainWindow.isDestroyed() ? null : mainWindow.webContents),
     onConfigSaved: async (saved) => {
-      if (saved.serverMode === 'server') {
-        await context.discoveryResponder?.start();
-      } else {
-        await context.discoveryResponder?.stop();
-      }
       context.trayManager?.refreshMenu();
       context.trayManager?.syncStartupPreference(Boolean(saved.launchOnStartup));
       context.updateManager?.syncConfiguration();
@@ -567,22 +429,11 @@ export function setupApp(customContext?: AppContext) {
 
   const stopDesktopServices = async (): Promise<void> => {
     context.whatsappWindowManager?.close();
-    const stopTasks: Promise<unknown>[] = [];
-    if (context.discoveryResponder) {
-      stopTasks.push(
-        Promise.resolve(context.discoveryResponder.stop()).catch((err) => {
-          console.error('[App] Failed to stop LAN discovery responder on quit:', err);
-        }),
-      );
-    }
     if (context.serverManager) {
-      stopTasks.push(
-        Promise.resolve(context.serverManager.stop()).catch((err) => {
-          console.error('[App] Failed to gracefully stop server on quit:', err);
-        }),
-      );
+      await Promise.resolve(context.serverManager.stop()).catch((err) => {
+        console.error('[App] Failed to gracefully stop server on quit:', err);
+      });
     }
-    await Promise.all(stopTasks);
   };
 
   if (customContext) {
@@ -590,13 +441,9 @@ export function setupApp(customContext?: AppContext) {
   } else {
     const storeManager = new StoreManager();
     const postgresManager = new PostgresManager();
-    const discoveryResponder = new LanDiscoveryResponder(4000);
     const serverManager = new ServerManager({
       postgresManager,
-      onRunningChange: (running) => {
-        if (!running) {
-          void discoveryResponder.stop();
-        }
+      onRunningChange: () => {
         context?.trayManager?.refreshMenu();
       },
     });
@@ -628,7 +475,6 @@ export function setupApp(customContext?: AppContext) {
       storeManager,
       serverManager,
       printerManager: new PrinterManager(),
-      discoveryResponder,
       trayManager,
       updateManager,
       whatsappWindowManager: new WhatsappWindowManager(),
@@ -668,7 +514,7 @@ export function setupApp(customContext?: AppContext) {
 
   app.on('window-all-closed', () => {
     const cfg = context.storeManager.getConfig();
-    if (!forceQuitting && cfg.serverMode === 'server' && cfg.keepRunningInTray !== false) {
+    if (!forceQuitting && cfg.keepRunningInTray !== false) {
       return;
     }
     if (process.platform !== 'darwin') {

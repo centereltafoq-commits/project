@@ -35,4 +35,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          SUPABASE_SYNC_URL: ${{ secrets.SUPABASE_SYNC_URL }}
+          SUPABASE_SYNC_KEY: ${{ secrets.SUPABASE_SYNC_KEY }}
+          SUPABASE_SYNC_BUCKET: ${{ secrets.SUPABASE_SYNC_BUCKET }}
         run: npm run stage --workspace=@edu-center/desktop && npx --workspace=@edu-center/desktop electron-builder --win --x64 --publish always

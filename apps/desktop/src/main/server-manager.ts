@@ -117,8 +117,8 @@ export class ServerManager {
       const env: NodeJS.ProcessEnv = {
         ...process.env,
         PORT: String(this.port),
-        HOST: '0.0.0.0',
-        CORS_ALLOW_LAN: 'true',
+        HOST: '127.0.0.1',
+        CORS_ALLOW_LAN: 'false',
       };
 
       if (useElectronAsNode) {
@@ -195,9 +195,20 @@ export class ServerManager {
       child.stderr?.on('data', (data: Buffer | string) => {
         const line = data.toString().trim();
         if (line) {
-          const lastLine = line.split(/\r?\n/).filter(Boolean).pop();
-          if (lastLine) {
-            this.lastStderrLine = lastLine.slice(0, 240);
+          const lines = line
+            .split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter(
+              (l) =>
+                Boolean(l) &&
+                !/^Node\.js v\d+/i.test(l) &&
+                !l.startsWith('at '),
+            );
+          const errorLine =
+            lines.find((l) => /^(Error|TypeError|SyntaxError|RangeError):/i.test(l)) ||
+            lines.pop();
+          if (errorLine) {
+            this.lastStderrLine = errorLine.slice(0, 240);
           }
           console.error(`[API-Server-Err] ${line}`);
         }
@@ -247,8 +258,31 @@ export class ServerManager {
    */
   public async stop(): Promise<{ success: boolean }> {
     try {
-      if (this.childProcess && !this.childProcess.killed) {
-        this.childProcess.kill('SIGTERM');
+      const proc = this.childProcess;
+      if (proc && !proc.killed) {
+        await new Promise<void>((resolve, reject) => {
+          let settled = false;
+          const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            resolve();
+          }, 2500);
+          proc.once('exit', () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve();
+          });
+          try {
+            proc.kill('SIGTERM');
+          } catch (killErr) {
+            clearTimeout(timer);
+            if (!settled) {
+              settled = true;
+              reject(killErr);
+            }
+          }
+        });
       }
       this.childProcess = null;
       this.startTime = null;

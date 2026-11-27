@@ -13,7 +13,6 @@ describe('useDesktop Hook', () => {
     expect(result.current.platform).toBe('web');
     expect(result.current.config).toBeNull();
     expect(result.current.serverStatus).toBeNull();
-    expect(result.current.localIps).toEqual([]);
     expect(result.current.printers).toEqual([]);
     expect(result.current.isLoading).toBe(false);
 
@@ -30,14 +29,12 @@ describe('useDesktop Hook', () => {
 
   it('detects desktop mode when desktopApi is present in window', async () => {
     const mockConfig = {
-      serverMode: 'client' as const,
-      serverUrl: 'http://192.168.1.50:4000',
+      serverUrl: 'http://localhost:4000',
       directPrintEnabled: true,
       isFirstLaunch: false,
     };
     const mockPrinters = [{ name: 'POS-80', displayName: 'POS-80', isDefault: true, status: 0 }];
     const mockStatus = { running: true, port: 4000 };
-    const mockIps = ['192.168.1.50'];
 
     (window as any).desktopApi = {
       isDesktop: true,
@@ -46,16 +43,11 @@ describe('useDesktop Hook', () => {
       getConfig: vi.fn().mockResolvedValue(mockConfig),
       getPrinters: vi.fn().mockResolvedValue(mockPrinters),
       getServerStatus: vi.fn().mockResolvedValue(mockStatus),
-      getLocalIps: vi.fn().mockResolvedValue(mockIps),
       saveConfig: vi.fn().mockImplementation((updates) => Promise.resolve({ ...mockConfig, ...updates })),
       testConnection: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
       startServer: vi.fn().mockResolvedValue({ success: true }),
       stopServer: vi.fn().mockResolvedValue({ success: true }),
       printReceipt: vi.fn().mockResolvedValue({ success: true }),
-      discoverServers: vi.fn().mockResolvedValue([
-        { name: 'SERVER-PC', url: 'http://192.168.1.50:4000', ip: '192.168.1.50', port: 4000, latencyMs: 12 },
-      ]),
-      configureFirewall: vi.fn().mockResolvedValue({ success: true, message: 'تم الفتح' }),
     };
 
     const { result } = renderHook(() => useDesktop());
@@ -67,7 +59,6 @@ describe('useDesktop Hook', () => {
       expect(result.current.config).toEqual(mockConfig);
       expect(result.current.printers).toEqual(mockPrinters);
       expect(result.current.serverStatus).toEqual(mockStatus);
-      expect(result.current.localIps).toEqual(mockIps);
     });
 
     await act(async () => {
@@ -76,22 +67,13 @@ describe('useDesktop Hook', () => {
     expect((window as any).desktopApi.saveConfig).toHaveBeenCalledWith({ directPrintEnabled: false });
 
     await act(async () => {
-      const ping = await result.current.testConnection('http://192.168.1.50:4000');
+      const ping = await result.current.testConnection('http://localhost:4000');
       expect(ping.ok).toBe(true);
     });
 
     await act(async () => {
       const printRes = await result.current.printReceipt({ htmlContent: '<p>receipt</p>' });
       expect(printRes.success).toBe(true);
-    });
-
-    await act(async () => {
-      const discovered = await result.current.discoverServers();
-      expect(discovered).toHaveLength(1);
-      expect(discovered[0].url).toBe('http://192.168.1.50:4000');
-
-      const fw = await result.current.configureFirewall();
-      expect(fw.success).toBe(true);
     });
   });
 });

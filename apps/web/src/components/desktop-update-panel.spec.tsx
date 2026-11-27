@@ -42,7 +42,6 @@ describe('DesktopUpdatePanel & DesktopUpdateModal', () => {
     useDesktopMock.mockReturnValue({
       isDesktop: true,
       config: {
-        serverMode: 'server',
         serverUrl: 'http://localhost:4000',
         directPrintEnabled: true,
         keepRunningInTray: true,
@@ -100,7 +99,6 @@ describe('DesktopUpdatePanel & DesktopUpdateModal', () => {
     useDesktopMock.mockReturnValue({
       isDesktop: true,
       config: {
-        serverMode: 'server',
         serverUrl: 'http://localhost:4000',
         directPrintEnabled: true,
         keepRunningInTray: true,
@@ -137,7 +135,6 @@ describe('DesktopUpdatePanel & DesktopUpdateModal', () => {
     useDesktopMock.mockReturnValue({
       isDesktop: true,
       config: {
-        serverMode: 'server',
         serverUrl: 'http://localhost:4000',
         directPrintEnabled: true,
         keepRunningInTray: true,
@@ -177,7 +174,6 @@ describe('DesktopUpdatePanel & DesktopUpdateModal', () => {
     useDesktopMock.mockReturnValue({
       isDesktop: true,
       config: {
-        serverMode: 'server',
         serverUrl: 'http://localhost:4000',
         directPrintEnabled: true,
         updateSettings: {

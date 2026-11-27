@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as os from 'os';
-import { getLocalNetworkIps, testServerConnection } from './network-utils';
+import { testServerConnection } from './network-utils';
 
 describe('Network Utilities', () => {
   const originalFetch = global.fetch;
@@ -11,74 +10,6 @@ describe('Network Utilities', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
-  });
-
-  describe('getLocalNetworkIps', () => {
-    it('returns valid IPv4 addresses excluding loopback and internal', () => {
-      const ips = getLocalNetworkIps();
-      expect(Array.isArray(ips)).toBe(true);
-      expect(ips.length).toBeGreaterThan(0);
-      for (const ip of ips) {
-        expect(ip).toMatch(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/);
-      }
-    });
-
-    it('falls back to 127.0.0.1 if no external IPv4 interfaces exist', () => {
-      const mockInterfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = {
-        lo: [
-          {
-            address: '127.0.0.1',
-            netmask: '255.0.0.0',
-            family: 'IPv4',
-            mac: '00:00:00:00:00:00',
-            internal: true,
-            cidr: '127.0.0.1/8',
-          },
-        ],
-        eth0: [
-          {
-            address: 'fe80::1',
-            netmask: 'ffff:ffff:ffff:ffff::',
-            family: 'IPv6',
-            mac: '00:00:00:00:00:00',
-            internal: false,
-            cidr: 'fe80::1/64',
-            scopeid: 1,
-          },
-        ],
-      };
-
-      const ips = getLocalNetworkIps(mockInterfaces);
-      expect(ips).toEqual(['127.0.0.1']);
-    });
-
-    it('collects all active non-internal IPv4 interfaces', () => {
-      const mockInterfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]> = {
-        eth0: [
-          {
-            address: '192.168.1.50',
-            netmask: '255.255.255.0',
-            family: 'IPv4',
-            mac: 'aa:bb:cc:dd:ee:01',
-            internal: false,
-            cidr: '192.168.1.50/24',
-          },
-        ],
-        wlan0: [
-          {
-            address: '10.0.0.12',
-            netmask: '255.255.255.0',
-            family: 'IPv4',
-            mac: 'aa:bb:cc:dd:ee:02',
-            internal: false,
-            cidr: '10.0.0.12/24',
-          },
-        ],
-      };
-
-      const ips = getLocalNetworkIps(mockInterfaces);
-      expect(ips).toEqual(['192.168.1.50', '10.0.0.12']);
-    });
   });
 
   describe('testServerConnection', () => {

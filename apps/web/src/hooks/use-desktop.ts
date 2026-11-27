@@ -7,7 +7,6 @@ export interface DesktopUpdateSettings {
 }
 
 export interface DesktopConfig {
-  serverMode: 'server' | 'client';
   serverUrl: string;
   defaultThermalPrinter?: string;
   directPrintEnabled: boolean;
@@ -53,20 +52,6 @@ export interface DatabaseStatus {
   error?: string;
 }
 
-export interface DiscoveredServer {
-  name: string;
-  url: string;
-  ip: string;
-  port: number;
-  latencyMs: number;
-}
-
-export interface FirewallConfigResult {
-  success: boolean;
-  message: string;
-  error?: string;
-}
-
 export interface ServerStatus {
   running: boolean;
   pid?: number;
@@ -97,14 +82,11 @@ export interface DesktopApi {
   getConfig: () => Promise<DesktopConfig>;
   saveConfig: (config: Partial<DesktopConfig>) => Promise<DesktopConfig>;
   testConnection: (url: string) => Promise<{ ok: boolean; status?: number; error?: string }>;
-  getLocalIps: () => Promise<string[]>;
   getServerStatus: () => Promise<ServerStatus>;
   startServer: () => Promise<{ success: boolean; error?: string }>;
   stopServer: () => Promise<{ success: boolean; error?: string }>;
   getPrinters: () => Promise<PrinterInfo[]>;
   printReceipt: (options: SilentPrintOptions) => Promise<{ success: boolean; error?: string }>;
-  discoverServers?: () => Promise<DiscoveredServer[]>;
-  configureFirewall?: () => Promise<FirewallConfigResult>;
   getUpdateStatus?: () => Promise<DesktopUpdateStatus>;
   checkForUpdates?: () => Promise<DesktopUpdateStatus>;
   installUpdate?: () => Promise<{ success: boolean; error?: string }>;
@@ -124,7 +106,6 @@ export function useDesktop() {
 
   const [config, setConfig] = React.useState<DesktopConfig | null>(null);
   const [serverStatus, setServerStatus] = React.useState<ServerStatus | null>(null);
-  const [localIps, setLocalIps] = React.useState<string[]>([]);
   const [printers, setPrinters] = React.useState<PrinterInfo[]>([]);
   const [updateStatus, setUpdateStatus] = React.useState<DesktopUpdateStatus | null>(null);
   const [isLoading, setIsLoading] = React.useState<boolean>(isDesktop);
@@ -161,17 +142,15 @@ export function useDesktop() {
     Promise.all([
       window.desktopApi.getConfig(),
       window.desktopApi.getServerStatus(),
-      window.desktopApi.getLocalIps(),
       window.desktopApi.getPrinters(),
       typeof window.desktopApi.getUpdateStatus === 'function'
         ? window.desktopApi.getUpdateStatus()
         : Promise.resolve(null),
     ])
-      .then(([cfg, status, ips, printerList, updStatus]) => {
+      .then(([cfg, status, printerList, updStatus]) => {
         if (!isMounted) return;
         setConfig(cfg);
         setServerStatus(status);
-        setLocalIps(ips);
         setPrinters(printerList);
         if (updStatus) setUpdateStatus(updStatus);
       })
@@ -250,20 +229,6 @@ export function useDesktop() {
     [isDesktop],
   );
 
-  const discoverServers = React.useCallback(async (): Promise<DiscoveredServer[]> => {
-    if (!isDesktop || !window.desktopApi || typeof window.desktopApi.discoverServers !== 'function') {
-      return [];
-    }
-    return window.desktopApi.discoverServers();
-  }, [isDesktop]);
-
-  const configureFirewall = React.useCallback(async (): Promise<FirewallConfigResult> => {
-    if (!isDesktop || !window.desktopApi || typeof window.desktopApi.configureFirewall !== 'function') {
-      return { success: false, message: 'إعدادات الجدار الناري غير متاحة في المتصفح.' };
-    }
-    return window.desktopApi.configureFirewall();
-  }, [isDesktop]);
-
   const checkForUpdates = React.useCallback(async (): Promise<DesktopUpdateStatus | null> => {
     if (!isDesktop || !window.desktopApi || typeof window.desktopApi.checkForUpdates !== 'function') {
       return null;
@@ -285,7 +250,6 @@ export function useDesktop() {
     platform,
     config,
     serverStatus,
-    localIps,
     printers,
     updateStatus,
     isLoading,
@@ -294,8 +258,6 @@ export function useDesktop() {
     startServer,
     stopServer,
     printReceipt,
-    discoverServers,
-    configureFirewall,
     checkForUpdates,
     installUpdate,
     reloadPrinters,

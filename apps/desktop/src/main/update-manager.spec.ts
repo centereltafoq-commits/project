@@ -34,7 +34,6 @@ describe('UpdateManager (GitHub Releases Auto-Update)', () => {
 
     mockStore = {
       getConfig: vi.fn().mockReturnValue({
-        serverMode: 'server',
         serverUrl: 'http://localhost:4000',
         directPrintEnabled: true,
         keepRunningInTray: true,

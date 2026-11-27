@@ -17,7 +17,6 @@ describe('Desktop Preload API Channels', () => {
     expect(DESKTOP_CHANNELS.GET_CONFIG).toBe('desktop:get-config');
     expect(DESKTOP_CHANNELS.SAVE_CONFIG).toBe('desktop:save-config');
     expect(DESKTOP_CHANNELS.TEST_CONNECTION).toBe('desktop:test-connection');
-    expect(DESKTOP_CHANNELS.GET_LOCAL_IPS).toBe('desktop:get-local-ips');
     expect(DESKTOP_CHANNELS.GET_SERVER_STATUS).toBe('desktop:get-server-status');
     expect(DESKTOP_CHANNELS.START_SERVER).toBe('desktop:start-server');
     expect(DESKTOP_CHANNELS.STOP_SERVER).toBe('desktop:stop-server');
@@ -43,40 +42,31 @@ describe('createDesktopApi Bridge', () => {
   });
 
   it('delegates getConfig to DESKTOP_CHANNELS.GET_CONFIG', async () => {
-    mockIpcRenderer.invoke.mockResolvedValueOnce({ serverMode: 'client' });
+    mockIpcRenderer.invoke.mockResolvedValueOnce({ serverUrl: 'http://localhost:4000' });
     const api = createDesktopApi(mockIpcRenderer as any);
 
     const config = await api.getConfig();
     expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(DESKTOP_CHANNELS.GET_CONFIG);
-    expect(config).toEqual({ serverMode: 'client' });
+    expect(config).toEqual({ serverUrl: 'http://localhost:4000' });
   });
 
   it('delegates saveConfig to DESKTOP_CHANNELS.SAVE_CONFIG with params', async () => {
-    mockIpcRenderer.invoke.mockResolvedValueOnce({ serverMode: 'server' });
+    mockIpcRenderer.invoke.mockResolvedValueOnce({ serverUrl: 'http://localhost:4000' });
     const api = createDesktopApi(mockIpcRenderer as any);
 
-    const update = { serverMode: 'server' as const };
+    const update = { serverUrl: 'http://localhost:4000' };
     const res = await api.saveConfig(update);
     expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(DESKTOP_CHANNELS.SAVE_CONFIG, update);
-    expect(res).toEqual({ serverMode: 'server' });
+    expect(res).toEqual({ serverUrl: 'http://localhost:4000' });
   });
 
   it('delegates testConnection to DESKTOP_CHANNELS.TEST_CONNECTION with url', async () => {
     mockIpcRenderer.invoke.mockResolvedValueOnce({ ok: true });
     const api = createDesktopApi(mockIpcRenderer as any);
 
-    const res = await api.testConnection('http://192.168.1.10:4000');
-    expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(DESKTOP_CHANNELS.TEST_CONNECTION, 'http://192.168.1.10:4000');
+    const res = await api.testConnection('http://localhost:4000');
+    expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(DESKTOP_CHANNELS.TEST_CONNECTION, 'http://localhost:4000');
     expect(res.ok).toBe(true);
-  });
-
-  it('delegates getLocalIps to DESKTOP_CHANNELS.GET_LOCAL_IPS', async () => {
-    mockIpcRenderer.invoke.mockResolvedValueOnce(['192.168.1.5']);
-    const api = createDesktopApi(mockIpcRenderer as any);
-
-    const ips = await api.getLocalIps();
-    expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(DESKTOP_CHANNELS.GET_LOCAL_IPS);
-    expect(ips).toEqual(['192.168.1.5']);
   });
 
   it('delegates getServerStatus to DESKTOP_CHANNELS.GET_SERVER_STATUS', async () => {

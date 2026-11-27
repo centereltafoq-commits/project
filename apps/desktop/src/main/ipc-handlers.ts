@@ -2,9 +2,7 @@ import { DESKTOP_CHANNELS } from '../preload/desktop-api.types';
 import { StoreManager, DesktopConfig } from './store-manager';
 import { ServerManager } from './server-manager';
 import { PrinterManager } from './printer-manager';
-import { getLocalNetworkIps, testServerConnection } from './network-utils';
-import { discoverLanServers, type DiscoveredServer } from './lan-discovery';
-import { configureLanFirewallRules, type FirewallConfigResult } from './firewall-utils';
+import { testServerConnection } from './network-utils';
 import type { UpdateManager } from './update-manager';
 import { isAllowedWhatsAppUrl, type WhatsappWindowManager } from './whatsapp-window-manager';
 
@@ -18,10 +16,7 @@ export interface RegisterIpcHandlersOptions {
   webContentsGetter: () => any;
   onConfigSaved?: (config: DesktopConfig) => Promise<void> | void;
   networkUtils?: {
-    getLocalNetworkIps: () => string[];
     testServerConnection: (url: string) => Promise<{ ok: boolean; status?: number; error?: string }>;
-    discoverLanServers?: () => Promise<DiscoveredServer[]>;
-    configureFirewall?: () => Promise<FirewallConfigResult>;
   };
 }
 
@@ -33,10 +28,6 @@ function sanitizeConfigUpdates(raw: any): Partial<DesktopConfig> {
     return {};
   }
   const updates: Partial<DesktopConfig> = {};
-
-  if (raw.serverMode === 'server' || raw.serverMode === 'client') {
-    updates.serverMode = raw.serverMode;
-  }
 
   if (typeof raw.serverUrl === 'string') {
     const trimmed = raw.serverUrl.trim();
@@ -122,10 +113,7 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
     networkUtils,
   } = options;
 
-  const resolveLocalIps = networkUtils?.getLocalNetworkIps ?? getLocalNetworkIps;
   const resolveTestConnection = networkUtils?.testServerConnection ?? testServerConnection;
-  const resolveDiscoverLanServers = networkUtils?.discoverLanServers ?? discoverLanServers;
-  const resolveConfigureFirewall = networkUtils?.configureFirewall ?? configureLanFirewallRules;
 
   const registeredChannels: string[] = [];
 
@@ -179,18 +167,6 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): () => 
       };
     }
     return resolveTestConnection(url.trim());
-  });
-
-  registerHandler(DESKTOP_CHANNELS.GET_LOCAL_IPS, async () => {
-    return resolveLocalIps();
-  });
-
-  registerHandler(DESKTOP_CHANNELS.DISCOVER_SERVERS, async () => {
-    return resolveDiscoverLanServers();
-  });
-
-  registerHandler(DESKTOP_CHANNELS.CONFIGURE_FIREWALL, async () => {
-    return resolveConfigureFirewall();
   });
 
   // 3. Local Server Management Channels
