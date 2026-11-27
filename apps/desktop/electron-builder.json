@@ -33,7 +33,8 @@
   "publish": {
     "provider": "github",
     "owner": "centereltafoq-commits",
-    "repo": "project"
+    "repo": "project",
+    "releaseType": "release"
   },
   "nsis": {
     "oneClick": false,

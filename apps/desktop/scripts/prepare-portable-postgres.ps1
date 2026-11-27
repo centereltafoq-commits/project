@@ -4,6 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $DesktopDir = Resolve-Path (Join-Path $ScriptDir "..")
@@ -21,11 +22,27 @@ New-Item -ItemType Directory -Path $ExtractDir -Force | Out-Null
 
 try {
   Write-Host "[Portable-PG] Downloading: $DownloadUrl"
-  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-  Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZipPath -UseBasicParsing
+  $CurlCmd = Get-Command curl.exe -ErrorAction SilentlyContinue
+  if ($CurlCmd) {
+    & $CurlCmd.Source -fSL --retry 4 --retry-delay 5 --connect-timeout 30 -o $ZipPath $DownloadUrl
+    if ($LASTEXITCODE -ne 0) {
+      throw "curl.exe download failed with exit code $LASTEXITCODE"
+    }
+  } else {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZipPath -UseBasicParsing -TimeoutSec 300
+  }
 
   Write-Host "[Portable-PG] Extracting archive..."
-  Expand-Archive -Path $ZipPath -DestinationPath $ExtractDir -Force
+  $TarCmd = Get-Command tar.exe -ErrorAction SilentlyContinue
+  if ($TarCmd) {
+    & $TarCmd.Source -xf $ZipPath -C $ExtractDir
+    if ($LASTEXITCODE -ne 0) {
+      throw "tar.exe extraction failed with exit code $LASTEXITCODE"
+    }
+  } else {
+    Expand-Archive -Path $ZipPath -DestinationPath $ExtractDir -Force
+  }
 
   $ExtractedPgRoot = Join-Path $ExtractDir "pgsql"
   if (-not (Test-Path (Join-Path $ExtractedPgRoot "bin\pg_ctl.exe"))) {
