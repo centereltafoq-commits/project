@@ -263,6 +263,8 @@ export class UpdateManager {
       });
     }
 
+    this.ensureAppUpdateConfigFile(resolved.owner, resolved.repo);
+
     try {
       this.emitStatus({ state: 'CHECKING', error: undefined });
       await updater.checkForUpdates();
@@ -275,6 +277,25 @@ export class UpdateManager {
     }
 
     return this.getStatus();
+  }
+
+  private ensureAppUpdateConfigFile(owner: string, repo: string): void {
+    try {
+      const withRes = process as NodeJS.Process & { resourcesPath?: string };
+      if (!withRes.resourcesPath || !owner || !repo) return;
+      const ymlPath = path.join(withRes.resourcesPath, 'app-update.yml');
+      if (fs.existsSync(ymlPath)) return;
+      const content = [
+        'provider: github',
+        `owner: ${owner}`,
+        `repo: ${repo}`,
+        'updaterCacheDirName: edu-center-erp-updater',
+        '',
+      ].join('\n');
+      fs.writeFileSync(ymlPath, content, 'utf8');
+    } catch {
+      // Ignore if resources directory is read-only
+    }
   }
 
   public async installDownloadedUpdate(): Promise<{ success: boolean; error?: string }> {
