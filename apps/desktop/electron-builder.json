@@ -3,6 +3,7 @@
   "appId": "com.educenter.erp",
   "productName": "EduCenter ERP",
   "electronVersion": "33.4.11",
+  "npmRebuild": false,
   "directories": {
     "output": "dist-package",
     "buildResources": "resources"

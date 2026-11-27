@@ -34,4 +34,5 @@ jobs:
       - name: Stage Runtime & Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run stage --workspace=@edu-center/desktop && npx --workspace=@edu-center/desktop electron-builder --win --x64 --publish always
