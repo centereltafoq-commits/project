@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as argon2 from 'argon2';
@@ -257,11 +258,15 @@ export async function migrateDatabaseSchema(
       "SELECT to_regclass('drizzle.__drizzle_migrations') AS tbl",
     );
     let appliedHashes: string[] = [];
+    let appliedCreatedAts: string[] = [];
     if (migrationHistory.rows[0]?.tbl) {
-      const result = await client.query<{ hash: string }>(
-        'SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at',
+      const result = await client.query<{ hash: string; created_at: string | number | null }>(
+        'SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at',
       );
       appliedHashes = result.rows.map((row) => row.hash);
+      appliedCreatedAts = result.rows
+        .map((row) => (row.created_at == null ? '' : String(row.created_at)))
+        .filter(Boolean);
     }
 
     if (appliedHashes.length === 0) {
@@ -298,10 +303,18 @@ export async function migrateDatabaseSchema(
       }
     } else {
       const firstMigration = migrations[0]!;
-      if (!appliedHashes.includes(firstMigration.hash)) {
-        throw new Error(
-          'Migration history does not contain the baseline migration hash; refusing to apply the baseline over an existing schema.',
-        );
+      const acceptableHashes = resolveBaselineHashVariants(drizzleDir, firstMigration.hash);
+      const hasMatchingHash = appliedHashes.some((h) => acceptableHashes.has(h));
+      const hasMatchingTimestamp = appliedCreatedAts.includes(String(firstMigration.folderMillis));
+
+      if (!hasMatchingHash) {
+        if (hasMatchingTimestamp) {
+          await assertBaselineSchemaPresent(client, drizzleDir);
+        } else {
+          throw new Error(
+            'Migration history does not contain the baseline migration hash; refusing to apply the baseline over an existing schema.',
+          );
+        }
       }
     }
 
@@ -324,6 +337,41 @@ export async function migrateDatabaseSchema(
     client.release();
     await pool.end();
   }
+}
+
+/**
+ * Computes SHA256 hashes of the baseline migration file under raw, LF, and CRLF
+ * line endings so Windows/CI CRLF checkouts match LF-initialized databases.
+ */
+export function resolveBaselineHashVariants(
+  drizzleDir: string,
+  fallbackHash: string,
+): Set<string> {
+  const hashes = new Set<string>([fallbackHash]);
+  try {
+    const journalPath = path.join(drizzleDir, 'meta', '_journal.json');
+    let firstTag = '0000_famous_banshee';
+    if (fs.existsSync(journalPath)) {
+      const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+        entries?: Array<{ tag?: string }>;
+      };
+      if (journal.entries?.[0]?.tag) {
+        firstTag = journal.entries[0].tag;
+      }
+    }
+    const sqlPath = path.join(drizzleDir, `${firstTag}.sql`);
+    if (fs.existsSync(sqlPath)) {
+      const raw = fs.readFileSync(sqlPath, 'utf8');
+      const lf = raw.replace(/\r\n/g, '\n');
+      const crlf = lf.replace(/\n/g, '\r\n');
+      for (const variant of [raw, lf, crlf]) {
+        hashes.add(createHash('sha256').update(variant).digest('hex'));
+      }
+    }
+  } catch {
+    // Keep fallbackHash if file inspection fails
+  }
+  return hashes;
 }
 
 async function assertBaselineSchemaPresent(

@@ -1,0 +1,4 @@
+# Enforce LF line endings on Drizzle migration files so SHA256 migration hashes
+# stay identical across Windows local checkouts and GitHub Actions runners.
+apps/api/drizzle/** text eol=lf
+*.sql text eol=lf

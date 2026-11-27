@@ -235,6 +235,13 @@ async function stageRuntime() {
 
   console.log('[Stage] Copying apps/api drizzle, package.json, and trigram SQL...');
   copyDirClean(path.join(apiDir, 'drizzle'), path.join(targetApiDir, 'drizzle'));
+  for (const entry of fs.readdirSync(path.join(targetApiDir, 'drizzle'))) {
+    if (entry.endsWith('.sql')) {
+      const sqlFile = path.join(targetApiDir, 'drizzle', entry);
+      const normalized = fs.readFileSync(sqlFile, 'utf8').replace(/\r\n/g, '\n');
+      fs.writeFileSync(sqlFile, normalized, 'utf8');
+    }
+  }
   fs.copyFileSync(path.join(apiDir, 'package.json'), path.join(targetApiDir, 'package.json'));
 
   const envFile = path.join(apiDir, '.env');

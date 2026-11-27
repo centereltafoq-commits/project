@@ -222,6 +222,7 @@ describe('Electron Main Process (index.ts)', () => {
 
     it('terminates local server on before-quit event', async () => {
       (app.requestSingleInstanceLock as any).mockReturnValueOnce(true);
+      (app.whenReady as any).mockReturnValueOnce(new Promise(() => {}));
 
       setupApp(mockContext);
 

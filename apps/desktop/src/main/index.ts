@@ -311,7 +311,7 @@ export async function loadAppContent(
       break;
     }
     const curStatus = serverManager.getStatus();
-    if (!curStatus.running && curStatus.error) {
+    if (curStatus && !curStatus.running && curStatus.error) {
       break;
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
