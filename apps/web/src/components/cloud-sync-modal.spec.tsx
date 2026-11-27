@@ -175,4 +175,29 @@ describe('CloudSyncModal & HeaderCloudSyncButton', () => {
       });
     });
   });
+
+  it('ties local device identity strictly to the signed-in account without showing the opposite role switcher', async () => {
+    vi.mocked(authContextModule.useAuth).mockReturnValue({
+      user: {
+        id: 'ast-1',
+        fullName: 'سارة الأسيستنت',
+        email: '01055555555@assistant.local',
+        roleCode: SystemRole.ASSISTANT,
+        roleNameAr: 'أسيستنت',
+        permissions: [],
+      },
+      isLoading: false,
+      logout: vi.fn(),
+      hasPermission: () => false,
+    } as any);
+
+    renderWithProviders(
+      <CloudSyncModal open={true} onOpenChange={() => undefined} defaultTab="sync" />,
+    );
+
+    expect(await screen.findByText('سارة الأسيستنت')).toBeInTheDocument();
+    expect(screen.getByText('جهاز السنتر الرئيسي (الأسستنت)')).toBeInTheDocument();
+    expect(screen.queryByText('تبديل سريع للهوية:')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'جهاز المدير' })).not.toBeInTheDocument();
+  });
 });

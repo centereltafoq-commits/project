@@ -510,14 +510,44 @@ describe('CloudSyncService & CloudSyncController', () => {
 
       const pushB = await serviceB.pushToCloud({ note: 'تعديل المدير' }, ownerActor);
       expect(pushB.pushedVersion.version).toBe(2);
+      expect(pushB.pushedVersion.pushedByName).toBe('مالك السنتر');
+      expect(pushB.pushedVersion.pushedByRole).toBe(SystemRole.OWNER);
       expect(pushB.status.state).toBe('IN_SYNC');
 
-      const statusA = await serviceA.getStatus();
+      const statusA = await serviceA.getStatus(assistantActor);
       expect(statusA.state).toBe('REMOTE_NEWER');
       expect(statusA.remoteLatest?.version).toBe(2);
-      expect(statusA.remoteLatest?.deviceName).toBe('جهاز المدير');
+      expect(statusA.remoteLatest?.deviceName).toBe('جهاز المدير (المتابعة والإدارة)');
+      expect(statusA.deviceName).toBe('جهاز السنتر الرئيسي (الأسستنت)');
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  });
+
+  it('derives device identity strictly from the logged-in actor role during status and push', async () => {
+    await service.saveConfig(
+      {
+        supabaseUrl: 'https://demo-center.supabase.co',
+        supabaseKey: 'service-role-secret-key-1234567890',
+        deviceName: 'جهاز المدير (المتابعة والإدارة)',
+      },
+      ownerActor,
+    );
+
+    const dedicatedAssistant = {
+      id: 'ast-2',
+      email: '01055555555@assistant.local',
+      fullName: 'سارة الأسيستنت',
+      roleCode: SystemRole.ASSISTANT,
+      permissions: [],
+    } as any;
+
+    const assistantStatus = await service.getStatus(dedicatedAssistant);
+    expect(assistantStatus.deviceName).toBe('جهاز السنتر الرئيسي (الأسستنت)');
+
+    const assistantPush = await service.pushToCloud({ note: 'ترحيل اليوم' }, dedicatedAssistant);
+    expect(assistantPush.pushedVersion.pushedByName).toBe('سارة الأسيستنت');
+    expect(assistantPush.pushedVersion.pushedByRole).toBe(SystemRole.ASSISTANT);
+    expect(assistantPush.pushedVersion.deviceName).toBe('جهاز السنتر الرئيسي (الأسستنت)');
   });
 });

@@ -30,11 +30,27 @@ import {
   TabsTrigger,
   useToast,
 } from '@/design-system';
+import { SystemRole } from '@edu-center/shared';
 import { cn } from '@/lib/cn';
 import { extractErrorMessage } from '@/lib/api-client';
 import { formatDateTimeAr } from '@/lib/formatters';
+import { useAuth } from '@/features/auth/auth-context';
 import { CloudSyncVersionEntry } from '@/features/backups/cloud-sync-api';
 import { useCloudSyncMutations, useCloudSyncStatus } from '@/features/backups/use-cloud-sync';
+
+const CLOUD_ROLE_LABELS_AR: Record<string, string> = {
+  OWNER: 'مالك النظام',
+  MANAGER: 'مدير السنتر',
+  ACCOUNTANT: 'محاسب',
+  ASSISTANT: 'أسيستنت',
+  ATTENDANCE_EMPLOYEE: 'موظف الحضور والاستقبال',
+  TEACHER: 'مدرس',
+};
+
+function formatCloudRoleAr(roleCode?: string | null): string {
+  if (!roleCode) return 'موظف';
+  return CLOUD_ROLE_LABELS_AR[roleCode] || roleCode;
+}
 
 export interface CloudSyncModalProps {
   open: boolean;
@@ -55,7 +71,14 @@ export function CloudSyncModal({
   onOpenChange,
   defaultTab = 'sync',
 }: CloudSyncModalProps) {
+  const { user } = useAuth();
   const { notify } = useToast();
+  const isAssistantAccount =
+    user?.roleCode === SystemRole.ASSISTANT ||
+    user?.roleCode === SystemRole.ATTENDANCE_EMPLOYEE;
+  const autoDeviceLabel = isAssistantAccount
+    ? 'جهاز السنتر الرئيسي (الأسستنت)'
+    : 'جهاز المدير (المتابعة والإدارة)';
   const {
     data: status,
     isLoading,
@@ -93,12 +116,12 @@ export function CloudSyncModal({
 
   React.useEffect(() => {
     if (status) {
-      setDeviceName(status.deviceName || 'جهاز السنتر الرئيسي (الأسستنت)');
+      setDeviceName(autoDeviceLabel);
       setSupabaseUrl(status.supabaseUrl || '');
       setBucketName(status.bucketName || 'educenter-sync');
       setSupabaseKey('');
     }
-  }, [status?.deviceName, status?.supabaseUrl, status?.bucketName, open]);
+  }, [autoDeviceLabel, status?.supabaseUrl, status?.bucketName, open]);
 
   const isBusy =
     pushMutation.isPending ||
@@ -117,22 +140,6 @@ export function CloudSyncModal({
         supabaseKey: supabaseKey.trim() || undefined,
         bucketName: bucketName.trim() || 'educenter-sync',
       });
-      notify(res.message, 'success');
-    } catch (err) {
-      notify(extractErrorMessage(err), 'error');
-    }
-  };
-
-  const handleQuickDeviceSelect = async (nextName: string) => {
-    if (!status?.supabaseUrl) return;
-    try {
-      const res = await saveConfigMutation.mutateAsync({
-        deviceName: nextName,
-        supabaseUrl: status.supabaseUrl,
-        bucketName: status.bucketName || 'educenter-sync',
-        enabled: true,
-      });
-      setDeviceName(nextName);
       notify(res.message, 'success');
     } catch (err) {
       notify(extractErrorMessage(err), 'error');
@@ -356,34 +363,25 @@ export function CloudSyncModal({
                         </Badge>
                       </div>
                       <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">اسم الجهاز:</span>
-                          <span className="font-bold text-foreground">{status.deviceName}</span>
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-muted-foreground">الحساب المفتوح الآن:</span>
+                          <span className="font-bold text-foreground flex items-center gap-1.5">
+                            <span>{user?.fullName || 'مستخدم النظام'}</span>
+                            <Badge variant={isAssistantAccount ? 'info' : 'neutral'} className="text-[10px]">
+                              {user?.roleNameAr || formatCloudRoleAr(user?.roleCode)}
+                            </Badge>
+                          </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                          <span className="text-[11px] text-muted-foreground">تبديل سريع للهوية:</span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={status.deviceName.includes('الأسستنت') ? 'primary' : 'outline'}
-                            className="h-6 px-2 text-[11px] gap-1"
-                            disabled={isBusy}
-                            onClick={() => handleQuickDeviceSelect('جهاز السنتر الرئيسي (الأسستنت)')}
-                          >
-                            <Server className="h-3 w-3" />
-                            <span>جهاز السنتر (الأسستنت)</span>
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={status.deviceName.includes('المدير') ? 'primary' : 'outline'}
-                            className="h-6 px-2 text-[11px] gap-1"
-                            disabled={isBusy}
-                            onClick={() => handleQuickDeviceSelect('جهاز المدير (المتابعة والإدارة)')}
-                          >
-                            <Laptop className="h-3 w-3" />
-                            <span>جهاز المدير</span>
-                          </Button>
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-muted-foreground">هوية المزامنة التلقائية:</span>
+                          <span className="font-semibold text-foreground flex items-center gap-1">
+                            {isAssistantAccount ? (
+                              <Server className="h-3.5 w-3.5 text-emerald-600" />
+                            ) : (
+                              <Laptop className="h-3.5 w-3.5 text-primary" />
+                            )}
+                            <span>{autoDeviceLabel}</span>
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">آخر إصدار متزامن:</span>
@@ -441,11 +439,14 @@ export function CloudSyncModal({
                               <span className="text-muted-foreground">نُشرت من جهاز:</span>
                               <span className="font-bold text-foreground">{status.remoteLatest.deviceName}</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center gap-2">
                               <span className="text-muted-foreground">بواسطة:</span>
-                              <span className="font-semibold text-foreground flex items-center gap-1">
+                              <span className="font-semibold text-foreground flex items-center gap-1.5">
                                 <UserCheck className="h-3.5 w-3.5 text-primary" />
-                                {status.remoteLatest.pushedByName}
+                                <span>{status.remoteLatest.pushedByName}</span>
+                                <Badge variant="neutral" className="text-[10px]">
+                                  {formatCloudRoleAr(status.remoteLatest.pushedByRole)}
+                                </Badge>
                               </span>
                             </div>
                             <div className="flex justify-between">
@@ -653,7 +654,9 @@ export function CloudSyncModal({
                                   v{item.version}
                                 </Badge>
                                 <span className="font-bold text-foreground">{item.deviceName}</span>
-                                <span className="text-muted-foreground">• بواسطة: {item.pushedByName}</span>
+                                <span className="text-muted-foreground">
+                                  • بواسطة: {item.pushedByName} ({formatCloudRoleAr(item.pushedByRole)})
+                                </span>
                               </div>
                               <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
                                 <span className="flex items-center gap-1">
@@ -707,41 +710,9 @@ export function CloudSyncModal({
               </div>
 
               <form onSubmit={handleSaveConfig} className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-foreground">
-                      اسم هذا الجهاز (يظهر عند كل نشر لتوضيح مصدر التعديل):
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2.5 text-[11px] gap-1"
-                        onClick={() => setDeviceName('جهاز السنتر الرئيسي (الأسستنت)')}
-                      >
-                        <Server className="h-3 w-3 text-emerald-600" />
-                        <span>جهاز السنتر الرئيسي</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2.5 text-[11px] gap-1"
-                        onClick={() => setDeviceName('جهاز المدير (المتابعة والإدارة)')}
-                      >
-                        <Laptop className="h-3 w-3 text-primary" />
-                        <span>جهاز المدير</span>
-                      </Button>
-                    </div>
-                  </div>
-                  <Input
-                    label="اسم هذا الجهاز *"
-                    placeholder="مثال: جهاز السنتر الرئيسي (الأسستنت)"
-                    value={deviceName}
-                    onChange={(e) => setDeviceName(e.target.value)}
-                    disabled={isBusy}
-                  />
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-muted-foreground">الهوية المربوطة تلقائياً لهذا الحساب عند النشر:</span>
+                  <span className="font-bold text-foreground">{autoDeviceLabel}</span>
                 </div>
 
                 <Input

@@ -1,6 +1,6 @@
 {
   "name": "edu-center-erp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Enterprise Educational Center Management System (NestJS + PostgreSQL + React + Tailwind)",
   "workspaces": [

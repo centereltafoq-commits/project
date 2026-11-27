@@ -9,6 +9,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { BackupsRepository } from './backups.repository';
@@ -270,6 +271,22 @@ export class CloudSyncService {
     return this.hasOperationalData(localStats);
   }
 
+  private resolveActorDeviceName(
+    actor?: AuthenticatedUser,
+    fallbackName?: string,
+  ): string {
+    if (!actor?.roleCode) {
+      return fallbackName || 'جهاز السنتر';
+    }
+    if (
+      actor.roleCode === SystemRole.ASSISTANT ||
+      actor.roleCode === SystemRole.ATTENDANCE_EMPLOYEE
+    ) {
+      return 'جهاز السنتر الرئيسي (الأسستنت)';
+    }
+    return 'جهاز المدير (المتابعة والإدارة)';
+  }
+
   private buildStateMessage(
     state: CloudSyncStateCode,
     remoteLatest: CloudSyncVersionEntry | null,
@@ -293,8 +310,9 @@ export class CloudSyncService {
     }
   }
 
-  async getStatus(): Promise<CloudSyncStatusResponse> {
+  async getStatus(actor?: AuthenticatedUser): Promise<CloudSyncStatusResponse> {
     const config = this.readLocalConfig();
+    const resolvedDeviceName = this.resolveActorDeviceName(actor, config.deviceName);
     const { stats: localStats } = await this.computeDatabaseStats();
     const hasLocalUnsyncedChanges = this.computeHasUnsyncedLocalChanges(config, localStats);
     const configured = Boolean(config.enabled && config.supabaseUrl && config.supabaseKey);
@@ -345,7 +363,7 @@ export class CloudSyncService {
       state,
       stateMessageAr: this.buildStateMessage(state, remoteLatest, connectionError),
       deviceId: config.deviceId,
-      deviceName: config.deviceName,
+      deviceName: resolvedDeviceName,
       supabaseUrl: config.supabaseUrl,
       supabaseKeyMasked: this.maskSecretKey(config.supabaseKey),
       hasSupabaseKey: Boolean(config.supabaseKey),
@@ -451,7 +469,7 @@ export class CloudSyncService {
       },
     });
 
-    const status = await this.getStatus();
+    const status = await this.getStatus(actor);
     return {
       success: true,
       bucketCreated: check.bucketCreated,
@@ -514,6 +532,7 @@ export class CloudSyncService {
 
       await this.supabaseDriver.uploadSnapshot(creds, snapshotPath, gzBuffer);
 
+      const resolvedDeviceName = this.resolveActorDeviceName(actor, config.deviceName);
       const newEntry: CloudSyncVersionEntry = {
         version: nextVersion,
         snapshotPath,
@@ -522,8 +541,8 @@ export class CloudSyncService {
         fileSizeBytes: gzBuffer.length,
         pushedAt: nowIso,
         pushedByName: actor?.fullName || 'مسؤول النظام',
-        pushedByRole: actor?.roleCode || 'OWNER',
-        deviceName: config.deviceName,
+        pushedByRole: actor?.roleCode || SystemRole.OWNER,
+        deviceName: resolvedDeviceName,
         deviceId: config.deviceId,
         centerName,
         note: dto.note?.trim() || null,
@@ -586,7 +605,7 @@ export class CloudSyncService {
       };
       this.writeLocalConfigAtomic(updatedConfig);
 
-      const status = await this.getStatus();
+      const status = await this.getStatus(actor);
       return {
         success: true,
         message: `تم نشر كافة التعديلات والبيانات إلى السحابة بنجاح (الإصدار v${nextVersion}).`,
@@ -712,7 +731,7 @@ export class CloudSyncService {
       };
       this.writeLocalConfigAtomic(updatedConfig);
 
-      const status = await this.getStatus();
+      const status = await this.getStatus(actor);
       return {
         success: true,
         message: `تم سحب وتحديث البيانات بنجاح من الإصدار السحابي (v${targetEntry.version}) مع حفظ نسخة أمان محلية (${safetyBackup.fileName}).`,

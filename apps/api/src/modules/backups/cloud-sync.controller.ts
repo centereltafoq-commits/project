@@ -22,7 +22,7 @@ export class CloudSyncController {
   @Get('status')
   async getStatus(@CurrentUser() actor: AuthenticatedUser) {
     this.assertStaffAccess(actor);
-    return this.cloudSyncService.getStatus();
+    return this.cloudSyncService.getStatus(actor);
   }
 
   @Post('test')
