@@ -1,9 +1,16 @@
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength, ValidateIf } from 'class-validator';
 
 export class LoginDto {
-  @IsEmail({}, { message: 'البريد الإلكتروني غير صالح' })
+  @ValidateIf((o) => !o.email)
+  @IsString({ message: 'يرجى إدخال رقم الهاتف' })
+  @MinLength(3, { message: 'رقم الهاتف غير صالح' })
+  @MaxLength(160, { message: 'رقم الهاتف طويل جداً' })
+  phone?: string;
+
+  @IsOptional()
+  @IsString({ message: 'البريد الإلكتروني غير صالح' })
   @MaxLength(160, { message: 'البريد الإلكتروني طويل جداً' })
-  email: string;
+  email?: string;
 
   @IsString({ message: 'كلمة المرور مطلوبة' })
   @MinLength(1, { message: 'يرجى إدخال كلمة المرور' })

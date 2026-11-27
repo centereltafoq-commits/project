@@ -21,24 +21,30 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto, meta: { ipAddress?: string; userAgent?: string }) {
-    const user = await this.usersRepository.findByEmailWithRole(dto.email);
+    const rawIdentifier = (dto.phone ?? dto.email ?? '').trim();
+    const user = rawIdentifier
+      ? rawIdentifier.includes('@')
+        ? await this.usersRepository.findByEmailWithRole(rawIdentifier)
+        : await this.usersRepository.findByPhoneWithRole(rawIdentifier)
+      : null;
+
     if (!user || !user.isActive) {
       await this.audit.record({
         actorUserId: user?.id ?? null,
-        actorName: user?.fullName ?? dto.email,
+        actorName: user?.fullName ?? (rawIdentifier || 'مجهول'),
         action: 'LOGIN_FAILED',
         entityType: 'AUTH',
         entityId: user?.id ?? null,
         afterData: {
-          email: dto.email,
-          reason: !user ? 'UNKNOWN_EMAIL' : 'INACTIVE_ACCOUNT',
+          phone: rawIdentifier,
+          reason: !user ? 'UNKNOWN_PHONE' : 'INACTIVE_ACCOUNT',
           userAgent: meta.userAgent ?? null,
         },
         ipAddress: meta.ipAddress,
       });
       throw new UnauthorizedException(
         !user
-          ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+          ? 'رقم الهاتف أو كلمة المرور غير صحيحة'
           : 'هذا الحساب موقوف حالياً، يرجى التواصل مع مدير النظام',
       );
     }
@@ -52,18 +58,18 @@ export class AuthService {
         entityType: 'AUTH',
         entityId: user.id,
         afterData: {
-          email: dto.email,
+          phone: rawIdentifier,
           reason: 'INVALID_PASSWORD',
           userAgent: meta.userAgent ?? null,
         },
         ipAddress: meta.ipAddress,
       });
-      throw new UnauthorizedException('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      throw new UnauthorizedException('رقم الهاتف أو كلمة المرور غير صحيحة');
     }
 
     await this.usersRepository.update(user.id, { lastLoginAt: new Date() });
 
-    const tokens = await this.issueTokens(user.id, user.email, user.roleCode, meta);
+    const tokens = await this.issueTokens(user.id, user.phone, user.email, user.roleCode, meta);
     const permissions = await this.usersService.getEffectivePermissions(
       user.id,
       user.roleId,
@@ -85,6 +91,7 @@ export class AuthService {
       user: {
         id: user.id,
         fullName: user.fullName,
+        phone: user.phone,
         email: user.email,
         roleCode: user.roleCode,
         roleNameAr: user.roleNameAr,
@@ -125,7 +132,7 @@ export class AuthService {
       throw new UnauthorizedException('الحساب غير نشط');
     }
 
-    const tokens = await this.issueTokens(user.id, user.email, user.roleCode, meta);
+    const tokens = await this.issueTokens(user.id, user.phone, user.email, user.roleCode, meta);
     const permissions = await this.usersService.getEffectivePermissions(
       user.id,
       user.roleId,
@@ -138,6 +145,7 @@ export class AuthService {
       user: {
         id: user.id,
         fullName: user.fullName,
+        phone: user.phone,
         email: user.email,
         roleCode: user.roleCode,
         roleNameAr: user.roleNameAr,
@@ -221,12 +229,13 @@ export class AuthService {
 
   private async issueTokens(
     userId: string,
-    email: string,
+    phone: string | null,
+    email: string | null,
     roleCode: string,
     meta: { ipAddress?: string; userAgent?: string },
   ) {
     const accessToken = await this.jwtService.signAsync(
-      { sub: userId, email, roleCode },
+      { sub: userId, phone: phone ?? undefined, email: email ?? undefined, roleCode },
       {
         secret: this.config.getOrThrow<string>('jwtAccessSecret'),
         expiresIn: this.config.getOrThrow<string>('jwtAccessExpiresIn') as any,

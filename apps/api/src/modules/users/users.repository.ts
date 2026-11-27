@@ -10,6 +10,7 @@ import {
 } from '../../database/schemas';
 import { normalizePagination } from '../../common/utils/pagination.util';
 import { UserQueryDto } from './dto/user.dto';
+import { normalizeUserPhone } from './user-phone.util';
 
 @Injectable()
 export class UsersRepository {
@@ -79,7 +80,34 @@ export class UsersRepository {
       })
       .from(users)
       .innerJoin(roles, eq(users.roleId, roles.id))
-      .where(eq(users.email, email.toLowerCase()))
+      .where(eq(users.email, email.trim().toLowerCase()))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async findByPhoneWithRole(phone: string) {
+    const trimmed = phone.trim();
+    const normalized = normalizeUserPhone(trimmed);
+    const phoneMatch =
+      normalized && normalized !== trimmed
+        ? or(eq(users.phone, normalized), eq(users.phone, trimmed))
+        : eq(users.phone, normalized || trimmed);
+
+    const [row] = await this.db
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        email: users.email,
+        phone: users.phone,
+        passwordHash: users.passwordHash,
+        roleId: users.roleId,
+        roleCode: roles.code,
+        roleNameAr: roles.nameAr,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .innerJoin(roles, eq(users.roleId, roles.id))
+      .where(phoneMatch)
       .limit(1);
     return row ?? null;
   }
@@ -156,18 +184,20 @@ export class UsersRepository {
 
   async create(data: {
     fullName: string;
-    email: string;
-    phone?: string;
+    phone: string;
+    email?: string | null;
     passwordHash: string;
     roleId: string;
     isActive: boolean;
   }) {
+    const normalizedEmail = data.email?.trim() ? data.email.trim().toLowerCase() : null;
+    const normalizedPhone = normalizeUserPhone(data.phone);
     const [created] = await this.db
       .insert(users)
       .values({
         fullName: data.fullName,
-        email: data.email.toLowerCase(),
-        phone: data.phone ?? null,
+        email: normalizedEmail,
+        phone: normalizedPhone,
         passwordHash: data.passwordHash,
         roleId: data.roleId,
         isActive: data.isActive,
@@ -188,6 +218,7 @@ export class UsersRepository {
     id: string,
     updates: Partial<{
       fullName: string;
+      email: string | null;
       phone: string | null;
       roleId: string;
       isActive: boolean;

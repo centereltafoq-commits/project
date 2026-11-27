@@ -58,7 +58,7 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-muted-foreground">
-                    صافي ربح السنتر الاستحقاقي — {formatYearMonthAr(data.yearMonth)}
+                    صافي ربح السنتر — {formatYearMonthAr(data.yearMonth)}
                   </span>
                   <Badge variant={isProfitable ? 'success' : 'danger'}>
                     {isProfitable ? 'فائض ربحي' : 'عجز مالي'}
@@ -72,8 +72,7 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
                   {formatCurrency(data.netCenterResult)}
                 </p>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  إجمالي المستحقات ({formatCurrency(data.totalRevenue)}) − إجمالي الالتزامات (
-                  {formatCurrency(totalObligations)})
+                  إجمالي نصيب السنتر عن الطلاب من المجموعات (دون خصم المساعدين أو المصروفات)
                 </p>
               </div>
               <div

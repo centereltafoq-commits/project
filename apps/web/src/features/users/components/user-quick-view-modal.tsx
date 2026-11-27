@@ -1,11 +1,10 @@
 import {
   Calendar,
   Clock,
-  Mail,
+  Pencil,
   Phone,
   Power,
   ShieldCheck,
-  User,
 } from 'lucide-react';
 import { Badge, Button, Modal } from '@/design-system';
 import { formatDateAr, formatDateTimeAr } from '@/lib/formatters';
@@ -13,7 +12,7 @@ import { formatDateAr, formatDateTimeAr } from '@/lib/formatters';
 export interface UserRow {
   id: string;
   fullName: string;
-  email: string;
+  email: string | null;
   phone: string | null;
   roleId: string;
   roleCode: string;
@@ -27,6 +26,7 @@ interface UserQuickViewModalProps {
   user: UserRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (user: UserRow) => void;
   onToggleActive?: (user: UserRow) => void;
   isToggling?: boolean;
 }
@@ -35,6 +35,7 @@ export function UserQuickViewModal({
   user,
   open,
   onOpenChange,
+  onEdit,
   onToggleActive,
   isToggling,
 }: UserQuickViewModalProps) {
@@ -65,45 +66,45 @@ export function UserQuickViewModal({
             </p>
           </div>
 
-          {onToggleActive && (
-            <Button
-              size="sm"
-              variant={user.isActive ? 'danger' : 'success'}
-              className="gap-1.5 text-xs"
-              isLoading={isToggling}
-              onClick={() => onToggleActive(user)}
-            >
-              <Power className="h-3.5 w-3.5" />
-              {user.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب'}
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {onEdit && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                onClick={() => onEdit(user)}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                تعديل
+              </Button>
+            )}
+            {onToggleActive && (
+              <Button
+                size="sm"
+                variant={user.isActive ? 'danger' : 'success'}
+                className="gap-1.5 text-xs"
+                isLoading={isToggling}
+                onClick={() => onToggleActive(user)}
+              >
+                <Power className="h-3.5 w-3.5" />
+                {user.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب'}
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* بيانات الاتصال والدخول */}
+        {/* بيانات الدخول والاتصال */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded-xl border border-border bg-card p-3.5">
-            <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
-              <Mail className="h-3.5 w-3.5 text-primary" />
-              البريد الإلكتروني
-            </span>
-            <p className="mt-1 text-sm font-semibold text-foreground break-all">
-              {user.email}
-            </p>
-          </div>
-
           <div className="rounded-xl border border-border bg-card p-3.5">
             <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
               <Phone className="h-3.5 w-3.5 text-emerald-600" />
-              رقم الهاتف
+              رقم الهاتف (الدخول)
             </span>
-            <p dir="ltr" className="mt-1 text-sm font-mono font-semibold text-foreground text-right">
+            <p dir="ltr" className="mt-1 text-sm font-mono font-bold text-foreground text-right">
               {user.phone || 'غير مسجل'}
             </p>
           </div>
-        </div>
 
-        {/* الدور والنشاط */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-border bg-card p-3.5">
             <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-purple-600" />
@@ -113,7 +114,10 @@ export function UserQuickViewModal({
               {user.roleCode}
             </p>
           </div>
+        </div>
 
+        {/* آخر تسجيل دخول */}
+        <div className="grid grid-cols-1 gap-3">
           <div className="rounded-xl border border-border bg-card p-3.5">
             <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-amber-500" />

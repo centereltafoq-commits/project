@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { ALL_PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { CacheService } from '../../common/cache/cache.module';
@@ -11,6 +16,7 @@ import {
   UpdateUserPermissionOverridesDto,
   UserQueryDto,
 } from './dto/user.dto';
+import { normalizeUserPhone } from './user-phone.util';
 import { UsersRepository } from './users.repository';
 
 @Injectable()
@@ -56,16 +62,29 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto, actor: AuthenticatedUser) {
-    const existing = await this.repository.findByEmailWithRole(dto.email);
-    if (existing) {
-      throw new ConflictException('البريد الإلكتروني مسجل لمستخدم آخر');
+    const normalizedPhone = normalizeUserPhone(dto.phone);
+    if (normalizedPhone.length < 8) {
+      throw new BadRequestException('رقم الهاتف يجب ألا يقل عن 8 أرقام');
+    }
+
+    const existingPhone = await this.repository.findByPhoneWithRole(normalizedPhone);
+    if (existingPhone) {
+      throw new ConflictException('رقم الهاتف مسجل لمستخدم آخر');
+    }
+
+    const normalizedEmail = dto.email?.trim() ? dto.email.trim().toLowerCase() : null;
+    if (normalizedEmail) {
+      const existingEmail = await this.repository.findByEmailWithRole(normalizedEmail);
+      if (existingEmail) {
+        throw new ConflictException('البريد الإلكتروني مسجل لمستخدم آخر');
+      }
     }
 
     const passwordHash = await argon2.hash(dto.password);
     const created = await this.repository.create({
-      fullName: dto.fullName,
-      email: dto.email,
-      phone: dto.phone,
+      fullName: dto.fullName.trim(),
+      phone: normalizedPhone,
+      email: normalizedEmail,
       passwordHash,
       roleId: dto.roleId,
       isActive: dto.isActive ?? true,
@@ -90,8 +109,28 @@ export class UsersService {
     }
 
     const updates: Parameters<UsersRepository['update']>[1] = {};
-    if (dto.fullName !== undefined) updates.fullName = dto.fullName;
-    if (dto.phone !== undefined) updates.phone = dto.phone;
+    if (dto.fullName !== undefined) updates.fullName = dto.fullName.trim();
+    if (dto.phone !== undefined) {
+      const normalizedPhone = normalizeUserPhone(dto.phone);
+      if (normalizedPhone.length < 8) {
+        throw new BadRequestException('رقم الهاتف يجب ألا يقل عن 8 أرقام');
+      }
+      const existingPhone = await this.repository.findByPhoneWithRole(normalizedPhone);
+      if (existingPhone && existingPhone.id !== id) {
+        throw new ConflictException('رقم الهاتف مسجل لمستخدم آخر');
+      }
+      updates.phone = normalizedPhone;
+    }
+    if (dto.email !== undefined) {
+      const normalizedEmail = dto.email?.trim() ? dto.email.trim().toLowerCase() : null;
+      if (normalizedEmail) {
+        const existingEmail = await this.repository.findByEmailWithRole(normalizedEmail);
+        if (existingEmail && existingEmail.id !== id) {
+          throw new ConflictException('البريد الإلكتروني مسجل لمستخدم آخر');
+        }
+      }
+      updates.email = normalizedEmail;
+    }
     if (dto.roleId !== undefined) updates.roleId = dto.roleId;
     if (dto.isActive !== undefined) updates.isActive = dto.isActive;
     if (dto.password) {

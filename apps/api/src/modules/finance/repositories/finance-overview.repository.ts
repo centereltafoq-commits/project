@@ -10,6 +10,7 @@ import {
   payments,
   studentMonthlyRecords,
   students,
+  teacherDues,
   teacherMonthlyRecords,
   teacherPayouts,
   teachers,
@@ -136,6 +137,12 @@ export class FinanceOverviewRepository {
         })
         .from(expenses)
         .where(eq(expenses.yearMonth, yearMonth)),
+      () => executor
+        .select({
+          totalCenterShare: sql<string>`COALESCE(SUM(${teacherDues.centerAmount}), 0)`,
+        })
+        .from(teacherDues)
+        .where(eq(teacherDues.yearMonth, yearMonth)),
     ] as const;
     const [
       [studentAgg],
@@ -145,6 +152,7 @@ export class FinanceOverviewRepository {
       [assistantAgg],
       [assistantPayoutAgg],
       [expenseAgg],
+      [teacherDuesAgg],
     ] = tx
       ? await runQueriesSequentially(summaryQueries)
       : await runQueriesInParallel(summaryQueries);
@@ -175,9 +183,8 @@ export class FinanceOverviewRepository {
     );
     const totalExpenses = parseMoney(expenseAgg?.totalExpenses);
 
-    const netCenterProfit = roundMoney(
-      studentTotalDue - teacherTotalDues - assistantTotalDues - totalExpenses,
-    );
+    // صافي ربح السنتر يعتمد على إجمالي نصيب السنتر عن الطلاب فقط دون خصم رواتب المساعدين أو المصروفات
+    const netCenterProfit = roundMoney(parseMoney(teacherDuesAgg?.totalCenterShare));
     const netCashFlow = roundMoney(
       studentTotalPaid - teacherTotalPaidOut - assistantTotalPaidOut - totalExpenses,
     );

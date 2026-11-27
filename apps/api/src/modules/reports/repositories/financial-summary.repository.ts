@@ -93,14 +93,14 @@ export class FinancialSummaryRepository {
     const totalCollected = Number(payRow?.collected ?? 0);
     const actualMonthCashCollected = Number(actualCashPayRow?.collected ?? 0);
     const teacherShare = Number(teacherShareRow?.teacher_share ?? 0);
-    const centerShare = Number((totalRevenue - teacherShare).toFixed(2));
+    const centerShare = Number(Number(teacherShareRow?.center_share ?? 0).toFixed(2));
     const teacherPaid = Number(teacherPaidRow?.paid ?? 0);
     const assistantDuesSum = Number(assistantDueRow?.assistant_dues ?? 0);
     const assistantPaid = Number(assistantPaidRow?.paid ?? 0);
 
     const expByCat = new Map(expCategoriesRows.map((e) => [e.category, Number(e.amount)]));
     const totalExpenses = Array.from(expByCat.values()).reduce((a, b) => a + b, 0);
-    const netCenterResult = Number((centerShare - assistantDuesSum - totalExpenses).toFixed(2));
+    const netCenterResult = centerShare;
     const netCashFlow = Number((totalCollected - teacherPaid - assistantPaid - totalExpenses).toFixed(2));
 
     const expenseRows = Object.values(ExpenseCategory).map((cat) => ({
@@ -118,11 +118,11 @@ export class FinancialSummaryRepository {
       { id: 'rev-cash-window', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'إجمالي النقدية الداخلة للخزينة خلال أيام الشهر (شاملة متأخرات شهور سابقة)', amount: actualMonthCashCollected, rowKind: 'INFLOW', notes: 'حسب تاريخ السداد الفعلي (paymentDate) خلال أيام الشهر' },
       { id: 'rev-rec', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'متأخرات ومديونيات الطلاب المتبقية', amount: totalReceivables, rowKind: 'SUBTOTAL', notes: 'مستحقات لم تُحصّل بعد' },
       { id: 'split-tch', sectionAr: 'توزيع أنصبة المجموعات', lineItemAr: 'نصيب المدرسين المستحق', amount: teacherShare, rowKind: 'DEDUCTION', notes: `المنصرف الفعلي للمدرسين: ${teacherPaid} ج.م` },
-      { id: 'split-ctr', sectionAr: 'توزيع أنصبة المجموعات', lineItemAr: 'نصيب السنتر الإجمالي من المجموعات', amount: centerShare, rowKind: 'SUBTOTAL', notes: 'إيراد السنتر قبل المساعدين والمصروفات' },
-      { id: 'ast-dues', sectionAr: 'مستحقات المساعدين', lineItemAr: 'إجمالي مستحقات المساعدين', amount: assistantDuesSum, rowKind: 'DEDUCTION', notes: `المنصرف الفعلي للمساعدين: ${assistantPaid} ج.م` },
+      { id: 'split-ctr', sectionAr: 'توزيع أنصبة المجموعات', lineItemAr: 'نصيب السنتر الإجمالي من المجموعات', amount: centerShare, rowKind: 'SUBTOTAL', notes: 'مجموع نصيب السنتر عن الطلاب بالمجموعات' },
+      { id: 'ast-dues', sectionAr: 'مستحقات المساعدين', lineItemAr: 'إجمالي مستحقات المساعدين', amount: assistantDuesSum, rowKind: 'DEDUCTION', notes: `للعرض فقط ولا يُخصم من صافي ربح السنتر — المنصرف الفعلي: ${assistantPaid} ج.م` },
       ...expenseRows,
-      { id: 'exp-total', sectionAr: 'إجمالي المصروفات', lineItemAr: 'مجموع المصروفات التشغيلية للشهر', amount: totalExpenses, rowKind: 'SUBTOTAL', notes: 'مجموع كافة بنود المصروفات أعلاه' },
-      { id: 'net-acc', sectionAr: 'صافي النتيجة', lineItemAr: 'صافي ربح / نتيجة السنتر المحاسبية', amount: netCenterResult, rowKind: 'NET', notes: 'نصيب السنتر - مستحقات المساعدين - المصروفات' },
+      { id: 'exp-total', sectionAr: 'إجمالي المصروفات', lineItemAr: 'مجموع المصروفات التشغيلية للشهر', amount: totalExpenses, rowKind: 'SUBTOTAL', notes: 'مجموع كافة بنود المصروفات أعلاه (للعرض والتدفق النقدي فقط)' },
+      { id: 'net-acc', sectionAr: 'صافي النتيجة', lineItemAr: 'صافي ربح السنتر', amount: netCenterResult, rowKind: 'NET', notes: 'إجمالي نصيب السنتر عن الطلاب فقط دون خصم رواتب المساعدين أو المصروفات' },
       { id: 'net-cash', sectionAr: 'صافي النتيجة', lineItemAr: 'صافي التدفق النقدي الفعلي بالخزينة', amount: netCashFlow, rowKind: 'NET', notes: 'التحصيل الفعلي - المنصرف للمدرسين والمساعدين والمصروفات' },
     ];
 
@@ -130,7 +130,7 @@ export class FinancialSummaryRepository {
       { key: 'rev', label: 'إجمالي إيرادات المجموعات', value: totalRevenue, format: 'currency', tone: 'primary' },
       { key: 'coll', label: 'التحصيل الفعلي', value: totalCollected, format: 'currency', tone: 'success' },
       { key: 'ctrShare', label: 'نصيب السنتر من المجموعات', value: centerShare, format: 'currency', tone: 'purple' },
-      { key: 'net', label: 'صافي نتيجة السنتر', value: netCenterResult, format: 'currency', tone: netCenterResult >= 0 ? 'success' : 'danger' },
+      { key: 'net', label: 'صافي ربح السنتر', value: netCenterResult, format: 'currency', tone: netCenterResult >= 0 ? 'success' : 'danger' },
       { key: 'cashFlow', label: 'صافي التدفق النقدي', value: netCashFlow, format: 'currency', tone: netCashFlow >= 0 ? 'success' : 'danger' },
     ];
 

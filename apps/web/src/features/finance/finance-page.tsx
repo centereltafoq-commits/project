@@ -289,7 +289,7 @@ export function FinancePage() {
         <StatCard
           title="صافي ربح السنتر"
           value={formatCurrency(summary?.netCenterProfit ?? 0)}
-          subtitle="المستحقات - الالتزامات والمصروفات"
+          subtitle="إجمالي نصيب السنتر عن الطلاب (دون خصم المساعدين والمصروفات)"
           icon={TrendingUp}
           tone={(summary?.netCenterProfit ?? 0) >= 0 ? 'success' : 'danger'}
         />

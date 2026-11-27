@@ -12,6 +12,7 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     mockUsersRepo = {
+      findByPhoneWithRole: vi.fn(),
       findByEmailWithRole: vi.fn(),
       findByIdWithRole: vi.fn(),
       update: vi.fn(),
@@ -49,23 +50,23 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('records LOGIN_FAILED audit log and throws UnauthorizedException when user is not found', async () => {
-      mockUsersRepo.findByEmailWithRole.mockResolvedValueOnce(null);
+    it('records LOGIN_FAILED audit log and throws UnauthorizedException when phone is not found', async () => {
+      mockUsersRepo.findByPhoneWithRole.mockResolvedValueOnce(null);
 
       await expect(
-        service.login({ email: 'unknown@educenter.com', password: 'wrong' }, { ipAddress: '127.0.0.1' }),
-      ).rejects.toThrow('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+        service.login({ phone: '01099999999', password: 'wrong' }, { ipAddress: '127.0.0.1' }),
+      ).rejects.toThrow('رقم الهاتف أو كلمة المرور غير صحيحة');
 
       expect(mockAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           actorUserId: null,
-          actorName: 'unknown@educenter.com',
+          actorName: '01099999999',
           action: 'LOGIN_FAILED',
           entityType: 'AUTH',
           ipAddress: '127.0.0.1',
           afterData: expect.objectContaining({
-            email: 'unknown@educenter.com',
-            reason: 'UNKNOWN_EMAIL',
+            phone: '01099999999',
+            reason: 'UNKNOWN_PHONE',
           }),
         }),
       );

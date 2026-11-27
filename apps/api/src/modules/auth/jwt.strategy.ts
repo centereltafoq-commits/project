@@ -8,7 +8,8 @@ import { UsersService } from '../users/users.service';
 
 interface JwtPayload {
   sub: string;
-  email: string;
+  phone?: string | null;
+  email?: string | null;
   roleCode: string;
 }
 
@@ -33,6 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const byId = await this.usersRepository.findByIdWithRole(payload.sub);
     const user =
       byId ??
+      (payload.phone ? await this.usersRepository.findByPhoneWithRole(payload.phone) : null) ??
       (payload.email ? await this.usersRepository.findByEmailWithRole(payload.email) : null);
     if (!user || !user.isActive) {
       throw new UnauthorizedException('الحساب غير نشط أو غير مصرح له');
@@ -45,6 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     return {
       id: user.id,
       email: user.email,
+      phone: user.phone,
       fullName: user.fullName,
       roleCode: user.roleCode,
       permissions,

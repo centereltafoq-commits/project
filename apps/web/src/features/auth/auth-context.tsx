@@ -6,7 +6,7 @@ import { apiClient, getAccessToken, setAccessToken } from '@/lib/api-client';
 export interface AuthUser {
   id: string;
   fullName: string;
-  email: string;
+  email?: string | null;
   phone?: string | null;
   roleCode: string;
   roleNameAr: string;
@@ -16,7 +16,7 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (perm: string) => boolean;
 }
@@ -55,10 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('edu:auth-expired', handleAuthExpired);
   }, [queryClient]);
 
-  const login = React.useCallback(async (email: string, password: string) => {
+  const login = React.useCallback(async (phone: string, password: string) => {
     queryClient.clear();
     const res = await apiClient.post<{ accessToken: string; user: AuthUser }>('/auth/login', {
-      email,
+      phone,
       password,
     });
     setAccessToken(res.data.accessToken);

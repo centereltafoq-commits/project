@@ -9,7 +9,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
 export class UserQueryDto extends PaginationQueryDto {
@@ -28,14 +28,18 @@ export class CreateUserDto {
   @MaxLength(150)
   fullName: string;
 
-  @IsEmail({}, { message: 'البريد الإلكتروني غير صالح' })
-  @MaxLength(160)
-  email: string;
+  @IsString({ message: 'رقم الهاتف مطلوب' })
+  @MinLength(8, { message: 'رقم الهاتف يجب ألا يقل عن 8 أرقام' })
+  @MaxLength(30, { message: 'رقم الهاتف طويل جداً' })
+  phone: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  phone?: string;
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
+  @IsEmail({}, { message: 'البريد الإلكتروني غير صالح' })
+  @MaxLength(160)
+  email?: string;
 
   @IsString()
   @MinLength(8, { message: 'كلمة المرور يجب ألا تقل عن 8 أحرف' })
@@ -58,9 +62,18 @@ export class UpdateUserDto {
   fullName?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(30)
+  @IsString({ message: 'رقم الهاتف غير صالح' })
+  @MinLength(8, { message: 'رقم الهاتف يجب ألا يقل عن 8 أرقام' })
+  @MaxLength(30, { message: 'رقم الهاتف طويل جداً' })
   phone?: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? null : value?.trim(),
+  )
+  @IsEmail({}, { message: 'البريد الإلكتروني غير صالح' })
+  @MaxLength(160)
+  email?: string | null;
 
   @IsOptional()
   @IsUUID()
@@ -71,8 +84,11 @@ export class UpdateUserDto {
   isActive?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
   @IsString()
-  @MinLength(8)
+  @MinLength(8, { message: 'كلمة المرور يجب ألا تقل عن 8 أحرف' })
   @MaxLength(100)
   password?: string;
 }

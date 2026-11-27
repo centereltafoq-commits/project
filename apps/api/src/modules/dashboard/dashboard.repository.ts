@@ -159,12 +159,17 @@ export class DashboardRepository {
         })
         .from(payments)
         .where(eq(payments.paymentDate, todayDate)),
-      this.db.execute<{ total_dues: string }>(sql`
-        SELECT COALESCE(
-          NULLIF((SELECT SUM(${teacherMonthlyRecords.totalDues}) FROM ${teacherMonthlyRecords} WHERE ${teacherMonthlyRecords.yearMonth} = ${yearMonth}), 0),
-          (SELECT SUM(${teacherDues.teacherAmount}) FROM ${teacherDues} WHERE ${teacherDues.yearMonth} = ${yearMonth}),
-          0
-        )::text AS total_dues
+      this.db.execute<{ total_dues: string; total_center_share: string }>(sql`
+        SELECT
+          COALESCE(
+            NULLIF((SELECT SUM(${teacherMonthlyRecords.totalDues}) FROM ${teacherMonthlyRecords} WHERE ${teacherMonthlyRecords.yearMonth} = ${yearMonth}), 0),
+            (SELECT SUM(${teacherDues.teacherAmount}) FROM ${teacherDues} WHERE ${teacherDues.yearMonth} = ${yearMonth}),
+            0
+          )::text AS total_dues,
+          COALESCE(
+            (SELECT SUM(${teacherDues.centerAmount}) FROM ${teacherDues} WHERE ${teacherDues.yearMonth} = ${yearMonth}),
+            0
+          )::text AS total_center_share
       `).then((r) => r.rows),
       this.db.execute<{ total_dues: string }>(sql`
         SELECT COALESCE(
@@ -221,13 +226,13 @@ export class DashboardRepository {
     const todayPaymentsCount = Number(todayPaymentsRow?.todayCount ?? 0);
     const totalReceivables = Number(studentFinRow?.totalReceivables ?? 0);
     const totalTeacherDues = Number(teacherFinRow?.total_dues ?? 0);
+    const totalCenterShare = Number(teacherFinRow?.total_center_share ?? 0);
     const totalAssistantDues = Number(assistantFinRow?.total_dues ?? 0);
     const totalTeacherPaidOut = Number(teacherPaidRow?.totalPaidOut ?? 0);
     const totalAssistantPaidOut = Number(assistantPaidRow?.totalPaidOut ?? 0);
     const totalExpenses = Number(expensesRow?.totalExpenses ?? 0);
-    const netCenterResult = Number(
-      (totalRevenue - totalTeacherDues - totalAssistantDues - totalExpenses).toFixed(2),
-    );
+    // صافي ربح السنتر يعتمد على إجمالي نصيب السنتر من المجموعات فقط دون خصم المساعدين أو المصروفات
+    const netCenterResult = Number(totalCenterShare.toFixed(2));
     const netCashFlow = Number(
       (totalCollectedPayments - totalTeacherPaidOut - totalAssistantPaidOut - totalExpenses).toFixed(2),
     );

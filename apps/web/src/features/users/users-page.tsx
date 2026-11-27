@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, Plus, Power, RotateCcw, ShieldCheck, Users } from 'lucide-react';
+import { Eye, Pencil, Plus, Power, RotateCcw, ShieldCheck, Users } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, PaginatedResult, PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
@@ -48,13 +48,13 @@ export function UsersPage() {
   const [roleFilter, setRoleFilter] = React.useState('');
 
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [editingUser, setEditingUser] = React.useState<UserRow | null>(null);
   const [quickViewUser, setQuickViewUser] = React.useState<UserRow | null>(null);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
 
   const EMPTY_FORM = React.useMemo(
     () => ({
       fullName: '',
-      email: '',
       phone: '',
       password: '',
       roleId: '',
@@ -66,7 +66,25 @@ export function UsersPage() {
 
   const resetUserForm = React.useCallback(() => {
     setForm(EMPTY_FORM);
+    setEditingUser(null);
   }, [EMPTY_FORM]);
+
+  const openCreateModal = React.useCallback(() => {
+    resetUserForm();
+    setModalOpen(true);
+  }, [resetUserForm]);
+
+  const openEditModal = React.useCallback((user: UserRow) => {
+    setEditingUser(user);
+    setForm({
+      fullName: user.fullName,
+      phone: user.phone ?? '',
+      password: '',
+      roleId: user.roleId,
+    });
+    setQuickViewOpen(false);
+    setModalOpen(true);
+  }, []);
 
   const handleModalOpenChange = React.useCallback(
     (nextOpen: boolean) => {
@@ -100,13 +118,32 @@ export function UsersPage() {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: async () => apiClient.post('/users', form),
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (editingUser) {
+        const payload: {
+          fullName: string;
+          phone: string;
+          roleId: string;
+          password?: string;
+        } = {
+          fullName: form.fullName,
+          phone: form.phone,
+          roleId: form.roleId,
+        };
+        if (form.password.trim()) {
+          payload.password = form.password;
+        }
+        return apiClient.patch(`/users/${editingUser.id}`, payload);
+      }
+      return apiClient.post('/users', form);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      const wasEdit = Boolean(editingUser);
       setModalOpen(false);
-      setForm({ fullName: '', email: '', phone: '', password: '', roleId: '' });
-      notify('تم إنشاء حساب المستخدم بنجاح', 'success');
+      resetUserForm();
+      notify(wasEdit ? 'تم تحديث بيانات المستخدم بنجاح' : 'تم إنشاء حساب المستخدم بنجاح', 'success');
     },
     onError: (err) => notify(extractErrorMessage(err), 'error'),
   });
@@ -137,12 +174,11 @@ export function UsersPage() {
     },
     {
       key: 'contact',
-      header: 'البريد والهاتف',
+      header: 'رقم الهاتف',
       className: 'whitespace-nowrap',
       render: (row) => (
         <div>
-          <div className="text-xs text-foreground font-medium">{row.email}</div>
-          <div className="font-mono text-[11px] text-muted-foreground" dir="ltr">
+          <div className="font-mono text-xs font-bold text-foreground text-right" dir="ltr">
             {row.phone || '—'}
           </div>
         </div>
@@ -191,16 +227,27 @@ export function UsersPage() {
             تفاصيل
           </Button>
           {canManageUsers && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => toggleActiveMutation.mutate(row)}
-              isLoading={toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === row.id}
-            >
-              <Power className="h-3.5 w-3.5" />
-              {row.isActive ? 'إيقاف' : 'تفعيل'}
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 px-2.5 text-xs"
+                onClick={() => openEditModal(row)}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                تعديل
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => toggleActiveMutation.mutate(row)}
+                isLoading={toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === row.id}
+              >
+                <Power className="h-3.5 w-3.5" />
+                {row.isActive ? 'إيقاف' : 'تفعيل'}
+              </Button>
+            </>
           )}
         </div>
       ),
@@ -216,13 +263,7 @@ export function UsersPage() {
         description="إدارة حسابات فريق السنتر وتخصيص صلاحيات الأدوار الوظيفية بدقة"
         actions={
           canManageUsers ? (
-            <Button
-              onClick={() => {
-                resetUserForm();
-                setModalOpen(true);
-              }}
-              className="gap-1.5"
-            >
+            <Button onClick={openCreateModal} className="gap-1.5">
               <Plus className="h-4 w-4" />
               إضافة مستخدم جديد
             </Button>
@@ -256,7 +297,7 @@ export function UsersPage() {
                 setQuickViewUser(r);
                 setQuickViewOpen(true);
               }}
-              searchPlaceholder="ابحث بالاسم أو البريد أو الهاتف..."
+              searchPlaceholder="ابحث بالاسم أو رقم الهاتف..."
               searchValue={search}
               onSearchChange={(val) => {
                 setSearch(val);
@@ -315,6 +356,7 @@ export function UsersPage() {
         open={quickViewOpen}
         onOpenChange={setQuickViewOpen}
         user={quickViewUser}
+        onEdit={canManageUsers ? openEditModal : undefined}
         onToggleActive={canManageUsers ? (u) => toggleActiveMutation.mutate(u) : undefined}
         isToggling={toggleActiveMutation.isPending}
       />
@@ -322,13 +364,17 @@ export function UsersPage() {
       <Modal
         open={modalOpen}
         onOpenChange={handleModalOpenChange}
-        title="إضافة مستخدم جديد"
-        description="أنشئ حساب دخول لموظف أو محاسب أو مدرس وحدد دوره الوظيفي"
+        title={editingUser ? `تعديل بيانات: ${editingUser.fullName}` : 'إضافة مستخدم جديد'}
+        description={
+          editingUser
+            ? 'عدّل الاسم أو رقم الهاتف أو الدور الوظيفي أو كلمة المرور لهذا الحساب'
+            : 'أنشئ حساب دخول لموظف أو محاسب أو مدرس برقم الهاتف وحدد دوره الوظيفي'
+        }
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            createMutation.mutate();
+            saveMutation.mutate();
           }}
           className="space-y-4"
         >
@@ -339,22 +385,26 @@ export function UsersPage() {
             onChange={(e) => setForm({ ...form, fullName: e.target.value })}
           />
           <Input
-            label="البريد الإلكتروني"
-            type="email"
+            label="رقم الهاتف (للدخول)"
+            type="tel"
+            dir="ltr"
+            className="text-right font-mono"
+            placeholder="010xxxxxxxx"
             required
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-          <Input
-            label="رقم الهاتف"
+            minLength={8}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
           <Input
-            label="كلمة المرور (8 أحرف على الأقل)"
+            label={
+              editingUser
+                ? 'كلمة المرور الجديدة (اختياري — اتركها فارغة لعدم التغيير)'
+                : 'كلمة المرور (8 أحرف على الأقل)'
+            }
             type="password"
-            required
-            minLength={8}
+            required={!editingUser}
+            minLength={editingUser ? undefined : 8}
+            placeholder={editingUser ? 'اتركه فارغاً للإبقاء على كلمة المرور الحالية' : undefined}
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
@@ -372,8 +422,8 @@ export function UsersPage() {
             <Button type="button" variant="outline" onClick={() => handleModalOpenChange(false)}>
               إلغاء
             </Button>
-            <Button type="submit" isLoading={createMutation.isPending}>
-              إنشاء الحساب
+            <Button type="submit" isLoading={saveMutation.isPending}>
+              {editingUser ? 'حفظ التعديلات' : 'إنشاء الحساب'}
             </Button>
           </div>
         </form>

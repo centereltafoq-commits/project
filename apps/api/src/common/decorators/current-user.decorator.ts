@@ -2,7 +2,8 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 export interface AuthenticatedUser {
   id: string;
-  email: string;
+  email?: string | null;
+  phone?: string | null;
   fullName: string;
   roleCode: string;
   permissions: string[];

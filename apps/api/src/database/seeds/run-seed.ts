@@ -144,6 +144,7 @@ async function runSeed(): Promise<void> {
           target: users.email,
           set: {
             fullName: u.fullName,
+            phone: u.phone,
             passwordHash: u.hash,
             roleId: roleIdByCode.get(u.role)!,
             isActive: true,

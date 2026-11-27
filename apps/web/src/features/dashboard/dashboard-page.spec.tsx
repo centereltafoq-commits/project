@@ -339,6 +339,7 @@ describe('DashboardPage Bento Executive UX', () => {
     await waitFor(() => {
       expect(screen.getByText('الجانب الدائن: الإيرادات والتحصيل')).toBeInTheDocument();
       expect(screen.getByText('الجانب المدين: الالتزامات والمصروفات')).toBeInTheDocument();
+      expect(screen.getByText(/إجمالي نصيب السنتر عن الطلاب من المجموعات/i)).toBeInTheDocument();
     });
 
     // Activate Academic Tab

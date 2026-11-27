@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Navigate } from 'react-router-dom';
-import { GraduationCap, Lock, Mail } from 'lucide-react';
+import { GraduationCap, Lock, Phone } from 'lucide-react';
 import { Button, Card, Input, useToast } from '@/design-system';
 import { extractErrorMessage } from '@/lib/api-client';
 import { useCenterSettings } from '@/features/settings/center-settings-context';
@@ -11,7 +11,7 @@ export function LoginPage() {
   const { settings } = useCenterSettings();
   const [logoError, setLogoError] = React.useState(false);
   const { notify } = useToast();
-  const [email, setEmail] = React.useState('');
+  const [phone, setPhone] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -29,7 +29,7 @@ export function LoginPage() {
     setErrorMessage(null);
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(phone.trim(), password);
       notify(`مرحباً بك في ${settings.centerName || 'نظام إدارة السنتر التعليمي'}`, 'success');
     } catch (err) {
       const msg = extractErrorMessage(err);
@@ -76,17 +76,19 @@ export function LoginPage() {
 
           <div className="relative">
             <Input
-              label="البريد الإلكتروني"
-              type="email"
+              label="رقم الهاتف"
+              type="tel"
+              dir="ltr"
+              className="text-right font-mono"
               required
-              value={email}
+              value={phone}
               onChange={(e) => {
-                setEmail(e.target.value);
+                setPhone(e.target.value);
                 if (errorMessage) setErrorMessage(null);
               }}
-              placeholder="admin@educenter.com"
+              placeholder="01000000001"
             />
-            <Mail className="pointer-events-none absolute left-3 top-9 h-4 w-4 text-muted-foreground" />
+            <Phone className="pointer-events-none absolute left-3 top-9 h-4 w-4 text-muted-foreground" />
           </div>
 
           <div className="relative">

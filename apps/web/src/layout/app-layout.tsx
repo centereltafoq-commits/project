@@ -230,7 +230,9 @@ export function AppLayout() {
           <div className={cn('mb-3 flex items-center justify-between', collapsed && 'lg:hidden')}>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">{user.fullName}</p>
-              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              <p className="truncate text-xs text-muted-foreground font-mono text-right" dir="ltr">
+                {user.phone || user.email || ''}
+              </p>
             </div>
             <Badge variant="info">{user.roleNameAr}</Badge>
           </div>

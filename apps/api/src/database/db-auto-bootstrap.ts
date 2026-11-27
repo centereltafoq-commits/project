@@ -172,7 +172,8 @@ export async function ensureDatabaseReady(
         }
       }
 
-      const ownerEmail = (process.env.SEED_OWNER_EMAIL || 'admin@educenter.com').toLowerCase();
+      const ownerEmail = process.env.SEED_OWNER_EMAIL?.trim().toLowerCase() || 'admin@educenter.com';
+      const ownerPhone = process.env.SEED_OWNER_PHONE?.trim() || '01000000001';
       const ownerPassword = process.env.SEED_OWNER_PASSWORD || 'Admin@123456';
       const ownerHash = await argon2.hash(ownerPassword, { type: argon2.argon2id });
 
@@ -181,12 +182,12 @@ export async function ensureDatabaseReady(
         .values({
           fullName: 'مالك ومدير السنتر',
           email: ownerEmail,
-          phone: '01000000001',
+          phone: ownerPhone,
           passwordHash: ownerHash,
           roleId: roleIdByCode.get(SystemRole.OWNER)!,
           isActive: true,
         })
-        .onConflictDoNothing({ target: users.email })
+        .onConflictDoNothing()
         .returning({ id: users.id });
 
       await db
