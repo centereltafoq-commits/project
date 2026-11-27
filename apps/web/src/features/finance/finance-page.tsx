@@ -65,15 +65,42 @@ export function FinancePage() {
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const { hasPermission } = useAuth();
+  const canViewFullFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+  const canViewCollections =
+    canViewFullFinance || hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
+  const canViewPayouts = canViewFullFinance || hasPermission(PERMISSIONS.FINANCE_PAYOUTS);
+  const canViewExpenses = canViewFullFinance || hasPermission(PERMISSIONS.FINANCE_EXPENSES);
+  const canViewDailyLedger = canViewCollections || canViewPayouts || canViewExpenses;
   const canCloseMonth = hasPermission(PERMISSIONS.FINANCE_CLOSE_MONTH);
   const canRecalculateMonth =
-    hasPermission(PERMISSIONS.FINANCE_VIEW) ||
+    canViewFullFinance ||
     hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT) ||
     hasPermission(PERMISSIONS.FINANCE_PAYOUTS) ||
     canCloseMonth;
 
+  const allowedTabs = React.useMemo(() => {
+    const list: string[] = [];
+    if (canViewCollections) list.push('student-billing');
+    if (canViewDailyLedger) list.push('daily-ledger');
+    if (canViewCollections) list.push('payments-history');
+    if (canViewPayouts) {
+      list.push('teacher-dues');
+      list.push('assistant-dues');
+    }
+    if (canViewExpenses) list.push('expenses');
+    return list;
+  }, [canViewCollections, canViewDailyLedger, canViewExpenses, canViewPayouts]);
+
   const rawTab = searchParams.get('tab');
-  const activeTab = rawTab && VALID_FINANCE_TABS.has(rawTab) ? rawTab : 'student-billing';
+  const activeTab =
+    rawTab && VALID_FINANCE_TABS.has(rawTab) && allowedTabs.includes(rawTab)
+      ? rawTab
+      : allowedTabs[0] ?? 'student-billing';
+  const rawMonth = searchParams.get('yearMonth');
+  const initialYearMonth =
+    rawMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(rawMonth)
+      ? rawMonth
+      : getCurrentYearMonth();
 
   const handleTabChange = (nextTab: string) => {
     setSearchParams(
@@ -86,23 +113,35 @@ export function FinancePage() {
     );
   };
 
-  const [yearMonth, setYearMonth] = React.useState(getCurrentYearMonth());
+  const [yearMonth, setYearMonth] = React.useState(initialYearMonth);
   const [selectedDate, setSelectedDate] = React.useState('');
   const [closeConfirmOpen, setCloseConfirmOpen] = React.useState(false);
   const [activeReceipt, setActiveReceipt] = React.useState<PaymentRow | null>(null);
 
-  const handleYearMonthChange = (nextYearMonth: string) => {
-    setYearMonth(nextYearMonth);
-    if (selectedDate && !selectedDate.startsWith(nextYearMonth)) {
+  React.useEffect(() => {
+    if (rawMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(rawMonth) && rawMonth !== yearMonth) {
+      setYearMonth(rawMonth);
       setSelectedDate('');
     }
+    // Sync only when URL query yearMonth changes externally
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawMonth]);
+
+  const handleYearMonthChange = (nextYearMonth: string) => {
+    setYearMonth(nextYearMonth);
+    setSelectedDate('');
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('yearMonth', nextYearMonth);
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   const handleDateChange = (nextDate: string) => {
     setSelectedDate(nextDate);
-    if (nextDate && nextDate.slice(0, 7) !== yearMonth) {
-      setYearMonth(nextDate.slice(0, 7));
-    }
   };
 
   const { data: lookups } = useQuery<FinanceLookups>({
@@ -221,7 +260,11 @@ export function FinancePage() {
             size="sm"
             onClick={() => {
               const today = getTodayIsoDate();
-              handleDateChange(selectedDate === today ? '' : today);
+              const isTogglingOff = selectedDate === today;
+              if (!isTogglingOff && today.slice(0, 7) !== yearMonth) {
+                handleYearMonthChange(today.slice(0, 7));
+              }
+              setSelectedDate(isTogglingOff ? '' : today);
               if (activeTab === 'student-billing') {
                 handleTabChange('daily-ledger');
               }
@@ -257,126 +300,170 @@ export function FinancePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 no-print">
-        <StatCard
-          title={`مستحقات الطلاب (${formatYearMonthAr(yearMonth)})`}
-          value={formatCurrency(summary?.students.totalDue ?? 0)}
-          subtitle={`المتبقي للتحصيل: ${formatCurrency(summary?.students.remainingBalance ?? 0)}`}
-          icon={GraduationCap}
-          tone="primary"
-        />
-        <StatCard
-          title="إجمالي المحصّل من الطلاب"
-          value={formatCurrency(summary?.students.totalPaid ?? 0)}
-          subtitle="بناءً على الإيصالات المسجلة"
-          icon={Wallet}
-          tone="success"
-        />
-        <StatCard
-          title="مستحقات المدرسين والمساعدين"
-          value={formatCurrency(staffTotalDues)}
-          subtitle={`المتبقي للصرف: ${formatCurrency(staffRemaining)}`}
-          icon={Users}
-          tone="purple"
-        />
-        <StatCard
-          title="مصروفات السنتر الشهرية"
-          value={formatCurrency(summary?.expenses.totalAmount ?? 0)}
-          subtitle="إيجار ومرافق ومستلزمات وإدارة"
-          icon={Building2}
-          tone="warning"
-        />
-        <StatCard
-          title="صافي ربح السنتر"
-          value={formatCurrency(summary?.netCenterProfit ?? 0)}
-          subtitle="إجمالي نصيب السنتر عن الطلاب (دون خصم المساعدين والمصروفات)"
-          icon={TrendingUp}
-          tone={(summary?.netCenterProfit ?? 0) >= 0 ? 'success' : 'danger'}
-        />
-        <StatCard
-          title="صافي التدفق النقدي"
-          value={formatCurrency(summary?.netCashFlow ?? 0)}
-          subtitle="المحصل - المنصرف فعلياً بالخزينة"
-          icon={Banknote}
-          tone={(summary?.netCashFlow ?? 0) >= 0 ? 'success' : 'danger'}
-        />
+      <div
+        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 no-print ${
+          canViewFullFinance
+            ? 'lg:grid-cols-3 xl:grid-cols-6'
+            : canViewPayouts || canViewExpenses
+              ? 'lg:grid-cols-4'
+              : 'lg:grid-cols-2'
+        }`}
+      >
+        {canViewCollections && (
+          <>
+            <StatCard
+              title={`مستحقات الطلاب (${formatYearMonthAr(yearMonth)})`}
+              value={formatCurrency(summary?.students.totalDue ?? 0)}
+              subtitle={`المتبقي للتحصيل: ${formatCurrency(summary?.students.remainingBalance ?? 0)}`}
+              icon={GraduationCap}
+              tone="primary"
+            />
+            <StatCard
+              title="إجمالي المحصّل من الطلاب"
+              value={formatCurrency(summary?.students.totalPaid ?? 0)}
+              subtitle="بناءً على الإيصالات المسجلة"
+              icon={Wallet}
+              tone="success"
+            />
+          </>
+        )}
+        {canViewPayouts && (
+          <StatCard
+            title="مستحقات المدرسين والمساعدين"
+            value={formatCurrency(staffTotalDues)}
+            subtitle={`المتبقي للصرف: ${formatCurrency(staffRemaining)}`}
+            icon={Users}
+            tone="purple"
+          />
+        )}
+        {canViewExpenses && (
+          <StatCard
+            title="مصروفات السنتر الشهرية"
+            value={formatCurrency(summary?.expenses.totalAmount ?? 0)}
+            subtitle="إيجار ومرافق ومستلزمات وإدارة"
+            icon={Building2}
+            tone="warning"
+          />
+        )}
+        {canViewFullFinance && (
+          <>
+            <StatCard
+              title="صافي ربح السنتر"
+              value={formatCurrency(summary?.netCenterProfit ?? 0)}
+              subtitle="إجمالي نصيب السنتر عن الطلاب (دون خصم المساعدين والمصروفات)"
+              icon={TrendingUp}
+              tone={(summary?.netCenterProfit ?? 0) >= 0 ? 'success' : 'danger'}
+            />
+            <StatCard
+              title="صافي التدفق النقدي"
+              value={formatCurrency(summary?.netCashFlow ?? 0)}
+              subtitle="المحصل - المنصرف فعلياً بالخزينة"
+              icon={Banknote}
+              tone={(summary?.netCashFlow ?? 0) >= 0 ? 'success' : 'danger'}
+            />
+          </>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="no-print">
-          <TabsTrigger value="student-billing">
-            <GraduationCap className="h-4 w-4" />
-            تحصيل ومستحقات الطلاب
-          </TabsTrigger>
-          <TabsTrigger value="daily-ledger">
-            <CalendarDays className="h-4 w-4" />
-            سجل اليومية (باليوم)
-          </TabsTrigger>
-          <TabsTrigger value="payments-history">
-            <Receipt className="h-4 w-4" />
-            سجل الإيصالات والمدفوعات
-          </TabsTrigger>
-          <TabsTrigger value="teacher-dues">
-            <Users className="h-4 w-4" />
-            مستحقات وصرفيات المدرسين
-          </TabsTrigger>
-          <TabsTrigger value="assistant-dues">
-            <UserCheck className="h-4 w-4" />
-            مستحقات وصرفيات المساعدين
-          </TabsTrigger>
-          <TabsTrigger value="expenses">
-            <Building2 className="h-4 w-4" />
-            مصروفات السنتر
-          </TabsTrigger>
+          {canViewCollections && (
+            <TabsTrigger value="student-billing">
+              <GraduationCap className="h-4 w-4" />
+              تحصيل ومستحقات الطلاب
+            </TabsTrigger>
+          )}
+          {canViewDailyLedger && (
+            <TabsTrigger value="daily-ledger">
+              <CalendarDays className="h-4 w-4" />
+              سجل اليومية (باليوم)
+            </TabsTrigger>
+          )}
+          {canViewCollections && (
+            <TabsTrigger value="payments-history">
+              <Receipt className="h-4 w-4" />
+              سجل الإيصالات والمدفوعات
+            </TabsTrigger>
+          )}
+          {canViewPayouts && (
+            <>
+              <TabsTrigger value="teacher-dues">
+                <Users className="h-4 w-4" />
+                مستحقات وصرفيات المدرسين
+              </TabsTrigger>
+              <TabsTrigger value="assistant-dues">
+                <UserCheck className="h-4 w-4" />
+                مستحقات وصرفيات المساعدين
+              </TabsTrigger>
+            </>
+          )}
+          {canViewExpenses && (
+            <TabsTrigger value="expenses">
+              <Building2 className="h-4 w-4" />
+              مصروفات السنتر
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="student-billing">
-          <StudentBillingTab
-            yearMonth={yearMonth}
-            isMonthClosed={Boolean(summary?.isMonthClosed)}
-            lookups={lookups}
-            onShowReceipt={(r) => setActiveReceipt(r)}
-          />
-        </TabsContent>
-        <TabsContent value="daily-ledger">
-          <DailyLedgerTab
-            yearMonth={yearMonth}
-            selectedDate={selectedDate}
-            onSelectDate={handleDateChange}
-          />
-        </TabsContent>
-        <TabsContent value="payments-history">
-          <PaymentsHistoryTab
-            yearMonth={yearMonth}
-            selectedDate={selectedDate}
-            onClearDate={() => setSelectedDate('')}
-            onShowReceipt={(r) => setActiveReceipt(r)}
-          />
-        </TabsContent>
-        <TabsContent value="teacher-dues">
-          <TeacherDuesTab
-            yearMonth={yearMonth}
-            selectedDate={selectedDate}
-            isMonthClosed={Boolean(summary?.isMonthClosed)}
-            lookups={lookups}
-          />
-        </TabsContent>
-        <TabsContent value="assistant-dues">
-          <AssistantDuesTab
-            yearMonth={yearMonth}
-            selectedDate={selectedDate}
-            isMonthClosed={Boolean(summary?.isMonthClosed)}
-            lookups={lookups}
-          />
-        </TabsContent>
-        <TabsContent value="expenses">
-          <ExpensesTab
-            yearMonth={yearMonth}
-            selectedDate={selectedDate}
-            onClearDate={() => setSelectedDate('')}
-            isMonthClosed={Boolean(summary?.isMonthClosed)}
-          />
-        </TabsContent>
+        {canViewCollections && (
+          <TabsContent value="student-billing">
+            <StudentBillingTab
+              yearMonth={yearMonth}
+              isMonthClosed={Boolean(summary?.isMonthClosed)}
+              lookups={lookups}
+              onShowReceipt={(r) => setActiveReceipt(r)}
+            />
+          </TabsContent>
+        )}
+        {canViewDailyLedger && (
+          <TabsContent value="daily-ledger">
+            <DailyLedgerTab
+              yearMonth={yearMonth}
+              selectedDate={selectedDate}
+              onSelectDate={handleDateChange}
+            />
+          </TabsContent>
+        )}
+        {canViewCollections && (
+          <TabsContent value="payments-history">
+            <PaymentsHistoryTab
+              yearMonth={yearMonth}
+              selectedDate={selectedDate}
+              onClearDate={() => setSelectedDate('')}
+              onShowReceipt={(r) => setActiveReceipt(r)}
+            />
+          </TabsContent>
+        )}
+        {canViewPayouts && (
+          <>
+            <TabsContent value="teacher-dues">
+              <TeacherDuesTab
+                yearMonth={yearMonth}
+                selectedDate={selectedDate}
+                isMonthClosed={Boolean(summary?.isMonthClosed)}
+                lookups={lookups}
+              />
+            </TabsContent>
+            <TabsContent value="assistant-dues">
+              <AssistantDuesTab
+                yearMonth={yearMonth}
+                selectedDate={selectedDate}
+                isMonthClosed={Boolean(summary?.isMonthClosed)}
+                lookups={lookups}
+              />
+            </TabsContent>
+          </>
+        )}
+        {canViewExpenses && (
+          <TabsContent value="expenses">
+            <ExpensesTab
+              yearMonth={yearMonth}
+              selectedDate={selectedDate}
+              onClearDate={() => setSelectedDate('')}
+              isMonthClosed={Boolean(summary?.isMonthClosed)}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <ReceiptPrintModal

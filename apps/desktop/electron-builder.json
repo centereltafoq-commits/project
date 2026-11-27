@@ -33,7 +33,7 @@
   "publish": {
     "provider": "github",
     "owner": "centereltafoq-commits",
-    "repo": "system-erp-"
+    "repo": "project"
   },
   "nsis": {
     "oneClick": false,

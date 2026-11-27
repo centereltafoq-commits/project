@@ -12,7 +12,7 @@ import {
 import { PERMISSIONS } from '@edu-center/shared';
 import { Badge, Card } from '@/design-system';
 import { useAuth } from '@/features/auth/auth-context';
-import { formatCurrency, formatDateAr } from '@/lib/formatters';
+import { formatCurrency, formatDateAr, formatYearMonthAr } from '@/lib/formatters';
 import { DashboardSummaryData } from '../dashboard.types';
 
 interface DashboardHeroKpisProps {
@@ -21,7 +21,9 @@ interface DashboardHeroKpisProps {
 
 export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
   const { hasPermission } = useAuth();
-  const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+  const canViewFullFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+  const canViewCollections =
+    canViewFullFinance || hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
   const canViewClassrooms = hasPermission(PERMISSIONS.CLASSROOMS_VIEW);
   const canAccessAttendance =
     hasPermission(PERMISSIONS.ATTENDANCE_VIEW) || hasPermission(PERMISSIONS.SESSIONS_VIEW);
@@ -67,8 +69,8 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
 
   const isProfitable = data.netCenterResult >= 0;
 
-  // عرض غير مالي للموظفين بدون صلاحية FINANCE_VIEW
-  if (!canViewFinance) {
+  // عرض غير مالي للموظفين بدون صلاحية التحصيل أو أرباح السنتر
+  if (!canViewCollections) {
     const visibleCount = 3 + (canViewClassrooms ? 1 : 0);
     const colsClass = visibleCount === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3';
 
@@ -188,6 +190,8 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
   }
 
   const todayPaymentsCount = data.todayPaymentsCount ?? 0;
+  const isDifferentCalendarMonth = data.yearMonth !== data.todayDate.slice(0, 7);
+  const monthLabelAr = formatYearMonthAr(data.yearMonth);
 
   return (
     <div className="space-y-3">
@@ -206,11 +210,16 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
                 <Badge variant="success" className="px-2 py-0.5 text-[11px]">
                   اليوم {formatDateAr(data.todayDate)}
                 </Badge>
+                {isDifferentCalendarMonth && (
+                  <Badge variant="info" className="px-2 py-0.5 text-[11px]">
+                    عن {monthLabelAr} فقط
+                  </Badge>
+                )}
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {todayPaymentsCount > 0
-                  ? `${todayPaymentsCount.toLocaleString('en-US')} إيصال تحصيل مسجل اليوم`
-                  : 'لم تُسجَّل إيصالات تحصيل اليوم بعد'}
+                  ? `${todayPaymentsCount.toLocaleString('en-US')} إيصال تحصيل مسجل اليوم${isDifferentCalendarMonth ? ` لحساب ${monthLabelAr}` : ''}`
+                  : `لم تُسجَّل إيصالات تحصيل اليوم${isDifferentCalendarMonth ? ` لحساب ${monthLabelAr}` : ''} بعد`}
               </p>
             </div>
           </div>
@@ -226,7 +235,7 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
             </div>
 
             <Link
-              to="/finance?tab=payments-history"
+              to={`/finance?tab=payments-history&yearMonth=${data.yearMonth}`}
               className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-500/20 dark:text-emerald-300"
             >
               سجل الإيصالات
@@ -272,7 +281,7 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
                 المحصّل: <strong className="text-foreground">{formatCurrency(data.totalCollectedPayments)}</strong>
               </span>
               <Link
-                to="/finance?tab=payments-history"
+                to={`/finance?tab=payments-history&yearMonth=${data.yearMonth}`}
                 className="font-bold text-primary hover:underline shrink-0"
               >
                 الإيصالات
@@ -319,7 +328,7 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
                 متأخرات: <strong className="text-rose-600 dark:text-rose-400">{formatCurrency(data.totalReceivables)}</strong>
               </span>
               <Link
-                to="/finance?tab=student-billing"
+                to={`/finance?tab=student-billing&yearMonth=${data.yearMonth}`}
                 className="font-bold text-primary hover:underline shrink-0"
               >
                 تحصيل
@@ -408,7 +417,7 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
               <span className="truncate">بها متأخرات تحصيل</span>
               <Link
-                to="/finance?tab=student-billing"
+                to={`/finance?tab=student-billing&yearMonth=${data.yearMonth}`}
                 className="font-bold text-primary hover:underline shrink-0"
               >
                 متابعة
@@ -418,42 +427,61 @@ export function DashboardHeroKpis({ data }: DashboardHeroKpisProps) {
         </Card>
       </div>
 
-      {/* شريط خلاصة رفيع للتشغيل اليومي وصافي الربح بدون استهلاك مساحة */}
+      {/* شريط خلاصة رفيع للتشغيل اليومي وصافي الربح (الأرباح تظهر لحاملي صلاحية أرباح السنتر فقط) */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-xs">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Banknote className="h-3.5 w-3.5 text-primary" />
-            <span>صافي السنتر للشهر:</span>
-            <strong
-              className={`font-black tabular-nums ${
-                isProfitable ? 'text-primary' : 'text-rose-600 dark:text-rose-400'
-              }`}
-            >
-              {formatCurrency(data.netCenterResult)}
-            </strong>
-            <Badge variant={isProfitable ? 'success' : 'danger'} className="px-1.5 py-0 text-[10px]">
-              {isProfitable ? 'فائض' : 'عجز'}
-            </Badge>
-          </span>
+        {canViewFullFinance ? (
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Banknote className="h-3.5 w-3.5 text-primary" />
+              <span>صافي السنتر للشهر:</span>
+              <strong
+                className={`font-black tabular-nums ${
+                  isProfitable ? 'text-primary' : 'text-rose-600 dark:text-rose-400'
+                }`}
+              >
+                {formatCurrency(data.netCenterResult)}
+              </strong>
+              <Badge variant={isProfitable ? 'success' : 'danger'} className="px-1.5 py-0 text-[10px]">
+                {isProfitable ? 'فائض' : 'عجز'}
+              </Badge>
+            </span>
 
-          <span className="hidden sm:inline text-border">|</span>
+            <span className="hidden sm:inline text-border">|</span>
 
-          <span className="text-muted-foreground">
-            إجمالي مستحقات الشهر:{' '}
-            <strong className="font-bold text-foreground tabular-nums">
-              {formatCurrency(data.totalRevenue)}
-            </strong>
-          </span>
+            <span className="text-muted-foreground">
+              إجمالي مستحقات الشهر:{' '}
+              <strong className="font-bold text-foreground tabular-nums">
+                {formatCurrency(data.totalRevenue)}
+              </strong>
+            </span>
 
-          <span className="hidden sm:inline text-border">|</span>
+            <span className="hidden sm:inline text-border">|</span>
 
-          <span className="text-muted-foreground">
-            مستحقات المدرسين:{' '}
-            <strong className="font-bold text-violet-700 dark:text-violet-300 tabular-nums">
-              {formatCurrency(data.totalTeacherDues)}
-            </strong>
-          </span>
-        </div>
+            <span className="text-muted-foreground">
+              مستحقات المدرسين:{' '}
+              <strong className="font-bold text-violet-700 dark:text-violet-300 tabular-nums">
+                {formatCurrency(data.totalTeacherDues)}
+              </strong>
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Banknote className="h-3.5 w-3.5 text-emerald-600" />
+              <span>إجمالي التحصيل للشهر:</span>
+              <strong className="font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {formatCurrency(data.totalCollectedPayments)}
+              </strong>
+            </span>
+            <span className="hidden sm:inline text-border">|</span>
+            <span className="text-muted-foreground">
+              متأخرات الطلاب:{' '}
+              <strong className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                {formatCurrency(data.totalReceivables)}
+              </strong>
+            </span>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-4">
           <span className="text-muted-foreground">

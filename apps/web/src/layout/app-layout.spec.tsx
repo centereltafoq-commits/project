@@ -237,4 +237,35 @@ describe('AppLayout Navigation Sidebar RBAC', () => {
     expect(docsBtn).toBeInTheDocument();
     expect(docsBtn).toHaveAttribute('href', '/docs');
   });
+
+  it('shows Finance link in sidebar for assistant with FINANCE_COLLECT_PAYMENT while hiding teachers & assistants links', () => {
+    const perms = new Set<string>([
+      PERMISSIONS.DASHBOARD_VIEW,
+      PERMISSIONS.FINANCE_COLLECT_PAYMENT,
+      PERMISSIONS.STUDENTS_VIEW,
+    ]);
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      user: {
+        id: 'ast-1',
+        fullName: 'أسيستنت',
+        email: '01099887766@assistant.local',
+        roleCode: SystemRole.ASSISTANT,
+        roleNameAr: 'أسيستنت',
+        permissions: Array.from(perms),
+      },
+      logout: vi.fn(),
+      hasPermission: (perm: string) => perms.has(perm),
+    } as any);
+
+    render(
+      <MemoryRouter>
+        <AppLayout />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: /الحسابات والمالية/i })).toHaveAttribute('href', '/finance');
+    expect(screen.queryByRole('link', { name: /المدرسون/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /الأسيستنت/i })).not.toBeInTheDocument();
+  });
 });

@@ -39,7 +39,7 @@ export const DEFAULT_CONFIG: DesktopConfig = {
   updateSettings: {
     autoCheck: true,
     githubOwner: 'centereltafoq-commits',
-    githubRepo: 'system-erp-',
+    githubRepo: 'project',
   },
   isFirstLaunch: true,
   windowBounds: {

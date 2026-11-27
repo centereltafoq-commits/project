@@ -27,12 +27,19 @@ import {
   GroupExportQueryDto,
 } from './dto/group-excel.dto';
 import {
+  BulkCreateEnrollmentsDto,
   CreateEnrollmentDto,
   EnrollmentQueryDto,
   UpdateEnrollmentDto,
 } from './dto/enrollment.dto';
+import {
+  EnrollmentExcelCommitDto,
+  EnrollmentExcelImportOptionsDto,
+  EnrollmentExportQueryDto,
+} from './dto/enrollment-excel.dto';
 import { GroupsService } from './groups.service';
 import { GroupsExcelService } from './groups-excel.service';
+import { GroupEnrollmentsExcelService } from './group-enrollments-excel.service';
 import { EnrollmentsService } from './enrollments.service';
 
 @Controller('groups')
@@ -40,6 +47,7 @@ export class GroupsController {
   constructor(
     private readonly groupsService: GroupsService,
     private readonly groupsExcelService: GroupsExcelService,
+    private readonly groupEnrollmentsExcelService: GroupEnrollmentsExcelService,
     private readonly enrollmentsService: EnrollmentsService,
   ) {}
 
@@ -127,6 +135,92 @@ export class GroupsController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.enrollmentsService.updateEnrollment(enrollmentId, dto, actor);
+  }
+
+  @Get(':groupId/enrollments/active-student-ids')
+  @RequireAnyPermissions(PERMISSIONS.ENROLLMENTS_VIEW, PERMISSIONS.ENROLLMENTS_MANAGE)
+  async getActiveStudentIds(@Param('groupId', ParseUUIDPipe) groupId: string) {
+    return this.enrollmentsService.getActiveStudentIds(groupId);
+  }
+
+  @Get(':groupId/enrollments/import/template')
+  @RequirePermissions(PERMISSIONS.ENROLLMENTS_MANAGE)
+  async downloadEnrollmentsImportTemplate(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.groupEnrollmentsExcelService.generateTemplate(groupId);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="group-enrollments-import-template.xlsx"',
+    );
+    res.send(buffer);
+  }
+
+  @Post(':groupId/enrollments/import/preview')
+  @RequirePermissions(PERMISSIONS.ENROLLMENTS_MANAGE)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    }),
+  )
+  async previewEnrollmentsImport(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @UploadedFile() file: UploadedMulterFile,
+    @Body() dto: EnrollmentExcelImportOptionsDto,
+  ) {
+    return this.groupEnrollmentsExcelService.previewImport(groupId, file, dto);
+  }
+
+  @Post(':groupId/enrollments/import/commit')
+  @RequirePermissions(PERMISSIONS.ENROLLMENTS_MANAGE)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    }),
+  )
+  async commitEnrollmentsImport(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @UploadedFile() file: UploadedMulterFile,
+    @Body() dto: EnrollmentExcelCommitDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.groupEnrollmentsExcelService.commitImport(groupId, file, dto, actor);
+  }
+
+  @Get(':groupId/enrollments/export')
+  @RequirePermissions(PERMISSIONS.ENROLLMENTS_VIEW, PERMISSIONS.REPORTS_EXPORT)
+  async exportEnrollmentsExcel(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Query() query: EnrollmentExportQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const { buffer, filename } = await this.groupEnrollmentsExcelService.exportExcel(
+      groupId,
+      query,
+      actor,
+    );
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  }
+
+  @Post(':groupId/enrollments/bulk')
+  @RequirePermissions(PERMISSIONS.ENROLLMENTS_MANAGE)
+  async bulkSubscribeStudents(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Body() dto: BulkCreateEnrollmentsDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.enrollmentsService.bulkSubscribeStudents(groupId, dto, actor);
   }
 
   @Get(':groupId/enrollments')

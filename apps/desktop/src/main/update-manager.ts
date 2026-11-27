@@ -43,7 +43,7 @@ export interface UpdateManagerOptions {
 }
 
 const DEFAULT_GITHUB_OWNER = 'centereltafoq-commits';
-const DEFAULT_GITHUB_REPO = 'system-erp-';
+const DEFAULT_GITHUB_REPO = 'project';
 
 function readPackagedUpdateFeed(): { owner: string; repo: string } | null {
   try {

@@ -393,4 +393,50 @@ describe('DashboardPage Bento Executive UX', () => {
       expect(apiClient.post).toHaveBeenCalledWith('/attendance/sessions/sess-1/complete-group');
     });
   });
+
+  it('scopes daily collection label and Finance links to the selected month when viewing a different month', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        ...MOCK_SUMMARY,
+        yearMonth: '2026-10',
+        todayDate: '2026-11-13',
+        todayCollectedPayments: 0,
+        todayPaymentsCount: 0,
+      },
+    } as any);
+
+    setupAuth([
+      PERMISSIONS.DASHBOARD_VIEW,
+      PERMISSIONS.FINANCE_VIEW,
+      PERMISSIONS.ATTENDANCE_VIEW,
+    ]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('عن أكتوبر 2026 فقط')).toBeInTheDocument();
+    });
+
+    const receiptsLink = screen.getByRole('link', { name: 'سجل الإيصالات' });
+    expect(receiptsLink).toHaveAttribute('href', '/finance?tab=payments-history&yearMonth=2026-10');
+  });
+
+  it('shows daily collections to assistant with FINANCE_COLLECT_PAYMENT while hiding center profit and teacher dues', async () => {
+    setupAuth([
+      PERMISSIONS.DASHBOARD_VIEW,
+      PERMISSIONS.FINANCE_COLLECT_PAYMENT,
+      PERMISSIONS.STUDENTS_VIEW,
+    ]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('إجمالي التحصيل اليومي للسنتر')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('الطلاب اللي دفعت')).toBeInTheDocument();
+    expect(screen.queryByText('صافي السنتر للشهر')).not.toBeInTheDocument();
+    expect(screen.queryByText(/مستحقات المدرسين/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /التحليل المالي للشهر/i })).not.toBeInTheDocument();
+  });
 });

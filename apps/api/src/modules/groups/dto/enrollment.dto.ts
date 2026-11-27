@@ -1,5 +1,9 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -58,6 +62,49 @@ export class CreateEnrollmentDto {
   @IsString()
   @MaxLength(1000)
   notes?: string;
+}
+
+export class BulkCreateEnrollmentsDto {
+  @IsArray({ message: 'قائمة الطلاب مطلوبة' })
+  @ArrayMinSize(1, { message: 'يرجى اختيار طالب واحد على الأقل' })
+  @ArrayMaxSize(200, { message: 'الحد الأقصى للإضافة الجماعية في المرة الواحدة هو 200 طالب' })
+  @IsUUID('4', { each: true, message: 'معرّف أحد الطلاب غير صالح' })
+  studentIds: string[];
+
+  @IsOptional()
+  @IsDateString({}, { message: 'تاريخ بدء الاشتراك غير صالح' })
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  agreedMonthlyPrice?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  agreedSessionsCount?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  agreedSessionPrice?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  skipAlreadyEnrolled?: boolean = true;
 }
 
 export class UpdateEnrollmentDto {

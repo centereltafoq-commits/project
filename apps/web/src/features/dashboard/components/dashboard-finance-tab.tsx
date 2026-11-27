@@ -143,7 +143,7 @@ export function DashboardFinanceTab({ data }: DashboardFinanceTabProps) {
                 </p>
               </div>
             </div>
-            <Link to="/finance">
+            <Link to={`/finance?yearMonth=${data.yearMonth}`}>
               <Button size="sm" variant="primary">
                 الإدارة المالية
                 <ArrowLeft className="h-3.5 w-3.5" />

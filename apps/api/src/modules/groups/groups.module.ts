@@ -5,6 +5,7 @@ import { GroupsMutationRepository } from './groups-mutation.repository';
 import { EnrollmentsRepository } from './enrollments.repository';
 import { GroupsService } from './groups.service';
 import { GroupsExcelService } from './groups-excel.service';
+import { GroupEnrollmentsExcelService } from './group-enrollments-excel.service';
 import { EnrollmentsService } from './enrollments.service';
 import { GroupsController } from './groups.controller';
 
@@ -17,11 +18,13 @@ import { GroupsController } from './groups.controller';
     EnrollmentsRepository,
     GroupsService,
     GroupsExcelService,
+    GroupEnrollmentsExcelService,
     EnrollmentsService,
   ],
   exports: [
     GroupsService,
     GroupsExcelService,
+    GroupEnrollmentsExcelService,
     EnrollmentsService,
     GroupsRepository,
     EnrollmentsRepository,

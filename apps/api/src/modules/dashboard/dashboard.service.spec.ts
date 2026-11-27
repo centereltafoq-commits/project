@@ -212,4 +212,26 @@ describe('DashboardService - Financial Metrics Guarding', () => {
     expect(res.classroomsSummary.total).toBe(0);
     expect(res.monthlySessionProgress.students[0].remainingBalance).toBe(150);
   });
+
+  it('allows assistant with FINANCE_COLLECT_PAYMENT to view daily/monthly collections while zeroing profit & teacher dues', async () => {
+    const assistant: AuthenticatedUser = {
+      id: 'ast-1',
+      email: '01099887766@assistant.local',
+      fullName: 'أسيستنت التحصيل',
+      roleCode: SystemRole.ASSISTANT,
+      permissions: [PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT],
+    };
+
+    const res = await service.getSummary('2026-11', assistant);
+    expect(res.todayCollectedPayments).toBe(3500);
+    expect(res.todayPaymentsCount).toBe(9);
+    expect(res.totalCollectedPayments).toBe(42000);
+    expect(res.totalReceivables).toBe(8000);
+    expect(res.monthlyPaymentStats.paidStudentsCount).toBe(95);
+    expect(res.totalTeacherDues).toBe(0);
+    expect(res.totalAssistantDues).toBe(0);
+    expect(res.totalExpenses).toBe(0);
+    expect(res.netCenterResult).toBe(0);
+    expect(res.netCashFlow).toBe(0);
+  });
 });

@@ -24,15 +24,28 @@ export class FinanceSettlementController {
   ) {}
 
   @Get('lookups')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
-  async getLookups() {
-    return this.monthlySettlementService.getLookups();
+  @RequireAnyPermissions(
+    PERMISSIONS.FINANCE_VIEW,
+    PERMISSIONS.FINANCE_COLLECT_PAYMENT,
+    PERMISSIONS.FINANCE_PAYOUTS,
+    PERMISSIONS.FINANCE_EXPENSES,
+  )
+  async getLookups(@CurrentUser() actor: AuthenticatedUser) {
+    return this.monthlySettlementService.getLookups(actor);
   }
 
   @Get('month-summary')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
-  async getMonthSummary(@Query() query: YearMonthQueryDto) {
-    return this.monthlySettlementService.getMonthSummary(query.yearMonth);
+  @RequireAnyPermissions(
+    PERMISSIONS.FINANCE_VIEW,
+    PERMISSIONS.FINANCE_COLLECT_PAYMENT,
+    PERMISSIONS.FINANCE_PAYOUTS,
+    PERMISSIONS.FINANCE_EXPENSES,
+  )
+  async getMonthSummary(
+    @Query() query: YearMonthQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.monthlySettlementService.getMonthSummary(query.yearMonth, actor);
   }
 
   @Post('recalculate-month')
@@ -59,19 +72,19 @@ export class FinanceSettlementController {
   }
 
   @Get('student-records')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT)
   async listStudentRecords(@Query() query: StudentRecordsQueryDto) {
     return this.monthlySettlementService.listStudentRecords(query);
   }
 
   @Get('teacher-records')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_PAYOUTS)
   async listTeacherRecords(@Query() query: TeacherRecordsQueryDto) {
     return this.monthlySettlementService.listTeacherRecords(query);
   }
 
   @Get('assistant-records')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_PAYOUTS)
   async listAssistantRecords(@Query() query: AssistantRecordsQueryDto) {
     return this.monthlySettlementService.listAssistantRecords(query);
   }

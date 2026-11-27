@@ -53,7 +53,13 @@ export class FinancialSummaryRepository {
       this.db
         .select({ collected: sql<string>`COALESCE(SUM(${payments.amount}), 0)::text` })
         .from(payments)
-        .where(and(gte(payments.paymentDate, monthStart), lte(payments.paymentDate, monthEnd))),
+        .where(
+          and(
+            eq(payments.yearMonth, yearMonth),
+            gte(payments.paymentDate, monthStart),
+            lte(payments.paymentDate, monthEnd),
+          ),
+        ),
       this.db.execute<{ teacher_share: string; center_share: string }>(sql`
         SELECT
           COALESCE(
@@ -115,7 +121,7 @@ export class FinancialSummaryRepository {
     const statementRows = [
       { id: 'rev-gross', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'إجمالي إيرادات المجموعات (مستحقات الطلاب)', amount: totalRevenue, rowKind: 'INFLOW', notes: 'إجمالي قيمة الحصص والاشتراكات المستحقة عن هذا الشهر' },
       { id: 'rev-coll', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'المحصّل لحساب مستحقات هذا الشهر', amount: totalCollected, rowKind: 'INFLOW', notes: 'المبالغ المسددة لصالح فواتير هذا الشهر' },
-      { id: 'rev-cash-window', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'إجمالي النقدية الداخلة للخزينة خلال أيام الشهر (شاملة متأخرات شهور سابقة)', amount: actualMonthCashCollected, rowKind: 'INFLOW', notes: 'حسب تاريخ السداد الفعلي (paymentDate) خلال أيام الشهر' },
+      { id: 'rev-cash-window', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'المحصّل خلال أيام الشهر (لحساب نفس الشهر)', amount: actualMonthCashCollected, rowKind: 'INFLOW', notes: 'دفعات هذا الشهر المسددة ضمن أيامه تقويمياً (دون تداخل شهور أخرى)' },
       { id: 'rev-rec', sectionAr: 'الإيرادات والتحصيل', lineItemAr: 'متأخرات ومديونيات الطلاب المتبقية', amount: totalReceivables, rowKind: 'SUBTOTAL', notes: 'مستحقات لم تُحصّل بعد' },
       { id: 'split-tch', sectionAr: 'توزيع أنصبة المجموعات', lineItemAr: 'نصيب المدرسين المستحق', amount: teacherShare, rowKind: 'DEDUCTION', notes: `المنصرف الفعلي للمدرسين: ${teacherPaid} ج.م` },
       { id: 'split-ctr', sectionAr: 'توزيع أنصبة المجموعات', lineItemAr: 'نصيب السنتر الإجمالي من المجموعات', amount: centerShare, rowKind: 'SUBTOTAL', notes: 'مجموع نصيب السنتر عن الطلاب بالمجموعات' },

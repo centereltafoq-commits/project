@@ -31,6 +31,10 @@ vi.mock('./subscribe-student-modal', () => ({
   SubscribeStudentModal: () => null,
 }));
 
+vi.mock('@/components/excel-import-modal', () => ({
+  ExcelImportModal: () => null,
+}));
+
 const sampleGroup: GroupDetailData = {
   id: 'grp-1',
   groupCode: 'GRP-4101',
@@ -238,5 +242,25 @@ describe('GroupEnrollmentsSection', () => {
     expect(screen.getByText('3 حاضر')).toBeInTheDocument();
     expect(screen.queryByText('مدفوع: 1')).not.toBeInTheDocument();
     expect(screen.queryByText('سداد جزئي')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /استيراد \/ نقل Excel/i })).not.toBeInTheDocument();
+  });
+
+  it('renders bulk subscribe, Excel import/transfer, and export actions when authorized', async () => {
+    useAuthMock.mockReturnValue({
+      hasPermission: (perm: string) =>
+        perm === PERMISSIONS.ENROLLMENTS_VIEW ||
+        perm === PERMISSIONS.ENROLLMENTS_MANAGE ||
+        perm === PERMISSIONS.REPORTS_EXPORT,
+    } as any);
+
+    renderSection();
+
+    await waitFor(() => {
+      expect(screen.getByText('أحمد علي')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /تسجيل اشتراك طلاب/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /استيراد \/ نقل Excel/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /تصدير Excel/i })).toBeInTheDocument();
   });
 });

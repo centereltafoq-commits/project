@@ -19,15 +19,27 @@ const PERMISSION_META_MAP: Record<PermissionCode, { module: string; nameAr: stri
   [PERMISSIONS.STUDENTS_UPDATE]: { module: 'STUDENTS', nameAr: 'تعديل بيانات الطلاب' },
   [PERMISSIONS.STUDENTS_ARCHIVE]: { module: 'STUDENTS', nameAr: 'إيقاف وأرشفة ملفات الطلاب' },
 
-  [PERMISSIONS.TEACHERS_VIEW]: { module: 'TEACHERS', nameAr: 'عرض جميع المدرسين' },
+  [PERMISSIONS.TEACHERS_VIEW]: {
+    module: 'TEACHERS',
+    nameAr: 'عرض جميع المدرسين (الأرباح تظهر لحاملي صلاحية أرباح السنتر فقط)',
+  },
   [PERMISSIONS.TEACHERS_MANAGE]: { module: 'TEACHERS', nameAr: 'إضافة وتعديل بيانات المدرسين' },
   [PERMISSIONS.TEACHERS_VIEW_OWN]: { module: 'TEACHERS', nameAr: 'عرض الملف والمجموعات الخاصة بالمدرس' },
 
-  [PERMISSIONS.ASSISTANTS_VIEW]: { module: 'ASSISTANTS', nameAr: 'عرض المساعدين وطرق حسابهم' },
+  [PERMISSIONS.ASSISTANTS_VIEW]: {
+    module: 'ASSISTANTS',
+    nameAr: 'عرض المساعدين (الأجور تظهر لحاملي صلاحية أرباح السنتر فقط)',
+  },
   [PERMISSIONS.ASSISTANTS_MANAGE]: { module: 'ASSISTANTS', nameAr: 'إضافة وتعديل بيانات المساعدين' },
 
-  [PERMISSIONS.GROUPS_VIEW]: { module: 'GROUPS', nameAr: 'عرض المجموعات الدراسية ومواعيدها' },
-  [PERMISSIONS.GROUPS_MANAGE]: { module: 'GROUPS', nameAr: 'إنشاء وتعديل المجموعات وسياساتها المالية' },
+  [PERMISSIONS.GROUPS_VIEW]: {
+    module: 'GROUPS',
+    nameAr: 'عرض المجموعات الدراسية ومواعيدها (بدون كشف توزيع الأرباح)',
+  },
+  [PERMISSIONS.GROUPS_MANAGE]: {
+    module: 'GROUPS',
+    nameAr: 'إنشاء وتعديل المجموعات وسياسات توزيع الأرباح مع المدرسين',
+  },
 
   [PERMISSIONS.ENROLLMENTS_VIEW]: { module: 'ENROLLMENTS', nameAr: 'عرض اشتراكات الطلاب بالمجموعات' },
   [PERMISSIONS.ENROLLMENTS_MANAGE]: { module: 'ENROLLMENTS', nameAr: 'إدارة اشتراكات وتحويلات الطلاب' },
@@ -39,10 +51,19 @@ const PERMISSION_META_MAP: Record<PermissionCode, { module: string; nameAr: stri
   [PERMISSIONS.ATTENDANCE_RECORD]: { module: 'ATTENDANCE', nameAr: 'تسجيل الحضور والغياب اليومي' },
   [PERMISSIONS.ATTENDANCE_OVERRIDE]: { module: 'ATTENDANCE', nameAr: 'تعديل سجلات الحضور السابقة' },
 
-  [PERMISSIONS.FINANCE_VIEW]: { module: 'FINANCE', nameAr: 'الاطلاع على الحسابات وكشوف المستحقات' },
-  [PERMISSIONS.FINANCE_COLLECT_PAYMENT]: { module: 'FINANCE', nameAr: 'تحصيل مدفوعات الطلاب وإصدار الإيصالات' },
-  [PERMISSIONS.FINANCE_PAYOUTS]: { module: 'FINANCE', nameAr: 'صرف مستحقات المدرسين والمساعدين' },
-  [PERMISSIONS.FINANCE_EXPENSES]: { module: 'FINANCE', nameAr: 'تسجيل وإدارة مصروفات السنتر' },
+  [PERMISSIONS.FINANCE_VIEW]: {
+    module: 'FINANCE',
+    nameAr: 'الاطلاع على أرباح السنتر وأرباح المدرسين والحسابات الكاملة',
+  },
+  [PERMISSIONS.FINANCE_COLLECT_PAYMENT]: {
+    module: 'FINANCE',
+    nameAr: 'تحصيل مدفوعات الطلاب ومتابعة التحصيل اليومي والإيصالات (بدون كشف الأرباح)',
+  },
+  [PERMISSIONS.FINANCE_PAYOUTS]: {
+    module: 'FINANCE',
+    nameAr: 'صرف مستحقات المدرسين والمساعدين والاطلاع عليها',
+  },
+  [PERMISSIONS.FINANCE_EXPENSES]: { module: 'FINANCE', nameAr: 'تسجيل وإدارة مصروفات السنتر التشغيلية' },
   [PERMISSIONS.FINANCE_CLOSE_MONTH]: { module: 'FINANCE', nameAr: 'إقفال الحسابات الشهرية واعتمادها' },
 
   [PERMISSIONS.CLASSROOMS_VIEW]: { module: 'CLASSROOMS', nameAr: 'عرض القاعات وتجهيزاتها وإشغالها' },
@@ -90,7 +111,13 @@ export const SEED_ROLES_DATA: Array<{
   {
     code: SystemRole.ACCOUNTANT,
     nameAr: 'المحاسب',
-    description: 'إدارة التحصيل والمصروفات وصرف المستحقات والتقارير المالية وإقفال الشهر',
+    description: 'إدارة التحصيل والمصروفات وصرف المستحقات والتقارير المالية وأرباح السنتر وإقفال الشهر',
+  },
+  {
+    code: SystemRole.ASSISTANT,
+    nameAr: 'الأسيستنت (تحصيل وحضور)',
+    description:
+      'تحصيل مدفوعات الطلاب ومتابعة التحصيل اليومي ورصد الحضور واشتراكات المجموعات — محجوب عن أرباح السنتر وأرباح المدرسين',
   },
   {
     code: SystemRole.ATTENDANCE_EMPLOYEE,

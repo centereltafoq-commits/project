@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, desc, eq, ilike, inArray, ne, or, SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, ne, or, SQL, sql } from 'drizzle-orm';
 import { EnrollmentStatus, SessionStatus } from '@edu-center/shared';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
@@ -366,6 +366,239 @@ export class EnrollmentsRepository {
           .where(eq(enrollments.id, id))
           .returning();
         return updated ?? null;
+      });
+    } catch (error) {
+      this.rethrowActiveEnrollmentConflict(error);
+      throw error;
+    }
+  }
+
+  async findActiveStudentIdsByGroup(groupId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ studentId: enrollments.studentId })
+      .from(enrollments)
+      .where(and(eq(enrollments.groupId, groupId), eq(enrollments.status, EnrollmentStatus.ACTIVE)));
+    return rows.map((r) => r.studentId);
+  }
+
+  async findAllByGroupForExport(
+    groupId: string,
+    query: { status?: string; search?: string },
+  ) {
+    const conditions: SQL[] = [eq(enrollments.groupId, groupId)];
+    if (query.status) {
+      conditions.push(eq(enrollments.status, query.status));
+    }
+    if (query.search) {
+      const pattern = `%${query.search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(students.fullName, pattern),
+          ilike(students.studentCode, pattern),
+          ilike(students.phone, pattern),
+          ilike(students.guardianPhone, pattern),
+        )!,
+      );
+    }
+
+    return this.db
+      .select({
+        id: enrollments.id,
+        studentId: enrollments.studentId,
+        studentCode: students.studentCode,
+        studentName: students.fullName,
+        studentPhone: students.phone,
+        guardianPhone: students.guardianPhone,
+        gradeLevel: students.gradeLevel,
+        startDate: enrollments.startDate,
+        endDate: enrollments.endDate,
+        agreedMonthlyPrice: enrollments.agreedMonthlyPrice,
+        agreedSessionsCount: enrollments.agreedSessionsCount,
+        agreedSessionPrice: enrollments.agreedSessionPrice,
+        status: enrollments.status,
+        notes: enrollments.notes,
+      })
+      .from(enrollments)
+      .innerJoin(students, eq(enrollments.studentId, students.id))
+      .where(and(...conditions))
+      .orderBy(asc(students.fullName))
+      .limit(10_000);
+  }
+
+  async findAllStudentsForEnrollmentExcel() {
+    return this.db
+      .select({
+        id: students.id,
+        studentCode: students.studentCode,
+        fullName: students.fullName,
+        phone: students.phone,
+        guardianPhone: students.guardianPhone,
+        gradeLevel: students.gradeLevel,
+        status: students.status,
+      })
+      .from(students)
+      .where(ne(students.status, 'ARCHIVED'))
+      .orderBy(asc(students.fullName))
+      .limit(10_000);
+  }
+
+  async createBulkWithOptionalTransfer(params: {
+    groupId: string;
+    rows: Array<{
+      studentId: string;
+      startDate: string;
+      endDate: string | null;
+      agreedMonthlyPrice: string;
+      agreedSessionsCount: number;
+      agreedSessionPrice: string;
+      notes: string | null;
+    }>;
+    skipAlreadyEnrolled: boolean;
+    sourceGroupId?: string | null;
+  }): Promise<{
+    created: Array<typeof enrollments.$inferSelect>;
+    skippedAlreadyEnrolledCount: number;
+    transferredCount: number;
+  }> {
+    if (params.sourceGroupId && params.sourceGroupId === params.groupId) {
+      throw new BadRequestException('لا يمكن أن تكون المجموعة المنقول منها هي نفس المجموعة الهدف');
+    }
+
+    try {
+      return await this.db.transaction(async (tx) => {
+        // Lock involved groups in deterministic ID order to avoid deadlocks under concurrency
+        const lockOrder = params.sourceGroupId
+          ? [params.groupId, params.sourceGroupId].sort()
+          : [params.groupId];
+
+        let targetGroup:
+          | { id: string; name: string; isActive: boolean; maxStudents: number }
+          | undefined;
+        let sourceGroupExists = !params.sourceGroupId;
+
+        for (const gid of lockOrder) {
+          const [grp] = await tx
+            .select({
+              id: groups.id,
+              name: groups.name,
+              isActive: groups.isActive,
+              maxStudents: groups.maxStudents,
+            })
+            .from(groups)
+            .where(eq(groups.id, gid))
+            .for('update')
+            .limit(1);
+
+          if (gid === params.groupId) {
+            targetGroup = grp;
+          } else if (gid === params.sourceGroupId && grp) {
+            sourceGroupExists = true;
+          }
+        }
+
+        if (!targetGroup) {
+          throw new NotFoundException('المجموعة الهدف غير موجودة');
+        }
+        if (!sourceGroupExists) {
+          throw new NotFoundException('المجموعة المنقول منها غير موجودة');
+        }
+        if (!targetGroup.isActive) {
+          throw new BadRequestException('لا يمكن تسجيل اشتراك جديد في مجموعة متوقفة');
+        }
+
+        const uniqueRowsByStudent = new Map<string, (typeof params.rows)[number]>();
+        for (const row of params.rows) {
+          if (!uniqueRowsByStudent.has(row.studentId)) {
+            uniqueRowsByStudent.set(row.studentId, row);
+          }
+        }
+        const uniqueStudentIds = Array.from(uniqueRowsByStudent.keys());
+        if (uniqueStudentIds.length === 0) {
+          return { created: [], skippedAlreadyEnrolledCount: 0, transferredCount: 0 };
+        }
+
+        const [existingStudents, activeInTarget] = await Promise.all([
+          tx
+            .select({ id: students.id })
+            .from(students)
+            .where(inArray(students.id, uniqueStudentIds)),
+          tx
+            .select({ studentId: enrollments.studentId })
+            .from(enrollments)
+            .where(
+              and(
+                eq(enrollments.groupId, params.groupId),
+                eq(enrollments.status, EnrollmentStatus.ACTIVE),
+              ),
+            ),
+        ]);
+
+        if (existingStudents.length !== uniqueStudentIds.length) {
+          throw new NotFoundException('بعض الطلاب المختارين غير موجودين بالنظام');
+        }
+
+        const activeSet = new Set(activeInTarget.map((e) => e.studentId));
+        const toInsertRows: Array<typeof enrollments.$inferInsert> = [];
+        let skippedAlreadyEnrolledCount = 0;
+
+        for (const [studentId, row] of uniqueRowsByStudent.entries()) {
+          if (activeSet.has(studentId)) {
+            if (!params.skipAlreadyEnrolled) {
+              throw new ConflictException('يوجد طلاب مشتركون بالفعل باشتراك نشط في هذه المجموعة');
+            }
+            skippedAlreadyEnrolledCount += 1;
+            continue;
+          }
+          toInsertRows.push({
+            studentId: row.studentId,
+            groupId: params.groupId,
+            startDate: row.startDate,
+            endDate: row.endDate,
+            agreedMonthlyPrice: row.agreedMonthlyPrice,
+            agreedSessionsCount: row.agreedSessionsCount,
+            agreedSessionPrice: row.agreedSessionPrice,
+            status: EnrollmentStatus.ACTIVE,
+            notes: row.notes,
+          });
+        }
+
+        const remainingSeats = Math.max(0, targetGroup.maxStudents - activeSet.size);
+        if (toInsertRows.length > remainingSeats) {
+          throw new BadRequestException(
+            `العدد المطلوب (${toInsertRows.length}) يتجاوز المقاعد المتاحة بالمجموعة (المتاح ${remainingSeats} من أصل ${targetGroup.maxStudents})`,
+          );
+        }
+
+        const created =
+          toInsertRows.length > 0
+            ? await tx.insert(enrollments).values(toInsertRows).returning()
+            : [];
+
+        let transferredCount = 0;
+        if (params.sourceGroupId) {
+          const transferStudentIds = uniqueStudentIds;
+          const transferDate =
+            params.rows[0]?.startDate ?? new Date().toISOString().slice(0, 10);
+          const cancelled = await tx
+            .update(enrollments)
+            .set({
+              status: EnrollmentStatus.CANCELLED,
+              endDate: transferDate,
+              notes: sql`CASE WHEN COALESCE(${enrollments.notes}, '') = '' THEN ${`تم النقل إلى: ${targetGroup.name}`} ELSE ${enrollments.notes} || E'\n' || ${`تم النقل إلى: ${targetGroup.name}`} END`,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(enrollments.groupId, params.sourceGroupId),
+                inArray(enrollments.studentId, transferStudentIds),
+                eq(enrollments.status, EnrollmentStatus.ACTIVE),
+              ),
+            )
+            .returning({ id: enrollments.id });
+          transferredCount = cancelled.length;
+        }
+
+        return { created, skippedAlreadyEnrolledCount, transferredCount };
       });
     } catch (error) {
       this.rethrowActiveEnrollmentConflict(error);

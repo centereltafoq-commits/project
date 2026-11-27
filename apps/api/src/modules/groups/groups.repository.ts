@@ -210,7 +210,7 @@ export class GroupsRepository {
   }
 
   async getLookups() {
-    const [teacherList, assistantList, studentList] = await Promise.all([
+    const [teacherList, assistantList, studentList, groupList] = await Promise.all([
       this.db
         .select({
           id: teachers.id,
@@ -246,12 +246,24 @@ export class GroupsRepository {
         .where(eq(students.status, 'ACTIVE'))
         .orderBy(asc(students.fullName))
         .limit(2000),
+      this.db
+        .select({
+          id: groups.id,
+          groupCode: groups.groupCode,
+          name: groups.name,
+          gradeLevel: groups.gradeLevel,
+        })
+        .from(groups)
+        .where(eq(groups.isActive, true))
+        .orderBy(asc(groups.name))
+        .limit(1000),
     ]);
 
     return {
       teachers: teacherList,
       assistants: assistantList,
       students: studentList,
+      groups: groupList,
     };
   }
 

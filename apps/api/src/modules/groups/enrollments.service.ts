@@ -11,6 +11,7 @@ import { createPaginatedResult } from '../../common/utils/pagination.util';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { MonthlySettlementService } from '../finance/monthly-settlement.service';
 import {
+  BulkCreateEnrollmentsDto,
   CreateEnrollmentDto,
   EnrollmentQueryDto,
   UpdateEnrollmentDto,
@@ -113,6 +114,84 @@ export class EnrollmentsService {
     } catch {}
 
     return created;
+  }
+
+  async getActiveStudentIds(groupId: string): Promise<{ studentIds: string[] }> {
+    const group = await this.groupsRepository.findDetailById(groupId);
+    if (!group) throw new NotFoundException('المجموعة غير موجودة');
+    const studentIds = await this.enrollmentsRepository.findActiveStudentIdsByGroup(groupId);
+    return { studentIds };
+  }
+
+  async bulkSubscribeStudents(
+    groupId: string,
+    dto: BulkCreateEnrollmentsDto,
+    actor: AuthenticatedUser,
+  ) {
+    const group = await this.groupsRepository.findDetailById(groupId);
+    if (!group) throw new NotFoundException('المجموعة غير موجودة');
+    if (!group.isActive) {
+      throw new BadRequestException('لا يمكن تسجيل اشتراك جديد في مجموعة متوقفة');
+    }
+
+    const agreedMonthlyPrice =
+      dto.agreedMonthlyPrice !== undefined ? dto.agreedMonthlyPrice : Number(group.monthlyPrice);
+    const agreedSessionsCount =
+      dto.agreedSessionsCount !== undefined ? dto.agreedSessionsCount : group.monthlySessionsCount;
+    const agreedSessionPrice =
+      dto.agreedSessionPrice !== undefined
+        ? dto.agreedSessionPrice
+        : agreedMonthlyPrice / Math.max(1, agreedSessionsCount);
+
+    const today = this.getLocalIsoDate();
+    const startDate = dto.startDate || today;
+    const uniqueStudentIds = Array.from(new Set(dto.studentIds));
+
+    const result = await this.enrollmentsRepository.createBulkWithOptionalTransfer({
+      groupId,
+      skipAlreadyEnrolled: dto.skipAlreadyEnrolled ?? true,
+      rows: uniqueStudentIds.map((studentId) => ({
+        studentId,
+        startDate,
+        endDate: dto.endDate ?? null,
+        agreedMonthlyPrice: agreedMonthlyPrice.toFixed(2),
+        agreedSessionsCount,
+        agreedSessionPrice: agreedSessionPrice.toFixed(2),
+        notes: dto.notes ?? null,
+      })),
+    });
+
+    if (result.created.length > 0) {
+      await this.audit.record({
+        actorUserId: actor.id,
+        actorName: actor.fullName,
+        action: 'BULK_CREATE_ENROLLMENT',
+        entityType: 'ENROLLMENT',
+        entityId: groupId,
+        afterData: {
+          groupId,
+          groupName: group.name,
+          enrolledCount: result.created.length,
+          skippedAlreadyEnrolledCount: result.skippedAlreadyEnrolledCount,
+          studentIds: result.created.map((c) => c.studentId),
+          startDate,
+        },
+      });
+
+      await this.recalculateAffectedMonths([startDate, dto.endDate]);
+      try {
+        await Promise.all([
+          this.cache?.invalidatePrefix('dashboard:summary:'),
+          this.cache?.invalidatePrefix('reports:'),
+        ]);
+      } catch {}
+    }
+
+    return {
+      enrolledCount: result.created.length,
+      skippedAlreadyEnrolledCount: result.skippedAlreadyEnrolledCount,
+      createdIds: result.created.map((c) => c.id),
+    };
   }
 
   private getLocalIsoDate(): string {

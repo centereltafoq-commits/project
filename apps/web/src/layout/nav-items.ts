@@ -47,7 +47,17 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
       PERMISSIONS.SESSIONS_VIEW,
     ],
   },
-  { label: 'الحسابات والمالية', to: '/finance', icon: Wallet, permission: PERMISSIONS.FINANCE_VIEW },
+  {
+    label: 'الحسابات والمالية',
+    to: '/finance',
+    icon: Wallet,
+    anyPermissions: [
+      PERMISSIONS.FINANCE_VIEW,
+      PERMISSIONS.FINANCE_COLLECT_PAYMENT,
+      PERMISSIONS.FINANCE_PAYOUTS,
+      PERMISSIONS.FINANCE_EXPENSES,
+    ],
+  },
   { label: 'إدارة القاعات', to: '/classrooms', icon: Building2, permission: PERMISSIONS.CLASSROOMS_VIEW },
   {
     label: 'رسائل واتساب',
@@ -58,6 +68,7 @@ export const SIDEBAR_NAV_ITEMS: NavItem[] = [
       PERMISSIONS.GROUPS_VIEW,
       PERMISSIONS.ATTENDANCE_VIEW,
       PERMISSIONS.FINANCE_VIEW,
+      PERMISSIONS.FINANCE_COLLECT_PAYMENT,
     ],
   },
   { label: 'التقويم الموحد', to: '/calendar', icon: Calendar, permission: PERMISSIONS.CALENDAR_VIEW },

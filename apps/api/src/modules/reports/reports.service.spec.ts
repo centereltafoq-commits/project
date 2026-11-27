@@ -194,4 +194,26 @@ describe('ReportsService - Access Control and Permissions Enforcement', () => {
       '2026-11-14',
     );
   });
+
+  it('blocks profit, teacher, group-revenue, and expense reports for assistant with FINANCE_COLLECT_PAYMENT only', async () => {
+    const assistant: AuthenticatedUser = {
+      id: 'ast-1',
+      email: '01011223344@assistant.local',
+      fullName: 'Assistant',
+      roleCode: SystemRole.ASSISTANT,
+      permissions: [PERMISSIONS.REPORTS_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT],
+    };
+
+    for (const restrictedReport of [
+      'financial-summary',
+      'teacher-statement',
+      'groups-revenue',
+      'assistant-statement',
+      'expenses',
+    ]) {
+      await expect(
+        service.generateReport(restrictedReport, { yearMonth: '2026-11' }, assistant),
+      ).rejects.toThrow(ForbiddenException);
+    }
+  });
 });

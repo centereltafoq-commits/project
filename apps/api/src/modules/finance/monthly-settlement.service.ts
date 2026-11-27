@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { PERMISSIONS, SystemRole } from '@edu-center/shared';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CacheService } from '../../common/cache/cache.module';
 import { createPaginatedResult } from '../../common/utils/pagination.util';
@@ -29,12 +30,58 @@ export class MonthlySettlementService {
     private readonly cache: CacheService,
   ) {}
 
-  async getLookups() {
-    return this.overviewRepo.fetchFinanceLookups();
+  async getLookups(actor?: AuthenticatedUser) {
+    const lookups = await this.overviewRepo.fetchFinanceLookups();
+    if (!actor || actor.roleCode === SystemRole.OWNER) {
+      return lookups;
+    }
+
+    const perms = actor.permissions ?? [];
+    const canViewFullFinance = perms.includes(PERMISSIONS.FINANCE_VIEW);
+    const canViewCollections =
+      canViewFullFinance || perms.includes(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
+    const canViewPayouts =
+      canViewFullFinance || perms.includes(PERMISSIONS.FINANCE_PAYOUTS);
+
+    return {
+      students: canViewCollections ? lookups.students : [],
+      groups: canViewCollections ? lookups.groups : [],
+      teachers: canViewPayouts ? lookups.teachers : [],
+      assistants: canViewPayouts ? lookups.assistants : [],
+    };
   }
 
-  async getMonthSummary(yearMonth: string) {
-    return this.overviewRepo.fetchMonthExecutiveSummary(yearMonth);
+  async getMonthSummary(yearMonth: string, actor?: AuthenticatedUser) {
+    const summary = await this.overviewRepo.fetchMonthExecutiveSummary(yearMonth);
+    if (!actor || actor.roleCode === SystemRole.OWNER) {
+      return summary;
+    }
+
+    const perms = actor.permissions ?? [];
+    const canViewFullFinance = perms.includes(PERMISSIONS.FINANCE_VIEW);
+    if (canViewFullFinance) {
+      return summary;
+    }
+
+    const canViewCollections = perms.includes(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
+    const canViewPayouts = perms.includes(PERMISSIONS.FINANCE_PAYOUTS);
+    const canViewExpenses = perms.includes(PERMISSIONS.FINANCE_EXPENSES);
+
+    return {
+      ...summary,
+      students: canViewCollections
+        ? summary.students
+        : { totalDue: 0, totalPaid: 0, remainingBalance: 0 },
+      teachers: canViewPayouts
+        ? summary.teachers
+        : { totalDues: 0, totalPaidOut: 0, remainingBalance: 0 },
+      assistants: canViewPayouts
+        ? summary.assistants
+        : { totalDues: 0, totalPaidOut: 0, remainingBalance: 0 },
+      expenses: canViewExpenses ? summary.expenses : { totalAmount: 0 },
+      netCenterProfit: 0,
+      netCashFlow: 0,
+    };
   }
 
   async listStudentRecords(query: StudentRecordsQueryDto) {

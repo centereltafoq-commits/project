@@ -200,7 +200,14 @@ export function App() {
                 <Route
                   path="finance"
                   element={
-                    <PermissionGuardRoute permission={PERMISSIONS.FINANCE_VIEW}>
+                    <PermissionGuardRoute
+                      anyPermissions={[
+                        PERMISSIONS.FINANCE_VIEW,
+                        PERMISSIONS.FINANCE_COLLECT_PAYMENT,
+                        PERMISSIONS.FINANCE_PAYOUTS,
+                        PERMISSIONS.FINANCE_EXPENSES,
+                      ]}
+                    >
                       <FinancePage />
                     </PermissionGuardRoute>
                   }
@@ -222,6 +229,7 @@ export function App() {
                         PERMISSIONS.GROUPS_VIEW,
                         PERMISSIONS.ATTENDANCE_VIEW,
                         PERMISSIONS.FINANCE_VIEW,
+                        PERMISSIONS.FINANCE_COLLECT_PAYMENT,
                       ]}
                     >
                       <WhatsappPage />

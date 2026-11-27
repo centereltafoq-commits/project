@@ -33,7 +33,7 @@ export function parseGithubRepoInput(
   repoInput: string,
 ): { githubOwner: string; githubRepo: string } {
   const rawOwner = ownerOrUrl.trim();
-  const rawRepo = repoInput.trim() || 'system-erp-';
+  const rawRepo = repoInput.trim() || 'project';
 
   const urlMatch = rawOwner.match(
     /github\.com\/([^/\s]+)\/([^/\s#?]+?)(?:\.git)?\/?$/i,
@@ -69,7 +69,7 @@ export function DesktopUpdatePanel({ compact = false }: DesktopUpdatePanelProps)
   } = useDesktop();
 
   const [githubOwner, setGithubOwner] = React.useState('centereltafoq-commits');
-  const [githubRepo, setGithubRepo] = React.useState('system-erp-');
+  const [githubRepo, setGithubRepo] = React.useState('project');
   const [autoCheck, setAutoCheck] = React.useState(true);
   const [savingRepo, setSavingRepo] = React.useState(false);
 
@@ -79,7 +79,7 @@ export function DesktopUpdatePanel({ compact = false }: DesktopUpdatePanelProps)
       setGithubOwner(
         settings.githubOwner || updateStatus?.githubOwner || 'centereltafoq-commits',
       );
-      setGithubRepo(settings.githubRepo || updateStatus?.githubRepo || 'system-erp-');
+      setGithubRepo(settings.githubRepo || updateStatus?.githubRepo || 'project');
       setAutoCheck(settings.autoCheck ?? true);
     }
   }, [config?.updateSettings, updateStatus?.githubOwner, updateStatus?.githubRepo]);

@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, lte } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
+import { PERMISSIONS, SystemRole } from '@edu-center/shared';
+import { AuthenticatedUser } from '../../../common/decorators/current-user.decorator';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../../database/database.module';
 import {
   assistantPayouts,
@@ -75,124 +77,135 @@ const EXPENSE_CATEGORY_LABELS_AR: Record<string, string> = {
 export class DailyLedgerRepository {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDatabase) {}
 
-  async getDailyLedger(query: DailyLedgerQueryDto) {
+  async getDailyLedger(query: DailyLedgerQueryDto, actor?: AuthenticatedUser) {
+    const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
+    const perms = actor?.permissions ?? [];
+    const canViewFullFinance = isOwner || perms.includes(PERMISSIONS.FINANCE_VIEW);
+    const allowPayments =
+      canViewFullFinance || perms.includes(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
+    const allowPayouts = canViewFullFinance || perms.includes(PERMISSIONS.FINANCE_PAYOUTS);
+    const allowExpenses = canViewFullFinance || perms.includes(PERMISSIONS.FINANCE_EXPENSES);
+
     const now = new Date();
     const fallbackYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const resolvedYearMonth =
       query.yearMonth || (query.date ? query.date.slice(0, 7) : fallbackYearMonth);
 
-    const [y, m] = resolvedYearMonth.split('-').map(Number);
-    const lastDay = new Date(y, m, 0).getDate();
-    const startOfMonth = `${resolvedYearMonth}-01`;
-    const endOfMonth = `${resolvedYearMonth}-${String(lastDay).padStart(2, '0')}`;
-
     const [paymentRows, teacherPayoutRows, assistantPayoutRows, expenseRows] =
       await Promise.all([
-        this.db
-          .select({
-            id: payments.id,
-            receiptNumber: payments.receiptNumber,
-            yearMonth: payments.yearMonth,
-            amount: payments.amount,
-            paymentDate: payments.paymentDate,
-            paymentMethod: payments.paymentMethod,
-            notes: payments.notes,
-            createdAt: payments.createdAt,
-            studentName: students.fullName,
-            studentCode: students.studentCode,
-            receivedByName: users.fullName,
-          })
-          .from(payments)
-          .innerJoin(students, eq(students.id, payments.studentId))
-          .leftJoin(users, eq(users.id, payments.receivedByUserId))
-          .where(
-            query.date
-              ? eq(payments.paymentDate, query.date)
-              : and(
-                  gte(payments.paymentDate, startOfMonth),
-                  lte(payments.paymentDate, endOfMonth),
-                ),
-          )
-          .orderBy(desc(payments.paymentDate), desc(payments.createdAt)),
+        allowPayments
+          ? this.db
+              .select({
+                id: payments.id,
+                receiptNumber: payments.receiptNumber,
+                yearMonth: payments.yearMonth,
+                amount: payments.amount,
+                paymentDate: payments.paymentDate,
+                paymentMethod: payments.paymentMethod,
+                notes: payments.notes,
+                createdAt: payments.createdAt,
+                studentName: students.fullName,
+                studentCode: students.studentCode,
+                receivedByName: users.fullName,
+              })
+              .from(payments)
+              .innerJoin(students, eq(students.id, payments.studentId))
+              .leftJoin(users, eq(users.id, payments.receivedByUserId))
+              .where(
+                query.date
+                  ? and(
+                      eq(payments.yearMonth, resolvedYearMonth),
+                      eq(payments.paymentDate, query.date),
+                    )
+                  : eq(payments.yearMonth, resolvedYearMonth),
+              )
+              .orderBy(desc(payments.paymentDate), desc(payments.createdAt))
+          : Promise.resolve([]),
 
-        this.db
-          .select({
-            id: teacherPayouts.id,
-            referenceNumber: teacherPayouts.referenceNumber,
-            yearMonth: teacherPayouts.yearMonth,
-            amount: teacherPayouts.amount,
-            payoutDate: teacherPayouts.payoutDate,
-            paymentMethod: teacherPayouts.paymentMethod,
-            notes: teacherPayouts.notes,
-            createdAt: teacherPayouts.createdAt,
-            teacherName: teachers.fullName,
-            teacherCode: teachers.teacherCode,
-            paidByName: users.fullName,
-          })
-          .from(teacherPayouts)
-          .innerJoin(teachers, eq(teachers.id, teacherPayouts.teacherId))
-          .leftJoin(users, eq(users.id, teacherPayouts.paidByUserId))
-          .where(
-            query.date
-              ? eq(teacherPayouts.payoutDate, query.date)
-              : and(
-                  gte(teacherPayouts.payoutDate, startOfMonth),
-                  lte(teacherPayouts.payoutDate, endOfMonth),
-                ),
-          )
-          .orderBy(desc(teacherPayouts.payoutDate), desc(teacherPayouts.createdAt)),
+        allowPayouts
+          ? this.db
+              .select({
+                id: teacherPayouts.id,
+                referenceNumber: teacherPayouts.referenceNumber,
+                yearMonth: teacherPayouts.yearMonth,
+                amount: teacherPayouts.amount,
+                payoutDate: teacherPayouts.payoutDate,
+                paymentMethod: teacherPayouts.paymentMethod,
+                notes: teacherPayouts.notes,
+                createdAt: teacherPayouts.createdAt,
+                teacherName: teachers.fullName,
+                teacherCode: teachers.teacherCode,
+                paidByName: users.fullName,
+              })
+              .from(teacherPayouts)
+              .innerJoin(teachers, eq(teachers.id, teacherPayouts.teacherId))
+              .leftJoin(users, eq(users.id, teacherPayouts.paidByUserId))
+              .where(
+                query.date
+                  ? and(
+                      eq(teacherPayouts.yearMonth, resolvedYearMonth),
+                      eq(teacherPayouts.payoutDate, query.date),
+                    )
+                  : eq(teacherPayouts.yearMonth, resolvedYearMonth),
+              )
+              .orderBy(desc(teacherPayouts.payoutDate), desc(teacherPayouts.createdAt))
+          : Promise.resolve([]),
 
-        this.db
-          .select({
-            id: assistantPayouts.id,
-            referenceNumber: assistantPayouts.referenceNumber,
-            yearMonth: assistantPayouts.yearMonth,
-            amount: assistantPayouts.amount,
-            payoutDate: assistantPayouts.payoutDate,
-            paymentMethod: assistantPayouts.paymentMethod,
-            notes: assistantPayouts.notes,
-            createdAt: assistantPayouts.createdAt,
-            assistantName: assistants.fullName,
-            assistantCode: assistants.assistantCode,
-            paidByName: users.fullName,
-          })
-          .from(assistantPayouts)
-          .innerJoin(assistants, eq(assistants.id, assistantPayouts.assistantId))
-          .leftJoin(users, eq(users.id, assistantPayouts.paidByUserId))
-          .where(
-            query.date
-              ? eq(assistantPayouts.payoutDate, query.date)
-              : and(
-                  gte(assistantPayouts.payoutDate, startOfMonth),
-                  lte(assistantPayouts.payoutDate, endOfMonth),
-                ),
-          )
-          .orderBy(desc(assistantPayouts.payoutDate), desc(assistantPayouts.createdAt)),
+        allowPayouts
+          ? this.db
+              .select({
+                id: assistantPayouts.id,
+                referenceNumber: assistantPayouts.referenceNumber,
+                yearMonth: assistantPayouts.yearMonth,
+                amount: assistantPayouts.amount,
+                payoutDate: assistantPayouts.payoutDate,
+                paymentMethod: assistantPayouts.paymentMethod,
+                notes: assistantPayouts.notes,
+                createdAt: assistantPayouts.createdAt,
+                assistantName: assistants.fullName,
+                assistantCode: assistants.assistantCode,
+                paidByName: users.fullName,
+              })
+              .from(assistantPayouts)
+              .innerJoin(assistants, eq(assistants.id, assistantPayouts.assistantId))
+              .leftJoin(users, eq(users.id, assistantPayouts.paidByUserId))
+              .where(
+                query.date
+                  ? and(
+                      eq(assistantPayouts.yearMonth, resolvedYearMonth),
+                      eq(assistantPayouts.payoutDate, query.date),
+                    )
+                  : eq(assistantPayouts.yearMonth, resolvedYearMonth),
+              )
+              .orderBy(desc(assistantPayouts.payoutDate), desc(assistantPayouts.createdAt))
+          : Promise.resolve([]),
 
-        this.db
-          .select({
-            id: expenses.id,
-            category: expenses.category,
-            title: expenses.title,
-            yearMonth: expenses.yearMonth,
-            amount: expenses.amount,
-            expenseDate: expenses.expenseDate,
-            paymentMethod: expenses.paymentMethod,
-            notes: expenses.notes,
-            createdAt: expenses.createdAt,
-            recordedByName: users.fullName,
-          })
-          .from(expenses)
-          .leftJoin(users, eq(users.id, expenses.recordedByUserId))
-          .where(
-            query.date
-              ? eq(expenses.expenseDate, query.date)
-              : and(
-                  gte(expenses.expenseDate, startOfMonth),
-                  lte(expenses.expenseDate, endOfMonth),
-                ),
-          )
-          .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt)),
+        allowExpenses
+          ? this.db
+              .select({
+                id: expenses.id,
+                category: expenses.category,
+                title: expenses.title,
+                yearMonth: expenses.yearMonth,
+                amount: expenses.amount,
+                expenseDate: expenses.expenseDate,
+                paymentMethod: expenses.paymentMethod,
+                notes: expenses.notes,
+                createdAt: expenses.createdAt,
+                recordedByName: users.fullName,
+              })
+              .from(expenses)
+              .leftJoin(users, eq(users.id, expenses.recordedByUserId))
+              .where(
+                query.date
+                  ? and(
+                      eq(expenses.yearMonth, resolvedYearMonth),
+                      eq(expenses.expenseDate, query.date),
+                    )
+                  : eq(expenses.yearMonth, resolvedYearMonth),
+              )
+              .orderBy(desc(expenses.expenseDate), desc(expenses.createdAt))
+          : Promise.resolve([]),
       ]);
 
     const allEntries: DailyLedgerEntry[] = [
@@ -337,15 +350,28 @@ export class DailyLedgerRepository {
       day.netCashFlow = roundMoney(day.totalInflow - day.totalOutflow);
     }
 
-    const daysSummary = Array.from(daysMap.values()).sort((a, b) =>
-      b.date.localeCompare(a.date),
-    );
+    const daysSummary = Array.from(daysMap.values())
+      .map((day) =>
+        canViewFullFinance
+          ? day
+          : {
+              ...day,
+              netCashFlow: 0,
+            },
+      )
+      .sort((a, b) => b.date.localeCompare(a.date));
 
     const dateFilteredEntries = query.date
       ? allEntries.filter((e) => e.date === query.date)
       : allEntries;
 
-    const summary = this.computeSummary(dateFilteredEntries);
+    const rawSummary = this.computeSummary(dateFilteredEntries);
+    const summary = canViewFullFinance
+      ? rawSummary
+      : {
+          ...rawSummary,
+          netCashFlow: 0,
+        };
 
     let filteredEntries = dateFilteredEntries;
     if (query.type && query.type !== 'ALL') {

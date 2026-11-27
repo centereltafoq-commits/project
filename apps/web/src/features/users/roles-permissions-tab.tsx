@@ -21,6 +21,25 @@ interface PermissionItem {
   nameAr: string;
 }
 
+const MODULE_LABELS_AR: Record<string, string> = {
+  DASHBOARD: 'لوحة التحكم التنفيذية',
+  IDENTITY: 'المستخدمون والأدوار والصلاحيات',
+  AUDIT: 'سجل العمليات والمراجعة (Audit)',
+  STUDENTS: 'الطلاب',
+  TEACHERS: 'المدرسون',
+  ASSISTANTS: 'المساعدون',
+  GROUPS: 'المجموعات والسياسات',
+  ENROLLMENTS: 'اشتراكات الطلاب بالمجموعات',
+  SESSIONS: 'الحصص والجدول',
+  ATTENDANCE: 'الحضور والغياب',
+  FINANCE: 'المالية والتحصيل والأرباح',
+  CLASSROOMS: 'القاعات الدراسية',
+  CALENDAR: 'التقويم الموحد',
+  REPORTS: 'التقارير والتصدير',
+  BACKUPS: 'النسخ الاحتياطي والسحابة',
+  SETTINGS: 'إعدادات النظام',
+};
+
 export function RolesPermissionsTab() {
   const queryClient = useQueryClient();
   const { notify } = useToast();
@@ -115,7 +134,8 @@ export function RolesPermissionsTab() {
                 <div>
                   <CardTitle>تخصيص صلاحيات: {currentRole.nameAr}</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    يمكنك تفعيل أو إلغاء أي صلاحية فرعية لهذا الدور الوظيفي
+                    {currentRole.description ||
+                      'يمكنك تفعيل أو إلغاء أي صلاحية فرعية لهذا الدور الوظيفي'}
                   </p>
                 </div>
               </div>
@@ -133,26 +153,38 @@ export function RolesPermissionsTab() {
             <CardContent className="space-y-5 pt-4">
               {grouped.map(([mod, perms]) => (
                 <div key={mod} className="space-y-2">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary">
-                    قسم: {mod}
+                  <h4 className="text-xs font-extrabold tracking-wide text-primary">
+                    قسم: {MODULE_LABELS_AR[mod] ?? mod}
                   </h4>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {perms.map((perm) => {
                       const checked =
                         currentRole.code === SystemRole.OWNER || selectedCodes.includes(perm.code);
+                      const isProfitSensitive = perm.code === PERMISSIONS.FINANCE_VIEW;
                       return (
                         <label
                           key={perm.code}
-                          className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border p-2.5 text-sm hover:bg-accent/40"
+                          className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 text-sm hover:bg-accent/40 ${
+                            isProfitSensitive
+                              ? 'border-amber-500/40 bg-amber-500/5'
+                              : 'border-border'
+                          }`}
                         >
                           <input
                             type="checkbox"
                             checked={checked}
                             disabled={!canManageRoles || currentRole.code === SystemRole.OWNER}
                             onChange={() => togglePerm(perm.code)}
-                            className="h-4 w-4 rounded accent-primary"
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded accent-primary"
                           />
-                          <span className="font-medium">{perm.nameAr}</span>
+                          <div className="space-y-0.5">
+                            <span className="font-medium block leading-snug">{perm.nameAr}</span>
+                            {isProfitSensitive && (
+                              <span className="inline-block text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                حساسة: تكشف صافي ربح السنتر وأرباح المدرسين (لا تُعطى للأسيستنت)
+                              </span>
+                            )}
+                          </div>
                         </label>
                       );
                     })}

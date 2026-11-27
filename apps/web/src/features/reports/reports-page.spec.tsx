@@ -49,4 +49,30 @@ describe('ReportsPage RBAC & Empty Permission Safety', () => {
     ).toBeInTheDocument();
     expect(getSpy).not.toHaveBeenCalled();
   });
+
+  it('allows assistant with FINANCE_COLLECT_PAYMENT to access collections & student-statement reports while hiding profit reports', () => {
+    const perms = new Set<string>([PERMISSIONS.REPORTS_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT]);
+    useAuthMock.mockReturnValue({
+      hasPermission: (perm: string) => perms.has(perm),
+      user: { id: 'ast-1', fullName: 'Assistant', roleCode: 'ASSISTANT' },
+    } as any);
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <MemoryRouter>
+            <ReportsPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: /7\. التحصيل والمدفوعات/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /3\. كشف حساب الطالب/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /4\. إيرادات المجموعات/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /5\. كشف المدرس/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /9\. التحليل والملخص المالي/i })).not.toBeInTheDocument();
+  });
 });

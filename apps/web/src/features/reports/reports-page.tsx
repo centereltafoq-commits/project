@@ -31,18 +31,23 @@ export function ReportsPage() {
     setReportLogoError(false);
   }, [settings.logoUrl]);
 
-  const permittedReports = React.useMemo(
-    () =>
-      ALL_REPORTS_DEFINITIONS.filter(
-        (rep) => !rep.requiredPermission || hasPermission(rep.requiredPermission as any),
-      ),
+  const hasReportPermission = React.useCallback(
+    (rep: (typeof ALL_REPORTS_DEFINITIONS)[number]) => {
+      if (rep.requiredAnyPermissions?.length) {
+        return rep.requiredAnyPermissions.some((perm) => hasPermission(perm as any));
+      }
+      return !rep.requiredPermission || hasPermission(rep.requiredPermission as any);
+    },
     [hasPermission],
   );
 
+  const permittedReports = React.useMemo(
+    () => ALL_REPORTS_DEFINITIONS.filter(hasReportPermission),
+    [hasReportPermission],
+  );
+
   const [activeReport, setActiveReport] = React.useState<ReportTypeSlug>(() => {
-    return ALL_REPORTS_DEFINITIONS.find(
-      (rep) => !rep.requiredPermission || hasPermission(rep.requiredPermission as any),
-    )?.slug ?? 'students';
+    return ALL_REPORTS_DEFINITIONS.find(hasReportPermission)?.slug ?? 'students';
   });
 
   React.useEffect(() => {

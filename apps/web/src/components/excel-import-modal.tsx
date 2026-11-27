@@ -37,6 +37,7 @@ export interface ExcelImportCommitResponse {
   importedCount: number;
   skippedCount: number;
   failedCount: number;
+  transferredCount?: number;
 }
 
 export interface ExcelImportColumnPreview {
@@ -56,6 +57,9 @@ export interface ExcelImportModalProps {
   commitUrl: string;
   previewColumns: ExcelImportColumnPreview[];
   invalidateQueryKeys: string[][];
+  extraFormParams?: Record<string, string | undefined>;
+  extraOptionsSlot?: React.ReactNode;
+  onCommitSuccess?: (result: ExcelImportCommitResponse) => void;
 }
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -71,6 +75,9 @@ export function ExcelImportModal({
   commitUrl,
   previewColumns,
   invalidateQueryKeys,
+  extraFormParams,
+  extraOptionsSlot,
+  onCommitSuccess,
 }: ExcelImportModalProps) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
@@ -97,6 +104,20 @@ export function ExcelImportModal({
     }
   }, [open]);
 
+  const extraParamsSerialized = JSON.stringify(extraFormParams ?? {});
+
+  const appendExtraParams = React.useCallback(
+    (formData: FormData) => {
+      if (!extraFormParams) return;
+      for (const [key, val] of Object.entries(extraFormParams)) {
+        if (val !== undefined && val !== '') {
+          formData.append(key, val);
+        }
+      }
+    },
+    [extraFormParams],
+  );
+
   const runPreview = React.useCallback(
     async (file: File, strategy: DuplicateImportStrategy) => {
       setIsPreviewing(true);
@@ -105,6 +126,7 @@ export function ExcelImportModal({
         const formData = new FormData();
         formData.append('file', file);
         formData.append('duplicateStrategy', strategy);
+        appendExtraParams(formData);
 
         const res = await apiClient.post<ExcelImportPreviewResponse>(previewUrl, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -121,8 +143,16 @@ export function ExcelImportModal({
         setIsPreviewing(false);
       }
     },
-    [notify, previewUrl],
+    [appendExtraParams, notify, previewUrl],
   );
+
+  React.useEffect(() => {
+    if (open && selectedFile) {
+      void runPreview(selectedFile, duplicateStrategy);
+    }
+    // Re-run preview when external options (e.g. transfer sourceGroupId) change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extraParamsSerialized]);
 
   const handleFilePicked = (file: File | undefined | null) => {
     if (!file) return;
@@ -193,6 +223,7 @@ export function ExcelImportModal({
       formData.append('file', selectedFile);
       formData.append('duplicateStrategy', duplicateStrategy);
       formData.append('skipInvalidRows', String(skipInvalidRows));
+      appendExtraParams(formData);
 
       const res = await apiClient.post<ExcelImportCommitResponse>(commitUrl, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -202,12 +233,16 @@ export function ExcelImportModal({
         invalidateQueryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
 
-      notify(
-        `تم استيراد ${res.data.importedCount} سجل بنجاح${
-          res.data.skippedCount > 0 ? ` (تخطي ${res.data.skippedCount})` : ''
-        }${res.data.failedCount > 0 ? ` (مستبعد ${res.data.failedCount})` : ''}`,
-        'success',
-      );
+      if (onCommitSuccess) {
+        onCommitSuccess(res.data);
+      } else {
+        notify(
+          `تم استيراد ${res.data.importedCount} سجل بنجاح${
+            res.data.skippedCount > 0 ? ` (تخطي ${res.data.skippedCount})` : ''
+          }${res.data.failedCount > 0 ? ` (مستبعد ${res.data.failedCount})` : ''}`,
+          'success',
+        );
+      }
       onOpenChange(false);
     } catch (err) {
       notify(extractErrorMessage(err), 'error');
@@ -314,6 +349,8 @@ export function ExcelImportModal({
               ))}
             </div>
           </div>
+
+          {extraOptionsSlot}
 
           <div
             onDragOver={(e) => e.preventDefault()}

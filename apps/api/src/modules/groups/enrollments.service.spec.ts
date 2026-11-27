@@ -301,7 +301,7 @@ describe('EnrollmentsService - Monthly Payment & Attendance Summary', () => {
       ownerActor,
     );
 
-    expect(result.data[0].monthSummary).toEqual({
+      expect(result.data[0].monthSummary).toEqual({
       yearMonth: '2026-10',
       paymentStatus: 'PAID',
       totalDue: 400,
@@ -313,5 +313,69 @@ describe('EnrollmentsService - Monthly Payment & Attendance Summary', () => {
       excusedCount: 0,
       isClosed: true,
     });
+  });
+
+  it('bulk subscribes deduplicated students once and recalculates affected month once', async () => {
+    const mockSettlement = { recalculateMonth: vi.fn().mockResolvedValue(undefined) };
+    const mockCache = { invalidatePrefix: vi.fn().mockResolvedValue(undefined) };
+
+    mockGroupsRepo.findDetailById.mockResolvedValue({
+      id: 'grp-1',
+      name: 'فيزياء 3ث',
+      isActive: true,
+      monthlyPrice: '400.00',
+      monthlySessionsCount: 4,
+      maxStudents: 30,
+    });
+    mockEnrollmentsRepo.createBulkWithOptionalTransfer = vi.fn().mockResolvedValue({
+      created: [
+        { id: 'enr-10', studentId: 'stu-1' },
+        { id: 'enr-11', studentId: 'stu-2' },
+      ],
+      skippedAlreadyEnrolledCount: 1,
+      transferredCount: 0,
+    });
+
+    const svcWithSettlement = new EnrollmentsService(
+      mockGroupsRepo,
+      mockEnrollmentsRepo,
+      mockAudit,
+      mockSettlement as any,
+      mockCache as any,
+    );
+
+    const res = await svcWithSettlement.bulkSubscribeStudents(
+      'grp-1',
+      {
+        studentIds: ['stu-1', 'stu-2', 'stu-1', 'stu-3'],
+        startDate: '2026-11-05',
+      },
+      ownerActor,
+    );
+
+    expect(mockEnrollmentsRepo.createBulkWithOptionalTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        groupId: 'grp-1',
+        skipAlreadyEnrolled: true,
+        rows: expect.arrayContaining([
+          expect.objectContaining({
+            studentId: 'stu-1',
+            agreedMonthlyPrice: '400.00',
+            agreedSessionsCount: 4,
+            agreedSessionPrice: '100.00',
+          }),
+        ]),
+      }),
+    );
+    expect(mockEnrollmentsRepo.createBulkWithOptionalTransfer.mock.calls[0][0].rows).toHaveLength(3);
+    expect(res).toEqual({
+      enrolledCount: 2,
+      skippedAlreadyEnrolledCount: 1,
+      createdIds: ['enr-10', 'enr-11'],
+    });
+    expect(mockSettlement.recalculateMonth).toHaveBeenCalledWith('2026-11');
+    expect(mockAudit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'BULK_CREATE_ENROLLMENT', entityId: 'grp-1' }),
+    );
   });
 });

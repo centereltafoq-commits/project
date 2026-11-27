@@ -36,6 +36,9 @@ export const ACTION_TRANSLATIONS: Record<string, string> = {
 
   // Enrollments
   CREATE_ENROLLMENT: 'تسجيل اشتراك طالب بالمجموعة',
+  BULK_CREATE_ENROLLMENT: 'تسجيل اشتراك جماعي لعدة طلاب بالمجموعة',
+  IMPORT_GROUP_ENROLLMENTS: 'استيراد اشتراكات طلاب المجموعة من Excel',
+  TRANSFER_GROUP_ENROLLMENTS: 'نقل طلاب عبر Excel إلى المجموعة',
   ENROLLMENT_CREATE: 'تسجيل اشتراك طالب بالمجموعة',
   UPDATE_ENROLLMENT: 'تعديل اشتراك طالب',
   ENROLLMENT_UPDATE: 'تعديل اشتراك طالب',

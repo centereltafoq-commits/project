@@ -44,10 +44,13 @@ export class ReportsService {
     }
 
     const perms = actor.permissions ?? [];
+    const canSeeCollections =
+      perms.includes(PERMISSIONS.FINANCE_VIEW) ||
+      perms.includes(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
     const canSeeGroups =
       perms.includes(PERMISSIONS.GROUPS_VIEW) ||
       perms.includes(PERMISSIONS.ATTENDANCE_VIEW) ||
-      perms.includes(PERMISSIONS.FINANCE_VIEW) ||
+      canSeeCollections ||
       perms.includes(PERMISSIONS.CLASSROOMS_VIEW);
     const canSeeTeachers =
       perms.includes(PERMISSIONS.TEACHERS_VIEW) ||
@@ -55,7 +58,7 @@ export class ReportsService {
       perms.includes(PERMISSIONS.ATTENDANCE_VIEW);
     const canSeeStudents =
       perms.includes(PERMISSIONS.STUDENTS_VIEW) ||
-      perms.includes(PERMISSIONS.FINANCE_VIEW) ||
+      canSeeCollections ||
       perms.includes(PERMISSIONS.ATTENDANCE_VIEW);
 
     return {
@@ -127,21 +130,24 @@ export class ReportsService {
       return;
     }
 
-    const permissionMap: Record<ReportType, string> = {
-      students: PERMISSIONS.STUDENTS_VIEW,
-      attendance: PERMISSIONS.ATTENDANCE_VIEW,
-      'student-statement': PERMISSIONS.FINANCE_VIEW,
-      'groups-revenue': PERMISSIONS.FINANCE_VIEW,
-      'teacher-statement': PERMISSIONS.FINANCE_VIEW,
-      'assistant-statement': PERMISSIONS.FINANCE_VIEW,
-      collections: PERMISSIONS.FINANCE_VIEW,
-      expenses: PERMISSIONS.FINANCE_VIEW,
-      classrooms: PERMISSIONS.CLASSROOMS_VIEW,
-      'financial-summary': PERMISSIONS.FINANCE_VIEW,
+    const permissionMap: Record<ReportType, string[]> = {
+      students: [PERMISSIONS.STUDENTS_VIEW],
+      attendance: [PERMISSIONS.ATTENDANCE_VIEW],
+      'student-statement': [PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT],
+      'groups-revenue': [PERMISSIONS.FINANCE_VIEW],
+      'teacher-statement': [PERMISSIONS.FINANCE_VIEW],
+      'assistant-statement': [PERMISSIONS.FINANCE_VIEW],
+      collections: [PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT],
+      expenses: [PERMISSIONS.FINANCE_VIEW],
+      classrooms: [PERMISSIONS.CLASSROOMS_VIEW],
+      'financial-summary': [PERMISSIONS.FINANCE_VIEW],
     };
 
-    const required = permissionMap[reportType];
-    if (required && !actor.permissions.includes(required as any)) {
+    const allowedAny = permissionMap[reportType] ?? [];
+    if (
+      allowedAny.length > 0 &&
+      !allowedAny.some((perm) => actor.permissions.includes(perm as any))
+    ) {
       throw new ForbiddenException(
         `ليس لديك صلاحية عرض تقرير ${REPORT_TITLES_AR[reportType] || reportType}`,
       );

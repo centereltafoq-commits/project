@@ -12,6 +12,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+import { PERMISSIONS } from '@edu-center/shared';
 import {
   Badge,
   Button,
@@ -20,6 +21,7 @@ import {
   Select,
   StatCard,
 } from '@/design-system';
+import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/cn';
@@ -74,6 +76,27 @@ export function DailyLedgerTab({
   selectedDate,
   onSelectDate,
 }: DailyLedgerTabProps) {
+  const { hasPermission } = useAuth();
+  const canViewFullFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+  const canViewCollections =
+    canViewFullFinance || hasPermission(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
+  const canViewPayouts = canViewFullFinance || hasPermission(PERMISSIONS.FINANCE_PAYOUTS);
+  const canViewExpenses = canViewFullFinance || hasPermission(PERMISSIONS.FINANCE_EXPENSES);
+
+  const allowedPills = React.useMemo(
+    () =>
+      LEDGER_TYPE_PILLS.filter((pill) => {
+        if (pill.value === 'ALL') return true;
+        if (pill.value === 'PAYMENT') return canViewCollections;
+        if (pill.value === 'TEACHER_PAYOUT' || pill.value === 'ASSISTANT_PAYOUT') {
+          return canViewPayouts;
+        }
+        if (pill.value === 'EXPENSE') return canViewExpenses;
+        return false;
+      }),
+    [canViewCollections, canViewExpenses, canViewPayouts],
+  );
+
   const [typeFilter, setTypeFilter] = React.useState<DailyLedgerEntryType>('ALL');
   const [paymentMethod, setPaymentMethod] = React.useState('');
   const [search, setSearch] = React.useState('');
@@ -192,34 +215,44 @@ export function DailyLedgerTab({
                     </Badge>
                   </div>
 
-                  <div className="mt-2.5 grid grid-cols-2 gap-1.5 border-t border-border/60 pt-2 text-[11px]">
+                  <div
+                    className={`mt-2.5 grid gap-1.5 border-t border-border/60 pt-2 text-[11px] ${
+                      canViewFullFinance || canViewPayouts || canViewExpenses
+                        ? 'grid-cols-2'
+                        : 'grid-cols-1'
+                    }`}
+                  >
                     <div>
                       <span className="text-muted-foreground block">الوارد (+)</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">
                         +{formatCurrency(day.totalInflow)}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground block">المنصرف (-)</span>
-                      <span className="font-bold text-rose-600 dark:text-rose-400">
-                        -{formatCurrency(day.totalOutflow)}
-                      </span>
-                    </div>
+                    {(canViewFullFinance || canViewPayouts || canViewExpenses) && (
+                      <div>
+                        <span className="text-muted-foreground block">المنصرف (-)</span>
+                        <span className="font-bold text-rose-600 dark:text-rose-400">
+                          -{formatCurrency(day.totalOutflow)}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] pt-1">
-                    <span className="text-muted-foreground">الصافي:</span>
-                    <span
-                      className={cn(
-                        'font-extrabold',
-                        day.netCashFlow >= 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400',
-                      )}
-                    >
-                      {formatCurrency(day.netCashFlow)}
-                    </span>
-                  </div>
+                  {canViewFullFinance && (
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] pt-1">
+                      <span className="text-muted-foreground">الصافي:</span>
+                      <span
+                        className={cn(
+                          'font-extrabold',
+                          day.netCashFlow >= 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400',
+                        )}
+                      >
+                        {formatCurrency(day.netCashFlow)}
+                      </span>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -227,47 +260,59 @@ export function DailyLedgerTab({
         )}
       </Card>
 
-      {/* 2. Daily / Selected Period 4 KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title={
-            selectedDate
-              ? `تحصيلات الطلاب (${formatDateAr(selectedDate)})`
-              : `إجمالي تحصيلات الطلاب (${formatYearMonthAr(yearMonth)})`
-          }
-          value={formatCurrency(summary?.paymentsTotal ?? 0)}
-          subtitle={`${summary?.paymentsCount ?? 0} إيصال تحصيل مسجل`}
-          icon={Wallet}
-          tone="success"
-        />
-        <StatCard
-          title="صرفيات المدرسين والمساعدين"
-          value={formatCurrency(staffPayoutsTotal)}
-          subtitle={`${staffPayoutsCount} حركة صرف (${summary?.teacherPayoutsCount ?? 0} مدرس • ${summary?.assistantPayoutsCount ?? 0} مساعد)`}
-          icon={Users}
-          tone="purple"
-        />
-        <StatCard
-          title="المصروفات التشغيلية"
-          value={formatCurrency(summary?.expensesTotal ?? 0)}
-          subtitle={`${summary?.expensesCount ?? 0} بند مصروفات مسجل`}
-          icon={Building2}
-          tone="warning"
-        />
-        <StatCard
-          title={selectedDate ? 'صافي حركة الخزينة لليوم' : 'صافي حركة الخزينة للشهر'}
-          value={formatCurrency(summary?.netCashFlow ?? 0)}
-          subtitle={`الوارد ${formatCurrency(summary?.totalInflow ?? 0)} - المنصرف ${formatCurrency(summary?.totalOutflow ?? 0)}`}
-          icon={Banknote}
-          tone={(summary?.netCashFlow ?? 0) >= 0 ? 'success' : 'danger'}
-        />
+      {/* 2. Daily / Selected Period KPI Cards */}
+      <div
+        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+          canViewFullFinance ? 'lg:grid-cols-4' : canViewPayouts || canViewExpenses ? 'lg:grid-cols-3' : 'lg:grid-cols-1'
+        }`}
+      >
+        {canViewCollections && (
+          <StatCard
+            title={
+              selectedDate
+                ? `تحصيلات الطلاب (${formatDateAr(selectedDate)})`
+                : `إجمالي تحصيلات الطلاب (${formatYearMonthAr(yearMonth)})`
+            }
+            value={formatCurrency(summary?.paymentsTotal ?? 0)}
+            subtitle={`${summary?.paymentsCount ?? 0} إيصال تحصيل مسجل`}
+            icon={Wallet}
+            tone="success"
+          />
+        )}
+        {canViewPayouts && (
+          <StatCard
+            title="صرفيات المدرسين والمساعدين"
+            value={formatCurrency(staffPayoutsTotal)}
+            subtitle={`${staffPayoutsCount} حركة صرف (${summary?.teacherPayoutsCount ?? 0} مدرس • ${summary?.assistantPayoutsCount ?? 0} مساعد)`}
+            icon={Users}
+            tone="purple"
+          />
+        )}
+        {canViewExpenses && (
+          <StatCard
+            title="المصروفات التشغيلية"
+            value={formatCurrency(summary?.expensesTotal ?? 0)}
+            subtitle={`${summary?.expensesCount ?? 0} بند مصروفات مسجل`}
+            icon={Building2}
+            tone="warning"
+          />
+        )}
+        {canViewFullFinance && (
+          <StatCard
+            title={selectedDate ? 'صافي حركة الخزينة لليوم' : 'صافي حركة الخزينة للشهر'}
+            value={formatCurrency(summary?.netCashFlow ?? 0)}
+            subtitle={`الوارد ${formatCurrency(summary?.totalInflow ?? 0)} - المنصرف ${formatCurrency(summary?.totalOutflow ?? 0)}`}
+            icon={Banknote}
+            tone={(summary?.netCashFlow ?? 0) >= 0 ? 'success' : 'danger'}
+          />
+        )}
       </div>
 
       {/* 3. Filter Pills & Organized Transactions Table */}
       <Card className="p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-1.5">
-            {LEDGER_TYPE_PILLS.map((pill) => {
+            {allowedPills.map((pill) => {
               const active = typeFilter === pill.value;
               return (
                 <button

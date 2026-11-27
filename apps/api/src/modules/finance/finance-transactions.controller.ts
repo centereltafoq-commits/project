@@ -14,7 +14,10 @@ import {
   AuthenticatedUser,
   CurrentUser,
 } from '../../common/decorators/current-user.decorator';
-import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import {
+  RequireAnyPermissions,
+  RequirePermissions,
+} from '../../common/decorators/permissions.decorator';
 import { DailyLedgerQueryDto } from './dto/daily-ledger.dto';
 import {
   CreateExpenseDto,
@@ -44,13 +47,21 @@ export class FinanceTransactionsController {
   ) {}
 
   @Get('daily-ledger')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
-  async getDailyLedger(@Query() query: DailyLedgerQueryDto) {
-    return this.dailyLedgerRepository.getDailyLedger(query);
+  @RequireAnyPermissions(
+    PERMISSIONS.FINANCE_VIEW,
+    PERMISSIONS.FINANCE_COLLECT_PAYMENT,
+    PERMISSIONS.FINANCE_PAYOUTS,
+    PERMISSIONS.FINANCE_EXPENSES,
+  )
+  async getDailyLedger(
+    @Query() query: DailyLedgerQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.dailyLedgerRepository.getDailyLedger(query, actor);
   }
 
   @Get('payments')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT)
   async listPayments(@Query() query: PaymentsQueryDto) {
     return this.paymentsService.list(query);
   }
@@ -65,7 +76,7 @@ export class FinanceTransactionsController {
   }
 
   @Get('teacher-payouts')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_PAYOUTS)
   async listTeacherPayouts(@Query() query: TeacherPayoutsQueryDto) {
     return this.payoutsService.listTeacherPayouts(query);
   }
@@ -80,7 +91,7 @@ export class FinanceTransactionsController {
   }
 
   @Get('assistant-payouts')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_PAYOUTS)
   async listAssistantPayouts(@Query() query: AssistantPayoutsQueryDto) {
     return this.payoutsService.listAssistantPayouts(query);
   }
@@ -95,7 +106,7 @@ export class FinanceTransactionsController {
   }
 
   @Get('expenses')
-  @RequirePermissions(PERMISSIONS.FINANCE_VIEW)
+  @RequireAnyPermissions(PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_EXPENSES)
   async listExpenses(@Query() query: ExpensesQueryDto) {
     return this.expensesService.list(query);
   }

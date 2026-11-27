@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDatabase } from '../../database/database.module';
 import {
   assistantDues,
@@ -158,7 +158,7 @@ export class DashboardRepository {
           todayCount: sql<number>`COUNT(*)::int`,
         })
         .from(payments)
-        .where(eq(payments.paymentDate, todayDate)),
+        .where(and(eq(payments.paymentDate, todayDate), eq(payments.yearMonth, yearMonth))),
       this.db.execute<{ total_dues: string; total_center_share: string }>(sql`
         SELECT
           COALESCE(

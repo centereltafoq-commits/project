@@ -1,7 +1,18 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, CheckCircle2, Clock, PauseCircle, PlayCircle, UserPlus, XCircle } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  Ban,
+  CheckCircle2,
+  Clock,
+  Download,
+  PauseCircle,
+  PlayCircle,
+  Upload,
+  UserPlus,
+  XCircle,
+} from 'lucide-react';
 import {
   DEFAULT_PAGE_SIZE,
   EnrollmentStatus,
@@ -17,9 +28,11 @@ import {
   TableColumn,
   useToast,
 } from '@/design-system';
+import { ExcelImportModal } from '@/components/excel-import-modal';
 import { useAuth } from '@/features/auth/auth-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { apiClient, extractErrorMessage } from '@/lib/api-client';
+import { downloadBlobFile } from '@/lib/file-download';
 import {
   formatCurrency,
   formatDateAr,
@@ -127,6 +140,8 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
   const { hasPermission } = useAuth();
   const canManageEnrollments = hasPermission(PERMISSIONS.ENROLLMENTS_MANAGE);
   const canViewFinance = hasPermission(PERMISSIONS.FINANCE_VIEW);
+  const canExport =
+    hasPermission(PERMISSIONS.ENROLLMENTS_VIEW) && hasPermission(PERMISSIONS.REPORTS_EXPORT);
 
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(DEFAULT_PAGE_SIZE);
@@ -135,6 +150,44 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
   const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = React.useState('');
   const [subscribeOpen, setSubscribeOpen] = React.useState(false);
+  const [excelImportOpen, setExcelImportOpen] = React.useState(false);
+  const [transferSourceGroupId, setTransferSourceGroupId] = React.useState('');
+  const [isExporting, setIsExporting] = React.useState(false);
+
+  const { data: transferLookups } = useQuery<{
+    groups?: Array<{ id: string; groupCode: string; name: string; gradeLevel: string }>;
+  }>({
+    queryKey: ['groups-lookups'],
+    enabled: excelImportOpen && canManageEnrollments,
+    queryFn: async () => (await apiClient.get('/groups/lookups')).data,
+  });
+
+  const handleExcelImportOpenChange = React.useCallback((nextOpen: boolean) => {
+    setExcelImportOpen(nextOpen);
+    if (!nextOpen) {
+      setTransferSourceGroupId('');
+    }
+  }, []);
+
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      await downloadBlobFile(
+        `/groups/${group.id}/enrollments/export`,
+        `group-${group.groupCode}-students.xlsx`,
+        {
+          status: statusFilter || undefined,
+          search: debouncedSearch || undefined,
+        },
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      notify('تم تصدير كشف طلاب المجموعة إلى Excel بنجاح', 'success');
+    } catch (err) {
+      notify(extractErrorMessage(err), 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const { data, isLoading } = useQuery<PaginatedResult<EnrollmentRow>>({
     queryKey: [
@@ -363,11 +416,32 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
             }}
             className="w-44"
           />
-          {canManageEnrollments && (
-            <Button onClick={() => setSubscribeOpen(true)} className="gap-1.5">
-              <UserPlus className="h-4 w-4" />
-              تسجيل اشتراك طالب
+          {canExport && (
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              isLoading={isExporting}
+              className="gap-1.5"
+            >
+              <Download className="h-4 w-4" />
+              تصدير Excel
             </Button>
+          )}
+          {canManageEnrollments && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => handleExcelImportOpenChange(true)}
+                className="gap-1.5"
+              >
+                <Upload className="h-4 w-4" />
+                استيراد / نقل Excel
+              </Button>
+              <Button onClick={() => setSubscribeOpen(true)} className="gap-1.5">
+                <UserPlus className="h-4 w-4" />
+                تسجيل اشتراك طلاب
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -428,6 +502,76 @@ export function GroupEnrollmentsSection({ group }: { group: GroupDetailData }) {
         open={subscribeOpen}
         onOpenChange={setSubscribeOpen}
         group={group}
+      />
+
+      <ExcelImportModal
+        open={excelImportOpen}
+        onOpenChange={handleExcelImportOpenChange}
+        title={`استيراد أو نقل طلاب إلى مجموعة: ${group.name}`}
+        entityLabelPlural="اشتراكات الطلاب"
+        templateUrl={`/groups/${group.id}/enrollments/import/template`}
+        templateFilename={`group-${group.groupCode}-enrollments-template.xlsx`}
+        previewUrl={`/groups/${group.id}/enrollments/import/preview`}
+        commitUrl={`/groups/${group.id}/enrollments/import/commit`}
+        previewColumns={[
+          { key: 'studentCode', label: 'كود الطالب', dir: 'ltr' },
+          { key: 'studentName', label: 'اسم الطالب' },
+          { key: 'studentPhone', label: 'هاتف الطالب', dir: 'ltr' },
+          { key: 'startDate', label: 'تاريخ البدء', dir: 'ltr' },
+          ...(canViewFinance
+            ? [{ key: 'agreedMonthlyPrice', label: 'الاشتراك الشهري' }]
+            : []),
+        ]}
+        invalidateQueryKeys={[
+          ['group-enrollments', group.id],
+          ['group-active-student-ids', group.id],
+          ['group-detail', group.id],
+          ['groups'],
+          ['finance'],
+          ['dashboard-summary'],
+          ['student-profile'],
+        ]}
+        extraFormParams={
+          transferSourceGroupId ? { sourceGroupId: transferSourceGroupId } : undefined
+        }
+        extraOptionsSlot={
+          <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+              <ArrowLeftRight className="h-3.5 w-3.5 text-primary" />
+              <span>وضع النقل من مجموعة أخرى (اختياري)</span>
+            </div>
+            <Select
+              searchable
+              clearable
+              label="المجموعة المنقول منها"
+              searchPlaceholder="ابحث عن المجموعة المصدر..."
+              placeholder="إضافة للمجموعة الحالية فقط (بدون نقل من مجموعة أخرى)"
+              value={transferSourceGroupId}
+              onChange={(e) => setTransferSourceGroupId(e.target.value)}
+              options={(transferLookups?.groups ?? [])
+                .filter((g) => g.id !== group.id)
+                .map((g) => ({
+                  value: g.id,
+                  label: `${g.name} (${g.groupCode}) — ${g.gradeLevel}`,
+                }))}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              عند اختيار مجموعة مصدر، يتم إنهاء اشتراك الطلاب المنقولين منها تلقائياً مع الاحتفاظ بسجلات حضورهم ومدفوعاتهم القديمة.
+            </p>
+          </div>
+        }
+        onCommitSuccess={(res) => {
+          const transferNote =
+            (res.transferredCount ?? 0) > 0
+              ? ` ونقل ${res.transferredCount} طالب من المجموعة المصدر`
+              : '';
+          notify(
+            `تم تسجيل ${res.importedCount} طالب بنجاح${transferNote}${
+              res.skippedCount > 0 ? ` (تخطي ${res.skippedCount})` : ''
+            }`,
+            'success',
+          );
+        }}
       />
     </div>
   );

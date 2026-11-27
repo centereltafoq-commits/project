@@ -124,41 +124,49 @@ export async function ensureDatabaseReady(
       }
     }
 
-    const userCountRes = await pool.query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM users');
-    if ((userCountRes.rows[0]?.cnt ?? 0) === 0) {
-      const db = drizzle(pool, { schema });
-      const permList = buildSeedPermissionsList();
-      const permIdByCode = new Map<string, string>();
+    const db = drizzle(pool, { schema });
+    const permList = buildSeedPermissionsList();
+    const permIdByCode = new Map<string, string>();
 
-      for (const p of permList) {
-        const [row] = await db
-          .insert(permissions)
-          .values(p)
-          .onConflictDoUpdate({
-            target: permissions.code,
-            set: { module: p.module, nameAr: p.nameAr },
-          })
-          .returning({ id: permissions.id, code: permissions.code });
-        permIdByCode.set(row.code, row.id);
-      }
+    for (const p of permList) {
+      const [row] = await db
+        .insert(permissions)
+        .values(p)
+        .onConflictDoUpdate({
+          target: permissions.code,
+          set: { module: p.module, nameAr: p.nameAr },
+        })
+        .returning({ id: permissions.id, code: permissions.code });
+      permIdByCode.set(row.code, row.id);
+    }
 
-      const roleIdByCode = new Map<SystemRole, string>();
-      for (const r of SEED_ROLES_DATA) {
-        const [roleRow] = await db
-          .insert(roles)
-          .values({
-            code: r.code,
-            nameAr: r.nameAr,
-            description: r.description,
-            isSystem: true,
-          })
-          .onConflictDoUpdate({
-            target: roles.code,
-            set: { nameAr: r.nameAr, description: r.description, isSystem: true },
-          })
-          .returning({ id: roles.id });
-        roleIdByCode.set(r.code, roleRow.id);
+    const existingRoles = await db
+      .select({ id: roles.id, code: roles.code })
+      .from(roles);
+    const existingRoleCodeSet = new Set(existingRoles.map((r) => r.code));
+    const roleIdByCode = new Map<SystemRole, string>(
+      existingRoles.map((r) => [r.code as SystemRole, r.id]),
+    );
 
+    for (const r of SEED_ROLES_DATA) {
+      const isNewRole = !existingRoleCodeSet.has(r.code);
+      const [roleRow] = await db
+        .insert(roles)
+        .values({
+          code: r.code,
+          nameAr: r.nameAr,
+          description: r.description,
+          isSystem: true,
+        })
+        .onConflictDoUpdate({
+          target: roles.code,
+          set: { nameAr: r.nameAr, description: r.description, isSystem: true },
+        })
+        .returning({ id: roles.id });
+      roleIdByCode.set(r.code, roleRow.id);
+
+      // Seed default permissions only when introducing a new built-in role so custom edits by OWNER stay intact
+      if (isNewRole) {
         for (const code of DEFAULT_ROLE_PERMISSIONS[r.code] || []) {
           const permId = permIdByCode.get(code);
           if (permId) {
@@ -171,7 +179,10 @@ export async function ensureDatabaseReady(
           }
         }
       }
+    }
 
+    const userCountRes = await pool.query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM users');
+    if ((userCountRes.rows[0]?.cnt ?? 0) === 0) {
       const ownerEmail = process.env.SEED_OWNER_EMAIL?.trim().toLowerCase() || 'admin@educenter.com';
       const ownerPhone = process.env.SEED_OWNER_PHONE?.trim() || '01000000001';
       const ownerPassword = process.env.SEED_OWNER_PASSWORD || 'Admin@123456';

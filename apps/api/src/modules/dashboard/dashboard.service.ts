@@ -34,7 +34,9 @@ export class DashboardService {
 
     const isOwner = !actor || actor.roleCode === SystemRole.OWNER;
     const perms = actor?.permissions ?? [];
-    const canViewFinance = isOwner || perms.includes(PERMISSIONS.FINANCE_VIEW);
+    const canViewFullFinance = isOwner || perms.includes(PERMISSIONS.FINANCE_VIEW);
+    const canViewCollections =
+      canViewFullFinance || perms.includes(PERMISSIONS.FINANCE_COLLECT_PAYMENT);
     const canViewClassrooms = isOwner || perms.includes(PERMISSIONS.CLASSROOMS_VIEW);
     const canViewAttendance =
       isOwner ||
@@ -45,7 +47,7 @@ export class DashboardService {
       perms.includes(PERMISSIONS.STUDENTS_VIEW) ||
       perms.includes(PERMISSIONS.GROUPS_VIEW);
 
-    if (canViewFinance && canViewClassrooms && canViewAttendance && canViewSessionProgress) {
+    if (canViewFullFinance && canViewClassrooms && canViewAttendance && canViewSessionProgress) {
       return summary;
     }
 
@@ -61,7 +63,7 @@ export class DashboardService {
 
     const sanitizedSessionProgress = !canViewSessionProgress
       ? emptySessionProgress
-      : canViewFinance
+      : canViewCollections
         ? summary.monthlySessionProgress
         : {
             ...summary.monthlySessionProgress,
@@ -86,7 +88,7 @@ export class DashboardService {
             },
             classroomsLive: [],
           }),
-          ...(canViewFinance
+      ...(canViewCollections
         ? {}
         : {
             monthlySessionsStats: {
@@ -109,6 +111,10 @@ export class DashboardService {
             todayCollectedPayments: 0,
             todayPaymentsCount: 0,
             totalReceivables: 0,
+          }),
+      ...(canViewFullFinance
+        ? {}
+        : {
             totalTeacherDues: 0,
             totalAssistantDues: 0,
             totalTeacherPaidOut: 0,

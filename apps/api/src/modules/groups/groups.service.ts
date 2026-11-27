@@ -84,6 +84,7 @@ export class GroupsService {
           ? lookups.assistants
           : lookups.assistants.map((a) => ({ ...a, rateValue: '0.00' })),
       students: canSeeStudents ? lookups.students : [],
+      groups: lookups.groups ?? [],
     };
   }
 

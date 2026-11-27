@@ -64,6 +64,7 @@ export interface ReportDefinition {
   usesTeacher: boolean;
   usesStudent: boolean;
   requiredPermission?: PermissionCode | string;
+  requiredAnyPermissions?: (PermissionCode | string)[];
 }
 
 export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
@@ -101,7 +102,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
-    requiredPermission: PERMISSIONS.FINANCE_VIEW,
+    requiredAnyPermissions: [PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT],
   },
   {
     slug: 'groups-revenue',
@@ -149,7 +150,7 @@ export const ALL_REPORTS_DEFINITIONS: ReportDefinition[] = [
     usesGroup: true,
     usesTeacher: true,
     usesStudent: true,
-    requiredPermission: PERMISSIONS.FINANCE_VIEW,
+    requiredAnyPermissions: [PERMISSIONS.FINANCE_VIEW, PERMISSIONS.FINANCE_COLLECT_PAYMENT],
   },
   {
     slug: 'expenses',
